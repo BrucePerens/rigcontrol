@@ -4,11 +4,11 @@ This is the K6BP RigControl software, an Amateur Radio transceiver
 controller using an ESP-32 Audio Kit card commonly sold on AliExpress for
 as little as $11.89 with free shipping (Mar 8, 2022).
 
-The device connects to a transceiver via audio line-level input and output,
-serial transceiver control, and digital control lines for T/R, etc. The
-logic level is 3.3 volts. The inputs are 5V-tolerant when the device is
-powered with 5 volts at the VIN pin and uses its internal voltage regulator.
-Level converters may be needed, depending on the equipment.
+The device provides a web interface to a phone, tablet, or computer,
+and connects to a transceiver via audio line-level input and output,
+serial transceiver control, and digital control lines for T/R, etc. Some
+hardware will require voltage level conversion for the serial and digital
+I/O, and inexpensive devices are recommended in the documentation.
 
 ### Hardware Required
 
@@ -16,7 +16,7 @@ ESP32 Audio Development Kit sold on AliExpress.com .
 
 ![ESP32 Audio Development Kit](website/esp32-audio-kit2.png)
 
-The design of this appear to originate with AI-Thinker [(site)](https://docs.ai-thinker.com/en/esp32-audio-kit)
+The design of this appears to originate with AI-Thinker [(site)](https://docs.ai-thinker.com/en/esp32-audio-kit)
 derived from a design by Espressif called the LyraT
 [(site)](https://www.espressif.com/en/products/devkits/esp32-lyrat).
 The boards available on AliExpress.com are either the AI-Thinker product or
@@ -38,9 +38,10 @@ Install the esp-idf, using the instructions from
 https://docs.espressif.com/projects/esp-idf/en/latest/esp32/get-started/index.html
 ### Build and Flash
 
-On Linux, using *bash,* run the esp-idf environment script:
+On Linux, using *bash,* run the esp-idf environment script. Assuming that
+`esp-idf` is installed in the parent directory:
 ```
-source esp-idf/export.sh
+source ../esp-idf/export.sh
 ```
 On Windows, see the installation instructions on how to run a PowerShell or
 command prompt environment.
@@ -54,7 +55,7 @@ idf.py -p PORT flash monitor
 Run the ESPTouch app to set the WiFi parameters of the board.
 
 Open your web browser to the IP address printed by ESPTouch or the serial
-monitor, in the form `http://*address*/`
+monitor, in the form http://*address*/
 
 If your home router provides dynamic DHCP addresses for devices on your LAN,
 the device name will be *rigcontrol* until you set it. So you can try

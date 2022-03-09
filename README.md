@@ -4,7 +4,11 @@ This is the K6BP RigControl software, an Amateur Radio transceiver
 controller using an ESP-32 Audio Kit card commonly sold on AliExpress for
 as little as $11.89 with free shipping (Mar 8, 2022).
 
-## How to use example
+The device connects to a transceiver via audio line-level input and output,
+serial transceiver control, and digital control lines for T/R, etc. The
+logic level is 3.3 volts. The inputs are 5V-tolerant when the device is
+powered with 5 volts at the VIN pin and uses its internal voltage regulator.
+Level converters may be needed, depending on the equipment.
 
 ### Hardware Required
 
@@ -18,9 +22,16 @@ derived from a design by Espressif called the LyraT
 The boards available on AliExpress.com are either the AI-Thinker product or
 follow it closely. The LyraT board has a different pinout.
 
+The board connects to the net via WiFi and provides two audio inputs and two
+audio outputs. Microphone or line inputs are mutually exclusive. Line or
+speaker outputs are also mutually exclusive. There is a USB serial interface
+for debugging, and additional serial and digital outputs sufficient for
+controlling serial rig control interfaces such as Yaesu's *CAT* and operating
+a T/R input or other peripherals.
+
 ### Software Required
 
-Download the ESPTouch App from the Android or iOS app store.
+Download the ESPTouch App from the app store:
 [Android](https://play.google.com/store/apps/details?id=com.khoazero123.iot_esptouch_demo) [iOS](https://apps.apple.com/us/app/espressif-esptouch/id1071176700)
 
 Install the esp-idf, using the instructions from

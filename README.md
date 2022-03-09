@@ -10,8 +10,13 @@ as little as $11.89 with free shipping (Mar 8, 2022).
 
 ESP32 Audio Development Kit sold on AliExpress.com .
 
-![ESP32 Audio Development Kit](website/ESP32-Audio-Kit.webp)
+![ESP32 Audio Development Kit](website/esp32-audio-kit2.png)
 
+The design of this appear to originate with AI-Thinker [(site)](https://docs.ai-thinker.com/en/esp32-audio-kit)
+derived from a design by Espressif called the LyraT
+[(site)](https://www.espressif.com/en/products/devkits/esp32-lyrat).
+The boards available on AliExpress.com are either the AI-Thinker product or
+follow it closely. The LyraT board has a different pinout.
 
 ### Software Required
 

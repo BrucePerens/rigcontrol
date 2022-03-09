@@ -4,11 +4,15 @@ This is the K6BP RigControl software, an Amateur Radio transceiver
 controller using an ESP-32 Audio Kit card commonly sold on AliExpress for
 as little as $11.89 with free shipping (Mar 8, 2022).
 
-The device provides a web interface to a phone, tablet, or computer,
-and connects to a transceiver via audio line-level input and output,
-serial transceiver control, and digital control lines for T/R, etc. Some
-hardware will require voltage level conversion for the serial and digital
-I/O, and inexpensive devices are recommended in the documentation.
+The software is currently in "Hello World" stage: it can configure its
+WiFi and start a web server. No ham radio control is implemented yet.
+
+The device provides a WiFi based web interface to a phone, tablet,
+or computer, and connects to a transceiver via audio line-level input
+and output, serial transceiver control, and digital control lines for T/R,
+etc. Some hardware will require voltage level conversion for the serial and
+digital I/O, and inexpensive devices are recommended in the documentation.
+There is no USB master. Control of devices via WiFi and Bluetooth is possible.
 
 ### Hardware Required
 

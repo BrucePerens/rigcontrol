@@ -21,6 +21,7 @@ follow it closely. The LyraT board has a different pinout.
 ### Software Required
 
 Download the ESPTouch App from the Android or iOS app store.
+[Android](https://play.google.com/store/apps/details?id=com.khoazero123.iot_esptouch_demo) [iOS](https://apps.apple.com/us/app/espressif-esptouch/id1071176700)
 
 Install the esp-idf, using the instructions from
 https://docs.espressif.com/projects/esp-idf/en/latest/esp32/get-started/index.html

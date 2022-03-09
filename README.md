@@ -27,7 +27,8 @@ audio outputs. Microphone or line inputs are mutually exclusive. Line or
 speaker outputs are also mutually exclusive. There is a USB serial interface
 for debugging, and additional serial and digital outputs sufficient for
 controlling serial rig control interfaces such as Yaesu's *CAT* and operating
-a T/R input or other peripherals.
+a T/R input or other peripherals. CW and RTTY control is possible but not yet
+implemented in software.
 
 ### Software Required
 

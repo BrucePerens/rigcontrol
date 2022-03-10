@@ -16,6 +16,10 @@
 #include "nvs_flash.h"
 #include "nvs.h"
 #include "esp_netif.h"
+#include "driver/uart.h"
+#include "esp_console.h"
+#include "linenoise/linenoise.h"
+#include "argtable3/argtable3.h"
 
 extern void wifi_event_sta_start(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data);
 extern void wifi_event_sta_disconnected(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data);
@@ -35,8 +39,18 @@ void app_main(void)
 
 static void initialize(void)
 {
+  esp_console_repl_t *repl = NULL;
+
   esp_log_level_set("*", ESP_LOG_WARN);
   // esp_log_level_set("*", ESP_LOG_INFO);
+
+  // Configure the console command system.
+  esp_console_repl_config_t repl_config = ESP_CONSOLE_REPL_CONFIG_DEFAULT();
+  repl_config.prompt = ">";
+  esp_console_dev_uart_config_t uart_config = ESP_CONSOLE_DEV_UART_CONFIG_DEFAULT();
+  ESP_ERROR_CHECK(esp_console_new_repl_uart(&uart_config, &repl_config, &repl));
+  ESP_ERROR_CHECK(esp_console_register_help_command());
+  ESP_ERROR_CHECK(esp_console_start_repl(repl));
 
   // Empty configuration for starting WiFi.
   wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();

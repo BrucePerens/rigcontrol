@@ -121,10 +121,6 @@ static void wifi_smart_config(void * parm)
     EventBits_t uxBits;
     esp_event_handler_instance_t instance_got_ip;
 
-    printf("Please use the EspTouch app to configure a connection to your\n" \
-     "wifi access point.\n");
-    fflush(stdout);
-
     ESP_ERROR_CHECK( esp_smartconfig_set_type(SC_TYPE_ESPTOUCH) );
 
     ESP_ERROR_CHECK(esp_event_handler_instance_register(IP_EVENT,

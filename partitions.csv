@@ -1,0 +1,14 @@
+# ESP-IDF Partition Table
+# Name,   Type, SubType, Offset,  Size, Flags
+
+# Non-volatile storage
+nvs,      data, nvs,     0x9000,  0x6000,
+
+# I think phy_init is used to set the WiFi PHY for different regions. It is
+# not currently used.
+phy_init, data, phy,     0xf000,  0x1000,
+
+# "Factory" is the app. "factory" means it was flashed to the hardware
+# at "the factory" and differentiates it from an OTA (over-the-air) partition.
+factory,  app,  factory, 0x10000, 0x3F0000,
+

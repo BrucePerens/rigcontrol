@@ -29,7 +29,8 @@ follow it closely. The LyraT board has a different pinout.
 
 * [Board schematic.](website/esp32-audio-kit_v2.2_sch.pdf)
 * [Module specification.](website/esp32-a1s_v2.3_specification.pdf)
-* [ESP32 audio design guide.](website/esp32_audio_design_guide.pdf)
+* [ESP32 audio design guide.](website/esp32_audio_design_guidelines__en.pdf)
+* [Audio chip datasheet](website/ES8388 DS.pdf)
 
 The board connects to the net via WiFi and provides two audio inputs and two
 audio outputs. Microphone or line inputs are mutually exclusive. Line or

@@ -77,3 +77,8 @@ If your home router provides dynamic DHCP addresses for devices on your LAN,
 the device name will be *rigcontrol* until you set it. So you can try
 opening *http://rigcontrol.lan/* if your router provides a *.lan* domain.
 On some browsers, just typing *rigcontrol.lan/* will work.
+
+### Issues
+Hardware flow control is not connected between the CPU and the serial-to-USB
+chip. This causes the console to drop characters sometimes.
+It also is probably the reason that flashing the device sometimes fails.

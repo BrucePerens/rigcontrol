@@ -24,6 +24,10 @@ static int tasks(int argc, char * * argv)
   }
 
   if (tasks_args.cpu->count > 0) {
+    // The task statistics functions block interrupts while they are running,
+    // and that does something odd to command-line processing, so that the
+    // carriage return isn't printed. So, add one here.
+    printf("\n");
     print_real_time_stats(100);
   }
   else {

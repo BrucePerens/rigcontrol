@@ -30,7 +30,7 @@ enum EventBits {
   ESPTOUCH_DONE_BIT = 1 << 1
 };
 
-static const char TASK_NAME[] = "wifi_smart_config";
+static const char TASK_NAME[] = "wifi smart config";
 extern nvs_handle_t nvs;
 static TaskHandle_t smart_config_task = NULL;
 static esp_event_handler_instance_t handler_ip_event_sta_got_ip = NULL;

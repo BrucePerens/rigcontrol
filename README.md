@@ -41,7 +41,8 @@ line inputs and microphone preamplifiers, for debugging.
 There is a USB serial interface
 for debugging, and additional serial and digital outputs sufficient for
 controlling serial rig control interfaces such as Yaesu's *CAT* and operating
-a T/R input or other peripherals. CW and RTTY control is possible but not yet
+a T/R input or other peripherals. Logic levels are 3.3 volts, and not 5V-tolerant.
+CW and RTTY control is possible but not yet
 implemented in software.
 
 ### Software Required

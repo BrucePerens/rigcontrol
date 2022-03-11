@@ -56,7 +56,7 @@ void install_param_command(void)
   param_args.end = arg_end(10);
   static const esp_console_cmd_t param_cmd = {
     .command = "param",
-    .help = "Configure parameters in non-volatile storage.",
+    .help = "Read or set parameters in non-volatile storage.",
     .hint = "[name] [value] (none to list, name to read, name value to set)",
     .func = &param,
     .argtable = &param_args

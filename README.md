@@ -2,7 +2,8 @@
 
 This is the K6BP RigControl software, an Amateur Radio transceiver
 controller using an ESP-32 Audio Kit card commonly sold on AliExpress for
-as little as $11.89 with free shipping (Mar 8, 2022).
+around $14.
+[Searh for sales on AliExpress](https://www.aliexpress.com/premium/ESP32%25252dAudio%25252dKit.html)
 
 The software is currently in "Hello World" stage: it can configure its
 WiFi, set the time from SNTP, and start a web server.

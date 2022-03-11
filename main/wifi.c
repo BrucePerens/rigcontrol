@@ -32,6 +32,7 @@ enum EventBits {
 
 static const char TASK_NAME[] = "wifi_smart_config";
 extern nvs_handle_t nvs;
+static TaskHandle_t smart_config_task = NULL;
 
 extern void start_webserver(void);
 extern void stop_webserver();
@@ -52,7 +53,7 @@ void wifi_event_sta_start(void* arg, esp_event_base_t event_base, int32_t event_
   size_t password_size = sizeof(password);
 
   esp_err_t ssid_err = nvs_get_str(nvs, "ssid", ssid, &ssid_size);
-  esp_err_t password_err = nvs_get_str(nvs, "password", password, &password_size);
+  esp_err_t password_err = nvs_get_str(nvs, "wifi_password", password, &password_size);
 
   // Create a local event group for communication from event handlers to
   // tasks.
@@ -62,7 +63,7 @@ void wifi_event_sta_start(void* arg, esp_event_base_t event_base, int32_t event_
   if (ssid_err == ESP_OK && password_err == ESP_OK && ssid_size > 1)
     wifi_connect_to_ap(ssid, password);
   else
-    xTaskCreate(wifi_smart_config, TASK_NAME, 4096, NULL, 3, NULL);
+    xTaskCreate(wifi_smart_config, TASK_NAME, 4096, NULL, 3, &smart_config_task);
 }
 
 void wifi_event_sta_disconnected(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data)
@@ -105,7 +106,7 @@ static void sc_event_got_ssid_pswd(void* arg, esp_event_base_t event_base,
   }
 
   ESP_ERROR_CHECK(nvs_set_str(nvs, "ssid", (const char *)evt->ssid));
-  ESP_ERROR_CHECK(nvs_set_str(nvs, "password", (const char *)evt->password));
+  ESP_ERROR_CHECK(nvs_set_str(nvs, "wifi_password", (const char *)evt->password));
   ESP_ERROR_CHECK(nvs_commit(nvs));
   ESP_ERROR_CHECK( esp_wifi_disconnect() );
   ESP_ERROR_CHECK( esp_wifi_set_config(WIFI_IF_STA, &wifi_config) );
@@ -149,7 +150,8 @@ static void wifi_smart_config(void * parm)
     ESP_ERROR_CHECK( esp_event_handler_unregister(SC_EVENT, SC_EVENT_GOT_SSID_PSWD, &sc_event_got_ssid_pswd) );
     ESP_ERROR_CHECK( esp_event_handler_unregister(SC_EVENT, SC_EVENT_SEND_ACK_DONE, &sc_event_send_ack_done) );
 
-    vTaskDelete(NULL);
+    vTaskDelete(smart_config_task);
+    smart_config_task = NULL;
 }
 
 static void wifi_connect_to_ap(const char * ssid, const char * password)
@@ -176,3 +178,15 @@ static void wifi_connect_to_ap(const char * ssid, const char * password)
                                                       &instance_got_ip));
   ESP_ERROR_CHECK( esp_wifi_connect() );
 }
+
+void wifi_restart(void)
+{
+  stop_webserver();
+  if (smart_config_task) {
+    esp_smartconfig_stop();
+    vTaskDelete(smart_config_task);
+  }
+  esp_wifi_disconnect();
+  wifi_event_sta_start(0, 0, 0, 0);
+}
+

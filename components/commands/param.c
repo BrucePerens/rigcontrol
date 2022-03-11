@@ -4,6 +4,7 @@
 #include <nvs.h>
 
 extern nvs_handle_t nvs;
+extern void wifi_restart(void);
 
 enum parameter_type {
   END = 0,
@@ -19,11 +20,12 @@ struct parameter {
   enum parameter_type type;
   bool secret;
   const char * explanation;
+  void (*call_after_set)(void);
 };
 
 static const struct parameter parameters[] = {
-  { "ssid", STRING, false, "Name of WiFi access point" },
-  { "wifi_password", STRING, true, "Password of WiFi access point" },
+  { "ssid", STRING, false, "Name of WiFi access point", wifi_restart },
+  { "wifi_password", STRING, true, "Password of WiFi access point", wifi_restart },
   { }
 };
 
@@ -99,6 +101,8 @@ int set_nvs_param(const char * key, const char * value)
     ESP_ERROR_CHECK(err);
     return -1;
   }
+  if (p->call_after_set)
+    (p->call_after_set)();
   else {
     if (p->secret)
       printf("%s (secret)", key);
@@ -126,6 +130,8 @@ int erase_nvs_param(const char * key)
   switch (err) {
   case ESP_OK:
     printf("Erased.\n");
+    if (p->call_after_set)
+      (p->call_after_set)();
     return 0;
   case ESP_ERR_NVS_NOT_FOUND:
     fprintf(stderr, "%s: was not set.\n", key);

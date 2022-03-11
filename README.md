@@ -33,8 +33,12 @@ follow it closely. The LyraT board has a different pinout.
 * [Audio chip datasheet](website/ES8388_DS.pdf)
 
 The board connects to the net via WiFi and provides two audio inputs and two
-audio outputs. Microphone or line inputs are mutually exclusive. Line or
-speaker outputs are also mutually exclusive. There is a USB serial interface
+audio outputs. Microphone or line inputs are switched through a multiplexer.
+Line and speaker outputs are in common, with enable lines for the speaker
+amplifiers.
+The audio outputs are ususally fed by ADCs, but can be switched to the
+line inputs and microphone preamplifiers, for debugging.
+There is a USB serial interface
 for debugging, and additional serial and digital outputs sufficient for
 controlling serial rig control interfaces such as Yaesu's *CAT* and operating
 a T/R input or other peripherals. CW and RTTY control is possible but not yet

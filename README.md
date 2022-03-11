@@ -5,7 +5,9 @@ controller using an ESP-32 Audio Kit card commonly sold on AliExpress for
 as little as $11.89 with free shipping (Mar 8, 2022).
 
 The software is currently in "Hello World" stage: it can configure its
-WiFi and start a web server. No ham radio control is implemented yet.
+WiFi, set the time from SNTP, and start a web server.
+Some debugging and maintenance commands are implemented on the USB serial
+console. No ham radio control is implemented yet.
 
 The device provides a WiFi based web interface to a phone, tablet,
 or computer, and connects to a transceiver via audio line-level input

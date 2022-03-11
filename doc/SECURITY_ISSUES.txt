@@ -1,0 +1,2 @@
+Currently passwords are stored in FLASH as cleartext. The ESP-32 NVS encryption
+is wasteful, it uses one sector per parameter (and I think that's 4096 bytes). Find a better way to encrypt secret parameters.

@@ -1,7 +1,11 @@
 idf_component_register(SRCS "commands.c"
+                       "date.c"
                        "gpio.c"
                        "param.c"
                        "param_cmd.c"
+                       "realtime_tasks.c"
                        "restart.c"
+                       "tasks.c"
+                       "uptime.c"
                        INCLUDE_DIRS "." "include"
-                       REQUIRES console driver hal lwip nvs_flash)
+                       REQUIRES console driver esp_timer freertos hal lwip nvs_flash)

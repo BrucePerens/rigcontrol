@@ -1,7 +1,9 @@
+#include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <nvs_flash.h>
 #include <nvs.h>
+#include <time.h>
 
 extern nvs_handle_t nvs;
 extern void wifi_restart(void);
@@ -26,6 +28,7 @@ struct parameter {
 static const struct parameter parameters[] = {
   { "ssid", STRING, false, "Name of WiFi access point", wifi_restart },
   { "wifi_password", STRING, true, "Password of WiFi access point", wifi_restart },
+  { "timezone", STRING, false, "Set time zone (see https://github.com/nayarsystems/posix_tz_db/blob/master/zones.csv)" },
   { }
 };
 

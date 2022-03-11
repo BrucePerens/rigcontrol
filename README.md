@@ -26,6 +26,8 @@ derived from a design by Espressif called the LyraT
 The boards available on AliExpress.com are either the AI-Thinker product or
 follow it closely. The LyraT board has a different pinout.
 
+
+[Here is the board schematic.](website/esp32-audio-kit_v2.2_sch.pdf
 The board connects to the net via WiFi and provides two audio inputs and two
 audio outputs. Microphone or line inputs are mutually exclusive. Line or
 speaker outputs are also mutually exclusive. There is a USB serial interface

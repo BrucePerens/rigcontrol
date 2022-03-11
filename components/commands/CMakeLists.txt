@@ -4,4 +4,4 @@ idf_component_register(SRCS "commands.c"
                        "param_cmd.c"
                        "restart.c"
                        INCLUDE_DIRS "." "include"
-                       REQUIRES console driver hal nvs_flash)
+                       REQUIRES console driver hal lwip nvs_flash)

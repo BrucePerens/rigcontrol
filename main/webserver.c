@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <esp_http_server.h>
 #include <esp_log.h>
+#include <esp_sntp.h>
 
 // extern const uint8_t servercert_pem[] asm("_binary_servercert_pem_start");
 static const char TASK_NAME[] = "web_server";
@@ -24,6 +25,10 @@ void start_webserver(void)
 {
   if (server)
     return;
+
+  sntp_setoperatingmode(SNTP_OPMODE_POLL);
+  sntp_setservername(0, "pool.ntp.org");
+  sntp_init();
 
   httpd_config_t config = HTTPD_DEFAULT_CONFIG();
   config.lru_purge_enable = true;

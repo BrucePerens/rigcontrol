@@ -22,6 +22,9 @@ static esp_err_t http_root_handler(httpd_req_t *req)
 
 void start_webserver(void)
 {
+  if (server)
+    return;
+
   httpd_config_t config = HTTPD_DEFAULT_CONFIG();
   config.lru_purge_enable = true;
 
@@ -44,5 +47,8 @@ void start_webserver(void)
 
 void stop_webserver()
 {
-  server = NULL;
+  if (server) {
+    httpd_stop(server);
+    server = NULL;
+  }
 }

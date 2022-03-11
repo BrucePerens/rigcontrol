@@ -13,6 +13,8 @@ and output, serial transceiver control, and digital control lines for T/R,
 etc. Some hardware will require voltage level conversion for the serial and
 digital I/O, and inexpensive devices are recommended in the documentation.
 There is no USB master. Control of devices via WiFi and Bluetooth is possible.
+For example, you could link the radio audio to a Bluetooth
+speaker, or operate using a Bluetooth headset.
 
 ### Hardware Required
 
@@ -79,6 +81,10 @@ opening *http://rigcontrol.lan/* if your router provides a *.lan* domain.
 On some browsers, just typing *rigcontrol.lan/* will work.
 
 ### Issues
-Hardware flow control is not connected between the CPU and the serial-to-USB
-chip. This causes the console to drop characters sometimes.
-It also is probably the reason that flashing the device sometimes fails.
+Hardware flow control is not connected on the PCB between the CPU and the
+serial-to-USB chip. This saves some precious GPIO pins, but causes the
+console to drop characters sometimes.
+This also may be the reason that flashing the device sometimes fails.
+The console is for debugging and maintenance, not everyday use of the
+device, so
+this should not generally present a problem to the user.

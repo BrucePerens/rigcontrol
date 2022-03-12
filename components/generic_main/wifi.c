@@ -72,7 +72,7 @@ void wifi_event_sta_start(void* arg, esp_event_base_t event_base, int32_t event_
 
 void wifi_event_sta_disconnected(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data)
 {
-  printf("Wifi disconnected.\n\n");
+  printf("Wifi disconnected.\n");
   fflush(stdout);
   stop_webserver();
   esp_wifi_connect();
@@ -89,7 +89,7 @@ static void ip_event_sta_got_ip(void* arg, esp_event_base_t event_base, int32_t 
 
   xEventGroupSetBits(my_events, CONNECTED_BIT);
 
-  printf("WiFi connected, IP address: " IPSTR "\n\n", IP2STR(&event->ip_info.ip));
+  printf("WiFi connected, IP address: " IPSTR "\n", IP2STR(&event->ip_info.ip));
   fflush(stdout);
   start_webserver();
 }

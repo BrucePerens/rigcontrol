@@ -7,18 +7,27 @@
 #include <esp_http_server.h>
 #include <esp_log.h>
 #include <esp_sntp.h>
+#include <esp_timer.h>
+#include <inttypes.h>
+
+int64_t time_last_synchronized = -1;
+
+extern void user_web_handlers(httpd_handle_t);
 
 // extern const uint8_t servercert_pem[] asm("_binary_servercert_pem_start");
 static const char TASK_NAME[] = "web_server";
 static httpd_handle_t server = NULL;
 
-static esp_err_t http_root_handler(httpd_req_t *req)
+static void time_was_synchronized(struct timeval * t)
 {
-  static const char * page = "<html><body>K6BP RigControl</body></html>";
-    
-  httpd_resp_send(req, page, HTTPD_RESP_USE_STRLEN);
-
-  return ESP_OK;
+  // The next time the clock is adjusted, do it smoothly.
+  if (time_last_synchronized == -1) {
+    printf("Time was synchronized.\n");
+    fflush(stdout);
+    sntp_set_sync_mode(SNTP_SYNC_MODE_SMOOTH);
+    sntp_restart();
+  }
+  time_last_synchronized = esp_timer_get_time();
 }
 
 void start_webserver(void)
@@ -28,21 +37,22 @@ void start_webserver(void)
 
   sntp_setoperatingmode(SNTP_OPMODE_POLL);
   sntp_setservername(0, "pool.ntp.org");
+  sntp_set_time_sync_notification_cb(time_was_synchronized);
+  // Adjust the clock suddenly the first time. The time_was_synchronized
+  // callback will set it to be adjusted smoothly the second and subsequent
+  // time.
+  sntp_set_sync_mode(SNTP_SYNC_MODE_IMMED);
+  sntp_set_sync_interval(60 * 1000);
+
   sntp_init();
 
   httpd_config_t config = HTTPD_DEFAULT_CONFIG();
   config.lru_purge_enable = true;
 
-  static const httpd_uri_t root = {
-      .uri       = "/",
-      .method    = HTTP_GET,
-      .handler   = http_root_handler,
-      .user_ctx  = NULL
-  };
   // Start the httpd server
   ESP_LOGI(TASK_NAME, "Starting server on port: '%d'", config.server_port);
   if (httpd_start(&server, &config) == ESP_OK) {
-    httpd_register_uri_handler(server, &root);
+    user_web_handlers(server);
   }
   else {
     server = NULL;
@@ -53,6 +63,8 @@ void start_webserver(void)
 void stop_webserver()
 {
   if (server) {
+    sntp_stop();
+    time_last_synchronized = -1;
     httpd_stop(server);
     server = NULL;
   }

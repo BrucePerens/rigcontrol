@@ -28,7 +28,7 @@ struct parameter {
 static const struct parameter parameters[] = {
   { "ssid", STRING, false, "Name of WiFi access point", wifi_restart },
   { "wifi_password", STRING, true, "Password of WiFi access point", wifi_restart },
-  { "timezone", STRING, false, "Set time zone (see https://github.com/nayarsystems/posix_tz_db/blob/master/zones.csv)" },
+  { "timezone", STRING, false, "Set time zone (see https://github.com/nayarsystems/posix_tz_db/blob/master/zones.csv)", 0 },
   { }
 };
 

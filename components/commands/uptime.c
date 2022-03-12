@@ -8,10 +8,7 @@
 #include <esp_timer.h>
 #include <inttypes.h>
 
-const int64_t second = 1000000;
-const int64_t minute = second * 60;
-const int64_t hour = minute * 60;
-const int64_t day = hour * 24;
+extern void timer_to_human(int64_t t, char * buffer, size_t size);
 
 static struct {
     struct arg_end * end;
@@ -20,6 +17,7 @@ static struct {
 static int run(int argc, char * * argv)
 {
   int64_t uptime = esp_timer_get_time();
+  char buffer[64];
 
   int nerrors = arg_parse(argc, argv, (void **) &args);
   if (nerrors) {
@@ -27,12 +25,8 @@ static int run(int argc, char * * argv)
       return 1;
   }
 
-  int64_t days = uptime / day;
-  int64_t hours = (uptime % day) / hour;
-  int64_t minutes = (uptime % hour) / minute;
-  int64_t seconds = (uptime % minute) / second;
-
-  printf("%" PRId64 " days, %" PRId64 ":%" PRId64 ":%" PRId64 "\n", days, hours, minutes, seconds);
+  timer_to_human(uptime, buffer, sizeof(buffer));
+  printf("%s\n", buffer);
 
   return 0;
 }

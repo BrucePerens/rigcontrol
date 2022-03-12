@@ -24,7 +24,7 @@
 extern void wifi_event_sta_start(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data);
 extern void wifi_event_sta_disconnected(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data);
 
-extern void install_commands(void);
+extern void user_install_commands(void);
 static void initialize(void);
 
 nvs_handle_t nvs;
@@ -32,9 +32,11 @@ esp_netif_t *sta_netif;
 esp_netif_t *ap_netif;
 static const char TASK_NAME[] = "main";
 
+extern void user_startup();
+
 void app_main(void)
 {
-  printf("\n\n*** K6BP RigControl ***\n\n");
+  user_startup();
   initialize();
 }
 
@@ -50,7 +52,7 @@ static void initialize(void)
   repl_config.prompt = ">";
   esp_console_dev_uart_config_t uart_config = ESP_CONSOLE_DEV_UART_CONFIG_DEFAULT();
   ESP_ERROR_CHECK(esp_console_new_repl_uart(&uart_config, &repl_config, &repl));
-  install_commands();
+  user_install_commands();
   ESP_ERROR_CHECK(esp_console_start_repl(repl));
 
   // Empty configuration for starting WiFi.

@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <inttypes.h>
 #include <esp_console.h>
 #include <esp_system.h>
 #include <argtable3/argtable3.h>
@@ -8,8 +9,11 @@
 #include <nvs_flash.h>
 #include <nvs.h>
 #include <time.h>
+#include <esp_timer.h>
 
 extern nvs_handle_t nvs;
+extern int64_t time_last_synchronized;
+extern void timer_to_human(int64_t, char *, size_t);
 
 static struct {
     struct arg_end * end;
@@ -37,10 +41,8 @@ static int run(int argc, char * * argv)
 {
   time_t now;
   char strftime_buf[64];
+  char duration_buf[64];
   struct tm timeinfo;
-  sntp_sync_status_t sync_status = sntp_get_sync_status();
-  const char not_synchronized[] = "not synchronized via SNTP";
-  const char * sync_string = not_synchronized;
   
   int nerrors = arg_parse(argc, argv, (void **) &args);
   if (nerrors) {
@@ -48,24 +50,24 @@ static int run(int argc, char * * argv)
       return 1;
   }
 
-  switch (sync_status) {
-  case SNTP_SYNC_STATUS_COMPLETED:
-    sync_string = "synchronized via SNTP";
-    break;
-  case SNTP_SYNC_STATUS_IN_PROGRESS:
-    sync_string = "SNTP synchronization in progress";
-    break;
-  case SNTP_SYNC_STATUS_RESET:
-    sync_string = not_synchronized;
-  }
-
   time(&now);
   
   timezone_set();
 
+  const char * ago = " ago";
+  int64_t timer_now = esp_timer_get_time();
+  int64_t duration = timer_now - time_last_synchronized;
+
+  if (time_last_synchronized == -1) {
+    strcpy(duration_buf, "never");
+    ago = "";
+  }
+  else {
+    timer_to_human(duration, duration_buf, sizeof(duration_buf));
+  }
   localtime_r(&now, &timeinfo);
   strftime(strftime_buf, sizeof(strftime_buf), "%c", &timeinfo);
-  printf("%s, %s\n", strftime_buf, sync_string);
+  printf("%s, last synchronized: %s%s\n", strftime_buf, duration_buf, ago);
   return 0;
 }
 

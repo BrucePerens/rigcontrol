@@ -7,5 +7,6 @@ idf_component_register(SRCS "commands.c"
                        "restart.c"
                        "tasks.c"
                        "uptime.c"
+                       "utility.c"
                        INCLUDE_DIRS "." "include"
                        REQUIRES console driver esp_timer freertos hal lwip nvs_flash)

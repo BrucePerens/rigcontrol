@@ -8,7 +8,7 @@ extern void install_restart_command(void);
 extern void install_tasks_command(void);
 extern void install_uptime_command(void);
 
-void install_commands(void)
+void commands_component_install_commands(void)
 {
   install_date_command();
   install_gpio_command();

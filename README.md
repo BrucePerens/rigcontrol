@@ -91,3 +91,11 @@ This also may be the reason that flashing the device sometimes fails.
 The console is for debugging and maintenance, not everyday use of the
 device, so
 this should not generally present a problem to the user.
+
+Changing the console
+baud rate is fraught with difficulty, setting the baud rate of the embedded
+software and tools must be done in a specific order, or the device becomes
+unflashable with the tools as configured.
+Also, new hardware comes with the baud rate set to 115200, and reconfiguring
+the tool baud rate makes new hardware unflashable with them.
+

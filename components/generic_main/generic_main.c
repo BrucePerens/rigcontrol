@@ -44,9 +44,6 @@ static void initialize(void)
 {
   esp_console_repl_t *repl = NULL;
 
-  esp_log_level_set("*", ESP_LOG_WARN);
-  // esp_log_level_set("*", ESP_LOG_INFO);
-
   // Configure the console command system.
   esp_console_repl_config_t repl_config = ESP_CONSOLE_REPL_CONFIG_DEFAULT();
   repl_config.prompt = ">";

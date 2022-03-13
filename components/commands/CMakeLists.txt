@@ -8,5 +8,6 @@ idf_component_register(SRCS "commands.c"
                        "tasks.c"
                        "uptime.c"
                        "utility.c"
+                       "wget.c"
                        INCLUDE_DIRS "." "include"
-                       REQUIRES console driver esp_timer freertos hal lwip nvs_flash)
+                       REQUIRES console driver esp_timer freertos hal lwip nvs_flash esp_http_client)

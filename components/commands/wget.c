@@ -9,6 +9,8 @@
 #include <esp_crt_bundle.h>
 #include <esp_tls.h>
 
+const uint8_t x509_crt_bundle[1] asm("_binary_x509_crt_bundle_start");
+
 static struct {
     struct arg_str * url;
     struct arg_end * end;
@@ -63,20 +65,9 @@ static int run(int argc, char * * argv)
       return 1;
   }
 
-  // mbedtls_x509_crt * certificates = esp_tls_get_global_ca_store();
-  // if (certificates && certificates->raw.len > 0) {
-    // fprintf(stderr, "%s\n", certificates->raw.p);
-    // return 0;
-  // }
-  // else {
-    // fprintf(stderr, "No certificates.\n");
-    // return -1;
-  // }
-  
-
   config.url = args.url->sval[0];
   config.event_handler = &event_handler;
-  config.use_global_ca_store = true;
+  config.crt_bundle_attach = esp_crt_bundle_attach;
 
   esp_http_client_handle_t client = esp_http_client_init(&config);
    

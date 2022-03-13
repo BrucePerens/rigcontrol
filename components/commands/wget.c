@@ -6,6 +6,8 @@
 #include <esp_system.h>
 #include <argtable3/argtable3.h>
 #include <esp_http_client.h>
+#include <esp_crt_bundle.h>
+#include <esp_tls.h>
 
 static struct {
     struct arg_str * url;
@@ -60,6 +62,17 @@ static int run(int argc, char * * argv)
     arg_print_errors(stderr, args.end, argv[0]);
       return 1;
   }
+
+  // mbedtls_x509_crt * certificates = esp_tls_get_global_ca_store();
+  // if (certificates && certificates->raw.len > 0) {
+    // fprintf(stderr, "%s\n", certificates->raw.p);
+    // return 0;
+  // }
+  // else {
+    // fprintf(stderr, "No certificates.\n");
+    // return -1;
+  // }
+  
 
   config.url = args.url->sval[0];
   config.event_handler = &event_handler;

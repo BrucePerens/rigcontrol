@@ -6,7 +6,8 @@ around $14.
 [Search for sales on AliExpress](https://www.aliexpress.com/premium/ESP32%25252dAudio%25252dKit.html).
 
 The software is currently in "Hello World" stage: it can configure its
-WiFi, set the time from SNTP, and start a web server.
+WiFi, set the time from SNTP, start a web server, and access the public
+Internet.
 Some debugging and maintenance commands are implemented on the USB serial
 console. No ham radio control is implemented yet.
 

@@ -5,6 +5,16 @@
 #include "web_get.h"
 #include "public_ip.h"
 
+/* Sites that return your external IP in JSON with { "ip": "address string" } */
+const char * urls[] = {
+  "https://api.myip.com/",
+  "https://api.my-ip.io/ip.json",
+  "https://api.ipify.org?format=json",
+  "https://www.myexternalip.com/json",
+  "https://ip.seeip.org/jsonip?",
+  0
+};
+
 int public_ip(char * data, size_t size)
 {
   char	buffer[1024];

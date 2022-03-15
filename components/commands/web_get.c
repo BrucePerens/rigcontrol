@@ -14,13 +14,13 @@ struct user_data {
 
 static esp_err_t event_handler(esp_http_client_event_t * event)
 {
-  struct user_data * user_data;
+  struct user_data * const user_data = (struct user_data *)event->user_data;
+
 
   switch (event->event_id) {
   default:
     break;
   case HTTP_EVENT_ON_DATA:
-    user_data = (struct user_data *)event->user_data;
 
     if (user_data->coroutine) {
       (*(user_data->coroutine))(event->data, event->data_len);
@@ -30,8 +30,9 @@ static esp_err_t event_handler(esp_http_client_event_t * event)
       if (event->data_len < size)
         size = event->data_len;
       if (size > 0) {
-        memcpy(user_data->data, event->data, size);
+        memcpy(&(user_data->data[user_data->index]), event->data, size);
         user_data->index += size;
+        user_data->data[user_data->index] = '\0';
       }
     }
     break;
@@ -44,10 +45,11 @@ static int web_get_internal(const char * url, struct user_data * user_data)
   esp_http_client_config_t config = {};
 
 
+
   config.url = url;
   config.event_handler = &event_handler;
   config.crt_bundle_attach = esp_crt_bundle_attach;
-  config.user_data = &user_data;
+  config.user_data = user_data;
 
   esp_http_client_handle_t client = esp_http_client_init(&config);
 
@@ -61,7 +63,6 @@ static int web_get_internal(const char * url, struct user_data * user_data)
   }
 
   int status = esp_http_client_get_status_code(client);
-  esp_http_client_close(client);
   esp_http_client_cleanup(client);
   return status;
 }

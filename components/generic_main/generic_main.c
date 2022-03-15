@@ -22,6 +22,8 @@
 #include "argtable3/argtable3.h"
 #include <esp_crt_bundle.h>
 #include <esp_tls.h>
+#include <esp_random.h>
+#include <bootloader_random.h>
 
 extern void wifi_event_sta_start(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data);
 extern void wifi_event_sta_disconnected(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data);
@@ -48,11 +50,15 @@ static void initialize(void)
 
   // Configure the console command system.
   esp_console_repl_config_t repl_config = ESP_CONSOLE_REPL_CONFIG_DEFAULT();
-  // TRIM THIS DOWN!
-  repl_config.task_stack_size = 10 * 1024;
+  repl_config.task_stack_size = 30 * 1024;
   repl_config.prompt = ">";
   esp_console_dev_uart_config_t uart_config = ESP_CONSOLE_DEV_UART_CONFIG_DEFAULT();
   ESP_ERROR_CHECK(esp_console_new_repl_uart(&uart_config, &repl_config, &repl));
+  // Give the internal random number generator some entropy from the CPU's
+  // hardware RNG, just in case WiFi (which is also an entropy source)
+  // doesn't start.
+  bootloader_random_enable();
+
   user_install_commands();
   ESP_ERROR_CHECK(esp_console_start_repl(repl));
 

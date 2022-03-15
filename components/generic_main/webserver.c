@@ -20,7 +20,9 @@ static httpd_handle_t server = NULL;
 
 static void time_was_synchronized(struct timeval * t)
 {
-  // The next time the clock is adjusted, do it smoothly.
+  // The first time the clock is adjusted, it's changed immediately from the epoch
+  // to the current time. This sets the SNTP code so that the second and subsequent
+  // times, it is adjusted smoothly.
   if (time_last_synchronized == -1) {
     printf("Time was synchronized.\n");
     fflush(stdout);
@@ -42,7 +44,8 @@ void start_webserver(void)
   // callback will set it to be adjusted smoothly the second and subsequent
   // time.
   sntp_set_sync_mode(SNTP_SYNC_MODE_IMMED);
-  sntp_set_sync_interval(60 * 1000);
+  // Re-adjust the clock every 10 minutes.
+  sntp_set_sync_interval(60 * 10 * 1000);
 
   sntp_init();
 

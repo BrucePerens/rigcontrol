@@ -2,9 +2,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <cJSON.h>
-#include "web_get.h"
-#include "public_ip.h"
 #include <sys/random.h>
+#include "generic_main.h"
 
 // Sites that return your external IP in JSON with { "ip": "address string" }
 // and don't have a problem being called by robots, or a fee.

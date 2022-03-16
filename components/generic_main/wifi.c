@@ -22,6 +22,7 @@
 #include "nvs_flash.h"
 #include "nvs.h"
 #include "esp_smartconfig.h"
+#include "generic_main.h"
 
 /* FreeRTOS event group to signal when we are connected & ready to make a request */
 static EventGroupHandle_t my_events = NULL;

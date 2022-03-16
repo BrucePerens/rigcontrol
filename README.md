@@ -132,14 +132,14 @@ male-female pairs.
 You don't need these connectors if you are powering the device with an
 old micro-USB power supply. The better ones come pre-assembled with 20
 gauge black and red silicone-insulated wire pigtails. You can get vinyl
-insulation for less, but be careful soldering:, it melts.
+insulation for less, but be careful soldering: it melts.
 
 ### Why Is My RigControl Board Accessing Outside Web Sites? ###
 RigControl must access an outside site to learn its own public IP address,
 and it chooses randomly from a list of such sites. It must access an outside
 site to set its hostname in dynamic DNS, so that you can access it remotely.
 It calls github.com, k6bp.com, or hams.com to check if its software
-is up-to-date amd tp access security bulletins, etc.
+is up-to-date amd to access security bulletins, etc.
 Hams.com or k6bp.com may provide you with remote access.
 
 ### Issues
@@ -152,8 +152,10 @@ device, so
 this should not generally present a problem to the user.
 
 Changing the console
-baud rate is fraught with difficulty, setting the baud rate of the embedded
+baud rate is fraught with difficulty. Setting the baud rate of the embedded
 software and tools must be done in a specific order, or the device becomes
-unflashable with the tools as configured.
-Also, new hardware comes with the baud rate set to 115200, and reconfiguring
-the tool baud rate makes new hardware unflashable with them.
+unflashable with the tools using a simple command-line like "idf.py flash".
+It is possible to construct a command-line that works.
+New hardware comes with the baud rate set to 115200, and reconfiguring
+the tool baud rate makes new hardware unflashable with the usual command-line
+as well.

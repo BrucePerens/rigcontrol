@@ -1,0 +1,92 @@
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+#include "generic_main.h"
+
+// Get a variable to substitute in the string.
+typedef int (*pattern_coroutine)(const char * name, char * result, size_t result_size);
+
+int pattern_string(const char * string, pattern_coroutine coroutine, char * buffer, size_t buffer_size)
+{
+  char * out = buffer;
+  const char * start = string;
+
+  // While there is an input string to process...
+  while ( *start != '\0' ) {
+    // Look for a replacement string in the form of {name}
+    const char * var = index(start, '{');
+    if (var) {
+      // Found it. Find its end.
+      const char * end = index(var, '}');
+      if (end) {
+        var++;
+        if (var == end) {
+          fprintf(stderr, "Replacement string name missing.\n");
+          *buffer = '\0';
+          return -1;
+        }
+        else {
+          const char * next_open = index(var, '{');
+          if (next_open && next_open < end) {
+            fprintf(stderr, "Missing '}' character in replacement string: %s\n", var - 1);
+            return -1;
+          }
+
+          // Make a null-terminated copy of the name, to use as an argument to the
+          // coroutine. To conserve memory, this is done in the output buffer. Then
+          // it is overwritten.
+          size_t name_size = end - var;
+          if (name_size > buffer_size - 1) {
+            fprintf(stderr, "Replacement name too large, out of space in output string, or missing '}': %s\n", var - 1);
+            *buffer = '\0';
+            return -1;
+          }
+          memcpy(out, var, name_size);
+          out[name_size] = '\0';
+
+	  // Copy the input string before the replacement pattern to the output.
+          size_t leading_size = var - start - 1;
+          if (leading_size > buffer_size - 1) {
+            fprintf(stderr, "Out of space for replacement string.\n");
+            *buffer = '\0';
+            return -1;
+          }
+          memcpy(out, start, leading_size);
+          out += leading_size;
+          buffer_size -= leading_size;
+
+          // Call the coroutine, it writes the replacement directly to the output
+          // buffer. Note that the output buffer is both the input and output.
+          if ( (*coroutine)(out, out, buffer_size) == 0 ) {
+            size_t result_size = strlen(out);
+            out += result_size;
+            buffer_size -= result_size;
+            start = end + 1;
+          }
+          else {
+            fprintf(stderr, "No replacement for: %s\n", out);
+            *buffer = '\0';
+            return -1;
+          }
+        }
+      }
+      else {
+        fprintf(stderr, "Missing '}' character in replacement string: %s\n", var);
+        *buffer = '\0';
+        return -1;
+      }
+    }
+    else {
+      size_t final_length = strlen(start);
+
+      if (final_length > buffer_size - 1) {
+        fprintf(stderr, "Out of space for replacement string.\n");
+        *buffer = '\0';
+        return -1;
+      }
+      memcpy(out, start, final_length + 1);
+      break;
+    }
+  }
+  return 0;
+}

@@ -1,5 +1,29 @@
-idf_component_register(SRCS "generic_main.c"
-                    "wifi.c"
-                    "webserver.c"
-                    INCLUDE_DIRS "." "include"
-                    REQUIRES console commands driver esp_timer freertos hal lwip nvs_flash esp_wifi wpa_supplicant esp_http_server main bootloader_support esp_hw_support)
+idf_component_register(
+SRCS
+  generic_main.c
+  param.c
+  pattern_string.c
+  public_ip.c
+  timer_to_human.c
+  web_get.c
+  webserver.c
+  wifi.c
+INCLUDE_DIRS
+  "."
+  "include"
+REQUIRES
+  console
+  commands
+  driver
+  esp_timer
+  freertos
+  hal
+  lwip
+  nvs_flash
+  esp_wifi
+  wpa_supplicant
+  esp_http_server
+  main
+  bootloader_support
+  esp_hw_support
+)

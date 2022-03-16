@@ -2,10 +2,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <cJSON.h>
-#include "web_get.h"
-#include "public_ip.h"
 #include <esp_console.h>
 #include <argtable3/argtable3.h>
+#include "generic_main.h"
 
 static struct {
     struct arg_end * end;

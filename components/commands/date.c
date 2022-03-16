@@ -10,10 +10,7 @@
 #include <nvs.h>
 #include <time.h>
 #include <esp_timer.h>
-
-extern nvs_handle_t nvs;
-extern int64_t time_last_synchronized;
-extern void timer_to_human(int64_t, char *, size_t);
+#include "generic_main.h"
 
 static struct {
     struct arg_end * end;

@@ -1,16 +1,27 @@
-idf_component_register(SRCS "commands.c"
-                       "date.c"
-                       "gpio.c"
-                       "param.c"
-                       "param_cmd.c"
-                       "public_ip_cmd.c"
-                       "public_ip.c"
-                       "realtime_tasks.c"
-                       "restart.c"
-                       "tasks.c"
-                       "uptime.c"
-                       "utility.c"
-		       "web_get.c"
-                       "wget.c"
-                       INCLUDE_DIRS "." "include"
-                       REQUIRES console driver esp_timer freertos hal lwip nvs_flash esp_http_client esp-tls json)
+idf_component_register(
+SRCS commands.c
+  date.c
+  gpio.c
+  param.c
+  public_ip_cmd.c
+  realtime_tasks.c
+  restart.c
+  tasks.c
+  uptime.c
+  wget.c
+INCLUDE_DIRS
+  .
+  include
+REQUIRES
+  console
+  driver
+  esp_http_client
+  esp_timer
+  esp-tls
+  freertos
+  generic_main
+  hal
+  json
+  lwip
+  nvs_flash
+)

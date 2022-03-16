@@ -9,6 +9,7 @@
 #include <esp_sntp.h>
 #include <esp_timer.h>
 #include <inttypes.h>
+#include "generic_main.h"
 
 int64_t time_last_synchronized = -1;
 

@@ -4,6 +4,7 @@
 #include <time.h>
 #include <esp_timer.h>
 #include <inttypes.h>
+#include "generic_main.h"
 
 const int64_t second = 1000000;
 const int64_t minute = second * 60;

@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <esp_console.h>
 #include <argtable3/argtable3.h>
-#include "web_get.h"
+#include "generic_main.h"
 
 static struct {
     struct arg_str * url;

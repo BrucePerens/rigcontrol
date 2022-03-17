@@ -25,14 +25,18 @@ struct parameter {
 };
 
 static const struct parameter parameters[] = {
+  { "ddns_hostname", STRING, false, "readable hostname to set in dynamic DNS.", 0 },
+  { "ddns_password", STRING, true, "password for secure access to the dynamic DNS host.", 0 },
+  { "ddns_token", STRING, true, "secret token to set in dynamic DNS.", 0 },
+  { "ddns_username", STRING, false, "user name for secure access to the dynamic DNS host.", 0 },
   { "ssid", STRING, false, "Name of WiFi access point", wifi_restart },
-  { "wifi_password", STRING, true, "Password of WiFi access point", wifi_restart },
   { "timezone", STRING, false, "Set time zone (see https://github.com/nayarsystems/posix_tz_db/blob/master/zones.csv)", 0 },
+  { "wifi_password", STRING, true, "Password of WiFi access point", wifi_restart },
   { }
 };
 
 void
-list_nvs_params(list_nvs_params_coroutine_t coroutine)
+list_params(list_params_coroutine_t coroutine)
 {
   const struct parameter * p = parameters;
   char buffer[1024];
@@ -43,20 +47,20 @@ list_nvs_params(list_nvs_params_coroutine_t coroutine)
     esp_err_t err = nvs_get_str(nvs, p->name, buffer, &buffer_size);
     if (err != ESP_OK) {
       *buffer = '\0';
-      (*coroutine)(p->name, buffer, NOT_SET);
+      (*coroutine)(p->name, buffer, p->explanation, NOT_SET);
     }
     else if (p->secret) {
       *buffer = '\0';
-      (*coroutine)(p->name, buffer, SECRET);
+      (*coroutine)(p->name, buffer, p->explanation, SECRET);
     }
     else
-      (*coroutine)(p->name, buffer, NORMAL);
+      (*coroutine)(p->name, buffer, p->explanation, NORMAL);
     p++;
   }
 }
 
-nvs_param_result_t
-get_nvs_param(const char * key, char * buffer, size_t buffer_size)
+param_result_t
+param_get(const char * key, char * buffer, size_t buffer_size)
 {
   const struct parameter * p = parameters;
   while (p->type) {
@@ -82,8 +86,8 @@ get_nvs_param(const char * key, char * buffer, size_t buffer_size)
     return NORMAL;
 }
 
-nvs_param_result_t
-set_nvs_param(const char * key, const char * value)
+param_result_t
+param_set(const char * key, const char * value)
 {
   const struct parameter * p = parameters;
   while (p->type) {
@@ -107,8 +111,8 @@ set_nvs_param(const char * key, const char * value)
   return NORMAL;
 }
 
-nvs_param_result_t
-erase_nvs_param(const char * key)
+param_result_t
+param_erase(const char * key)
 {
   const struct parameter * p = parameters;
   while (p->type) {

@@ -16,7 +16,7 @@ static struct {
 } param_args;
 
 static void
-print_param(const char * name, const char * value, nvs_param_result_t type)
+print_param(const char * name, const char * value, const char * explanation, param_result_t type)
 {
   const char * v = value;
   switch (type) {
@@ -32,14 +32,14 @@ print_param(const char * name, const char * value, nvs_param_result_t type)
     fprintf(stderr, "Error: type %d.\n", type);
     return;
   }
-  printf("%s:\t%s\n", name, v);
+  printf("%-8s\t%-8s\t%s\n", name, v, explanation);
 }
 
 static int param(int argc, char * * argv)
 {
   char buffer[128];
   const char * v = buffer;
-  nvs_param_result_t type;
+  param_result_t type;
 
   int nerrors = arg_parse(argc, argv, (void **) &param_args);
   if (nerrors) {
@@ -52,16 +52,16 @@ static int param(int argc, char * * argv)
       fprintf(stderr, "name must be specified.\n");
       return -1;
     }
-    erase_nvs_param(param_args.name->sval[0]);
+    param_erase(param_args.name->sval[0]);
     return 0;
   }
 
   switch (argc) {
   case 1:
-    list_nvs_params(print_param);
+    list_params(print_param);
     return 0;
   case 3:
-    type = set_nvs_param(param_args.name->sval[0], param_args.value->sval[0]);
+    type = param_set(param_args.name->sval[0], param_args.value->sval[0]);
     switch (type) {
     case ERROR:
       return -1;
@@ -74,7 +74,7 @@ static int param(int argc, char * * argv)
     // [[fallthrough]];
     // fall through
   case 2:
-    type = get_nvs_param(param_args.name->sval[0], buffer, sizeof(buffer));
+    type = param_get(param_args.name->sval[0], buffer, sizeof(buffer));
     switch (type) {
     case NORMAL:
       break;

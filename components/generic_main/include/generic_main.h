@@ -2,15 +2,15 @@
 #include <nvs_flash.h>
 #include <nvs.h>
 
-typedef enum nvs_param_result {
+typedef enum param_result {
   ERROR = -2,
   NOT_IN_PARAMETER_TABLE = -1,
   NORMAL = 0,
   SECRET = 1,
   NOT_SET = 2
-} nvs_param_result_t;
+} param_result_t;
 
-typedef void (*list_nvs_params_coroutine_t)(const char *, const char *, nvs_param_result_t);
+typedef void (*list_params_coroutine_t)(const char *, const char *, const char *, param_result_t);
 typedef void (*web_get_coroutine_t)(const char * data, size_t size);
 
 // Call this when a WiFi parameter has been changed by the user.
@@ -28,11 +28,11 @@ extern int web_get(const char *url, char *data, size_t size);
 extern int web_get_with_coroutine(const char *url, web_get_coroutine_t coroutine);
 // List the parameters stored in non-volatile-storage, using a coroutine
 // to deliver the output.
-extern void list_nvs_params(list_nvs_params_coroutine_t coroutine);
+extern void list_params(list_params_coroutine_t coroutine);
 
 // Get a parameter from non-volatile storage.
-extern nvs_param_result_t get_nvs_param(const char * name, char * buffer, size_t size);
+extern param_result_t param_get(const char * name, char * buffer, size_t size);
 // Set a parameter in non-volatile storage.
-extern nvs_param_result_t set_nvs_param(const char * name, const char * value);
+extern param_result_t param_set(const char * name, const char * value);
 // Erase a parameter from non-volatile storage.
-extern nvs_param_result_t erase_nvs_param(const char * name);
+extern param_result_t param_erase(const char * name);

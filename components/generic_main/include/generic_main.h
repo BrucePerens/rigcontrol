@@ -6,9 +6,8 @@ typedef enum nvs_param_result {
   ERROR = -2,
   NOT_IN_PARAMETER_TABLE = -1,
   NORMAL = 0,
-  NOT_SET = 1,
-  SECRET = 2,
-  ERASED = 3
+  SECRET = 1,
+  NOT_SET = 2
 } nvs_param_result_t;
 
 typedef void (*list_nvs_params_coroutine_t)(const char *, const char *, nvs_param_result_t);

@@ -18,11 +18,28 @@ static struct {
 static void
 print_param(const char * name, const char * value, nvs_param_result_t type)
 {
+  const char * v = value;
+  switch (type) {
+  case NORMAL:
+    break;
+  case NOT_SET:
+    v = "(not set)";
+    break;
+  case SECRET:
+    v = "(secret)";
+    break;
+  default:
+    fprintf(stderr, "Error: type %d.\n", type);
+    return;
+  }
+  printf("%s:\t%s\n", name, v);
 }
 
 static int param(int argc, char * * argv)
 {
   char buffer[128];
+  const char * v = buffer;
+  nvs_param_result_t type;
 
   int nerrors = arg_parse(argc, argv, (void **) &param_args);
   if (nerrors) {
@@ -43,11 +60,35 @@ static int param(int argc, char * * argv)
   case 1:
     list_nvs_params(print_param);
     return 0;
-  case 2:
-    get_nvs_param(param_args.name->sval[0], buffer, sizeof(buffer));
-    return 0;
   case 3:
-    set_nvs_param(param_args.name->sval[0], param_args.value->sval[0]);
+    type = set_nvs_param(param_args.name->sval[0], param_args.value->sval[0]);
+    switch (type) {
+    case ERROR:
+      return -1;
+    case NOT_IN_PARAMETER_TABLE:
+      fprintf(stderr, "Error: not in parameter table: %s\n",  param_args.name->sval[0]);
+      return -1;
+    default:
+      break;
+    }
+    // [[fallthrough]];
+    // fall through
+  case 2:
+    type = get_nvs_param(param_args.name->sval[0], buffer, sizeof(buffer));
+    switch (type) {
+    case NORMAL:
+      break;
+    case NOT_SET:
+      v = "(not set)";
+      break;
+    case SECRET:
+      v = "(secret)";
+      break;
+    default:
+      fprintf(stderr, "Error: type %d.\n", type);
+      return -1;
+    }
+    printf("%s\t%s\n", param_args.name->sval[0], v);
     return 0;
   default:
     return -1;

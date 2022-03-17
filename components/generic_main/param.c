@@ -43,7 +43,7 @@ list_nvs_params(list_nvs_params_coroutine_t coroutine)
     esp_err_t err = nvs_get_str(nvs, p->name, buffer, &buffer_size);
     if (err != ESP_OK) {
       *buffer = '\0';
-      (*coroutine)(p->name, buffer, NOT_IN_PARAMETER_TABLE);
+      (*coroutine)(p->name, buffer, NOT_SET);
     }
     if (p->secret) {
       *buffer = '\0';
@@ -74,7 +74,7 @@ get_nvs_param(const char * key, char * buffer, size_t buffer_size)
 
   if (err) {
     *buffer = '\0';
-    return ERROR;
+    return NOT_SET;
   }
 
   if (p->secret)
@@ -102,15 +102,10 @@ set_nvs_param(const char * key, const char * value)
     ESP_ERROR_CHECK(err);
     return ERROR;
   }
+
   if (p->call_after_set)
     (p->call_after_set)();
-  else {
-    if (p->secret)
-      printf("%s (secret)", key);
-    else
-      printf("%s %s", key, value);
-    printf("\n");
-  }
+
   return NORMAL;
 }
 

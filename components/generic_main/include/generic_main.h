@@ -13,6 +13,8 @@ typedef enum nvs_param_result {
 typedef void (*list_nvs_params_coroutine_t)(const char *, const char *, nvs_param_result_t);
 typedef void (*web_get_coroutine_t)(const char * data, size_t size);
 
+// Call this when a WiFi parameter has been changed by the user.
+extern void wifi_restart(void);
 extern nvs_handle_t nvs; // Open handle to non-volatile storage.
 // Microseconds since the time was last synchronized.
 extern int64_t time_last_synchronized;
@@ -26,7 +28,7 @@ extern int web_get(const char *url, char *data, size_t size);
 extern int web_get_with_coroutine(const char *url, web_get_coroutine_t coroutine);
 // List the parameters stored in non-volatile-storage, using a coroutine
 // to deliver the output.
-extern void list_nvs_params(nvs_params_coroutine_t);
+extern void list_nvs_params(list_nvs_params_coroutine_t coroutine);
 
 // Get a parameter from non-volatile storage.
 extern nvs_param_result_t get_nvs_param(const char * name, char * buffer, size_t size);

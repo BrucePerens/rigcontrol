@@ -45,7 +45,7 @@ list_nvs_params(list_nvs_params_coroutine_t coroutine)
       *buffer = '\0';
       (*coroutine)(p->name, buffer, NOT_SET);
     }
-    if (p->secret) {
+    else if (p->secret) {
       *buffer = '\0';
       (*coroutine)(p->name, buffer, SECRET);
     }
@@ -69,7 +69,6 @@ get_nvs_param(const char * key, char * buffer, size_t buffer_size)
     return NOT_IN_PARAMETER_TABLE;
   }
 
-  buffer_size = sizeof(buffer);
   esp_err_t err = nvs_get_str(nvs, key, buffer, &buffer_size);
 
   if (err) {
@@ -93,7 +92,6 @@ set_nvs_param(const char * key, const char * value)
     p++;
   }
   if (!p->type) {
-    fprintf(stderr, "%s is not in the parameter table.\n", key);
     return NOT_IN_PARAMETER_TABLE;
   }
 
@@ -119,7 +117,6 @@ erase_nvs_param(const char * key)
     p++;
   }
   if (!p->type) {
-    fprintf(stderr, "%s is not in the parameter table.\n", key);
     return NOT_IN_PARAMETER_TABLE;
   }
 

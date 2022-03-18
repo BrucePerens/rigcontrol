@@ -3,10 +3,7 @@
 #include <string.h>
 #include "generic_main.h"
 
-// Get a variable to substitute in the string.
-typedef int (*pattern_coroutine)(const char * name, char * result, size_t result_size);
-
-int pattern_string(const char * string, pattern_coroutine coroutine, char * buffer, size_t buffer_size)
+int pattern_string(const char * string, pattern_coroutine_t coroutine, char * buffer, size_t buffer_size)
 {
   char * out = buffer;
   const char * start = string;

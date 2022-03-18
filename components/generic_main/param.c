@@ -25,8 +25,10 @@ struct parameter {
 };
 
 static const struct parameter parameters[] = {
+  { "ddns_basic_auth", STRING, false, "send HTTP basic authentication on the first transaction with the Dynamic DNS server.\n", 0},
   { "ddns_hostname", STRING, false, "readable hostname to set in dynamic DNS.", 0 },
   { "ddns_password", STRING, true, "password for secure access to the dynamic DNS host.", 0 },
+  { "ddns_provider", STRING, false, "name of the Dynamic DNS provider.", 0 },
   { "ddns_token", STRING, true, "secret token to set in dynamic DNS.", 0 },
   { "ddns_username", STRING, false, "user name for secure access to the dynamic DNS host.", 0 },
   { "ssid", STRING, false, "Name of WiFi access point", wifi_restart },

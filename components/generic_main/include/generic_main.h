@@ -36,3 +36,8 @@ extern param_result_t param_get(const char * name, char * buffer, size_t size);
 extern param_result_t param_set(const char * name, const char * value);
 // Erase a parameter from non-volatile storage.
 extern param_result_t param_erase(const char * name);
+
+// Get a variable to substitute in the pattern string.
+typedef int (*pattern_coroutine_t)(const char * name, char * result, size_t result_size);
+// Perform variable substitution on a string.
+extern int pattern_string(const char * string, pattern_coroutine_t coroutine, char * buffer, size_t buffer_size);

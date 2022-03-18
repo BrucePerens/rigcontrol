@@ -1,6 +1,7 @@
 idf_component_register(
 SRCS commands.c
   date.c
+  ddns.c
   gpio.c
   param.c
   public_ip_cmd.c

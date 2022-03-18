@@ -46,8 +46,12 @@ The audio outputs are ususally fed by ADCs, but can be switched to the
 line inputs and microphone preamplifiers, for debugging.
 There is a USB serial interface
 for debugging, and additional serial and digital outputs sufficient for
-controlling serial rig control interfaces such as Yaesu's *CAT* and operating
-a T/R input or other peripherals. Logic levels are 3.3 volts, and not 5V-tolerant.
+controlling serial rig control interfaces such as Yaesu's *CAT* and ICOM's *CI-V*,
+and operating
+a T/R input or other peripherals. Logic levels are 3.3 volts, and inputs are
+5V tolerant when neither of the internal pull-up and pull-down resistors are
+configured. This probably allows direct control of logic-level interfaces such
+as CAT, since the 3V output is high enough to be sensed as a logic one by 5V logic.
 CW and RTTY control is possible but not yet
 implemented in software.
 
@@ -84,6 +88,15 @@ the device name will be *rigcontrol* until you set it. So you can try
 opening *http://rigcontrol.lan/* if your router provides a *.lan* domain.
 On some browsers, just typing *rigcontrol.lan/* will work.
 
+### What Radios Can I Connect? ###
+Pretty much any radio that has audio inputs and outputs
+and control via *CAT* or *CI-V* via a connector that takes 5V or 3.3V logic levels
+(only a few new radios are 3.3V) or a local-area network connection (only the newest
+radios support that). Many brands implement some version of the *CAT* or *CI-V* protocol.
+RS-232 interfaces are possible but require the
+[MAX-232-based level shifter + DB9 PCB](https://www.aliexpress.com/wholesale?SearchText=MAX232+DB9).
+Line-level is preferred for
+audio, or you will need to pad the audio levels with resistors.
 ### Accessories ###
 It's often possible to reduce the price of these accessories
 through a club buy, since they come in quantities at a lower price than single
@@ -95,7 +108,7 @@ who deals with translation, aggregates shipping, and has access to
 manufacturers that don't trouble to operate an English-language storefront.
 
 The ESP Audio Kit has precious few free GPIO pins, just enough for a serial
-port and PTT control, and both will probably require level-shifting.
+port and PTT control.
 Planned expansion is
 via an I2C bus, a two-wire bus.
 Detailed technical information on I2C is
@@ -103,13 +116,15 @@ Detailed technical information on I2C is
 
 Current prospects for expansion are the
 [SC16IS752 dual UART](https://www.aliexpress.com/wholesale?SearchText=SC16IS752)
-and the [PCF8575 16-pin I/O expander](https://www.aliexpress.com/wholesale?SearchText=PCF8575). The PCF8575 can perform level-shifting. These boards both
+and the [PCF8575 16-pin I/O expander](https://www.aliexpress.com/wholesale?SearchText=PCF8575). The PCF8575 can work with 3.3V or 5V logic levels, depending on the power supplied.
+These boards both
 have programmable addresses in the range of 0x20-0x30, via solder-bridging
 3 address pins.
 Theoretically a combination of 16 expansion boards could be supported, in
 practice this is much more than anyone should need.
 
-For level-shifting the serial port to meet the RS-232 specification,
+*CAT* and other radio interfaces that use TTL levels won't need this, but for
+level-shifting the serial port to meet the RS-232 specification,
 our current prospect is the
 [MAX-232-based level shifter + DB9 PCB](https://www.aliexpress.com/wholesale?SearchText=MAX232+DB9).
 For directly converting the levels of the GPIO pins, the [TXS0108E 8-pin bi-directional logic converter](https://www.aliexpress.com/wholesale?SearchText=TXS0108E) is an inexpensive way
@@ -133,6 +148,26 @@ You don't need these connectors if you are powering the device with an
 old micro-USB power supply. The better ones come pre-assembled with 20
 gauge black and red silicone-insulated wire pigtails. You can get vinyl
 insulation for less, but be careful soldering: it melts.
+
+### Why Not Raspberry PI, or Some Other Single-Board Computer? ###
+This is meant to be a functional and fun project that most Radio Amateurs can do on
+their own, and in a short time. Thus, the bill of materials (BOM) is both simple and
+cheap, connections are simple and can be hand-soldered without any
+skill in surface-mount soldering.
+It is possible to connect many radios with *no* additional hardware other than connectors,
+wire, and an old micro-USB power supply.
+
+All of the other platforms I have looked at require additions to the BOM such as
+SD cards, and daughter cards to add audio or networking.
+That said, a platform that runs Linux or BSD is definitely superior.
+It can run tasks that the ESP-32 *won't* do: for
+example the ESP-32 doesn't have a USB master, to connect to modern rigs with USB,
+and its hardware floating-point performance is too poor to support CODEC2. And Linux
+can support many more, and more powerful, apps, and run them simultaneously.
+
+Prices change, and new hardware arrives. Appropriate SD cards below the $4 level are
+available overseas, although there is much fraud. So, when you find a combination that
+does it all with a simple and cheap BOM, I'm interested.
 
 ### Why Is My RigControl Board Accessing Outside Web Sites? ###
 RigControl must access an outside site to learn its own public IP address,

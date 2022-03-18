@@ -14,7 +14,8 @@ console. No ham radio control is implemented yet.
 Without any additional hardware, K6BP RigControl
 can connect to any transceiver that implements *CAT* or *CI-V* using 5V or 3.3V
 logic levels or a network connection.
-RS-232 connections require an inexpensive [MAX-232-based level shifter + DB9 PCB](https://www.aliexpress.com/wholesale?SearchText=MAX232+DB9).
+RS-232 connections require a [MAX-3232-based level shifter + DB9 PCB](https://www.aliexpress.com/wholesale?SearchText=MAX3232+DB9+Module), which costs less than a dollar.
+
 RigControl connects to the internet via WiFi, uses
 dynamic DNS to provide a public web address, and provides a web-based interface
 to a phone, tablet, or computer. The audio inputs and outputs are best connected
@@ -118,14 +119,14 @@ have programmable addresses in the range of 0x20-0x30, via solder-bridging
 Theoretically a combination of 16 expansion boards could be supported, in
 practice this is much more than anyone should need.
 
-*CAT* and other radio interfaces that use TTL levels won't need this, but for
-level-shifting the serial port to meet the RS-232 specification,
-our current prospect is the
-[MAX-232-based level shifter + DB9 PCB](https://www.aliexpress.com/wholesale?SearchText=MAX232+DB9).
 For directly converting the levels of the GPIO pins, the [TXS0108E 8-pin bi-directional logic converter](https://www.aliexpress.com/wholesale?SearchText=TXS0108E) is an inexpensive way
 to convert 8 pins to 5V logic levels, and we
 don't really need the bi-directional feature. But the PCF8575 is probably a
 better approach for external I/Os.
+
+RS-485 to 5V TTL serial interface boards for with built-in lightning protection are
+available for less than a dollar. The software can impement the MODBUS protocol.
+This makes expansion over a bus thousands of feet in length possible.
 
 The main I/O header is a 2x8 pin double-row header socket with 0.1 inch pitch.
 The JTAG header is single-row, and two of the pins on that connector can be

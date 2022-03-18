@@ -11,14 +11,17 @@ Internet.
 Some debugging and maintenance commands are implemented on the USB serial
 console. No ham radio control is implemented yet.
 
-The device provides a WiFi based web interface to a phone, tablet,
-or computer, and connects to a transceiver via audio line-level input
-and output, serial transceiver control, and digital control lines for T/R,
-etc. Some hardware will require voltage level conversion for the serial and
-digital I/O, and inexpensive devices are recommended in the documentation.
-There is no USB master. Control of devices via WiFi and Bluetooth is possible.
-For example, you could link the radio audio to a Bluetooth
-speaker, or operate using a Bluetooth headset.
+Without any additional hardware, K6BP RigControl
+can connect to any transceiver that implements *CAT* or *CI-V* using 5V or 3.3V
+logic levels or a network connection.
+RS-232 connections require an inexpensive [MAX-232-based level shifter + DB9 PCB](https://www.aliexpress.com/wholesale?SearchText=MAX232+DB9).
+RigControl connects to the internet via WiFi, uses
+dynamic DNS to provide a public web address, and provides a web-based interface
+to a phone, tablet, or computer. The audio inputs and outputs are best connected
+to line-level inputs and outputs on the transceiver, and would require padding
+with resistors if connected to a speaker output or microphone input. There is no
+USB master. Inexpensive expansion boards support connecting antenna switches, rotators,
+and other accessories via relays or serial ports.
 
 ### Hardware Required
 
@@ -38,20 +41,18 @@ follow it closely. The LyraT board has a different pinout.
 * [ESP32 audio design guide.](website/esp32_audio_design_guidelines__en.pdf)
 * [Audio chip datasheet](website/ES8388_DS.pdf)
 
-The board connects to the net via WiFi and provides two audio inputs and two
+The board provides two audio inputs and two
 audio outputs. Microphone or line inputs are switched through a multiplexer.
 Line and speaker outputs are in common, with enable lines for the speaker
 amplifiers.
 The audio outputs are ususally fed by ADCs, but can be switched to the
 line inputs and microphone preamplifiers, for debugging.
 There is a USB serial interface
-for debugging, and additional serial and digital outputs sufficient for
-controlling serial rig control interfaces such as Yaesu's *CAT* and ICOM's *CI-V*,
-and operating
-a T/R input or other peripherals. Logic levels are 3.3 volts, and inputs are
-5V tolerant when neither of the internal pull-up and pull-down resistors are
-configured. This probably allows direct control of logic-level interfaces such
-as CAT, since the 3V output is high enough to be sensed as a logic one by 5V logic.
+for debugging, and additional serial and digital outputs.
+Logic inputs are driven to 3.3 volts, but are 5V tolerant when neither of the
+internal pull-up and pull-down resistors are configured. This allows direct control
+of logic-level interfaces such as CAT and CI-V, since the 3.3V output will be
+sensed as a logic high by 5V logic.
 CW and RTTY control is possible but not yet
 implemented in software.
 
@@ -87,16 +88,10 @@ If your home router provides dynamic DHCP addresses for devices on your LAN,
 the device name will be *rigcontrol* until you set it. So you can try
 opening *http://rigcontrol.lan/* if your router provides a *.lan* domain.
 On some browsers, just typing *rigcontrol.lan/* will work.
+Multicast DNS will be impmented, which will make the web interface available
+on the local network as something
+like *rigcontrol._https._tcp.local* .
 
-### What Radios Can I Connect? ###
-Pretty much any radio that has audio inputs and outputs
-and control via *CAT* or *CI-V* via a connector that takes 5V or 3.3V logic levels
-(only a few new radios are 3.3V) or a local-area network connection (only the newest
-radios support that). Many brands implement some version of the *CAT* or *CI-V* protocol.
-RS-232 interfaces are possible but require the
-[MAX-232-based level shifter + DB9 PCB](https://www.aliexpress.com/wholesale?SearchText=MAX232+DB9).
-Line-level is preferred for
-audio, or you will need to pad the audio levels with resistors.
 ### Accessories ###
 It's often possible to reduce the price of these accessories
 through a club buy, since they come in quantities at a lower price than single

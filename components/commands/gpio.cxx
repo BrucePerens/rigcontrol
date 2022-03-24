@@ -6,6 +6,7 @@
 #include <driver/gpio.h>
 #include <hal/gpio_hal.h>
 #include <hal/gpio_types.h>
+#include "generic_main.h"
 
 enum GPIO_Mode {
   FLOATING,
@@ -152,7 +153,7 @@ static int gpio(int argc, char * * argv)
   return 0;
 }
 
-void install_gpio_command(void)
+CONSTRUCTOR void install_gpio_command(void)
 {
   gpio_args.pin  = arg_int1(NULL, NULL, "pin", "pin to manipulate");
   gpio_args.level = arg_int0(NULL, NULL, "level", "value 0 or 1 to output");

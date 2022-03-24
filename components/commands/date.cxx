@@ -68,7 +68,7 @@ static int run(int argc, char * * argv)
   return 0;
 }
 
-void install_date_command(void)
+CONSTRUCTOR void install_date_command(void)
 {
   args.end = arg_end(10);
   static const esp_console_cmd_t command = {

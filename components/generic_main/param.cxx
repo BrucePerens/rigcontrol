@@ -49,14 +49,14 @@ list_params(list_params_coroutine_t coroutine)
     esp_err_t err = nvs_get_str(nvs, p->name, buffer, &buffer_size);
     if (err != ESP_OK) {
       *buffer = '\0';
-      (*coroutine)(p->name, buffer, p->explanation, NOT_SET);
+      (*coroutine)(p->name, buffer, p->explanation, PR_NOT_SET);
     }
     else if (p->secret) {
       *buffer = '\0';
-      (*coroutine)(p->name, buffer, p->explanation, SECRET);
+      (*coroutine)(p->name, buffer, p->explanation, PR_SECRET);
     }
     else
-      (*coroutine)(p->name, buffer, p->explanation, NORMAL);
+      (*coroutine)(p->name, buffer, p->explanation, PR_NORMAL);
     p++;
   }
 }
@@ -72,20 +72,20 @@ param_get(const char * key, char * buffer, size_t buffer_size)
   }
 
   if (!p->type) {
-    return NOT_IN_PARAMETER_TABLE;
+    return PR_NOT_IN_PARAMETER_TABLE;
   }
 
   esp_err_t err = nvs_get_str(nvs, key, buffer, &buffer_size);
 
   if (err) {
     *buffer = '\0';
-    return NOT_SET;
+    return PR_NOT_SET;
   }
 
   if (p->secret)
-    return SECRET;
+    return PR_SECRET;
   else
-    return NORMAL;
+    return PR_NORMAL;
 }
 
 param_result_t
@@ -98,19 +98,19 @@ param_set(const char * key, const char * value)
     p++;
   }
   if (!p->type) {
-    return NOT_IN_PARAMETER_TABLE;
+    return PR_NOT_IN_PARAMETER_TABLE;
   }
 
   esp_err_t err = (nvs_set_str(nvs, key, value));
   if (err) {
     ESP_ERROR_CHECK(err);
-    return ERROR;
+    return PR_ERROR;
   }
 
   if (p->call_after_set)
     (p->call_after_set)();
 
-  return NORMAL;
+  return PR_NORMAL;
 }
 
 param_result_t
@@ -123,7 +123,7 @@ param_erase(const char * key)
     p++;
   }
   if (!p->type) {
-    return NOT_IN_PARAMETER_TABLE;
+    return PR_NOT_IN_PARAMETER_TABLE;
   }
 
   esp_err_t err = (nvs_erase_key(nvs, key));
@@ -132,11 +132,11 @@ param_erase(const char * key)
   case ESP_OK:
     if (p->call_after_set)
       (p->call_after_set)();
-    return NORMAL;
+    return PR_NORMAL;
   case ESP_ERR_NVS_NOT_FOUND:
-    return NOT_IN_PARAMETER_TABLE;
+    return PR_NOT_IN_PARAMETER_TABLE;
   default:
     ESP_ERROR_CHECK(err);
-    return ERROR;
+    return PR_ERROR;
   }
 }

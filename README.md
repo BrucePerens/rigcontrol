@@ -165,14 +165,6 @@ Prices change, and new hardware arrives. Appropriate SD cards below the $4 level
 available overseas, although there is much fraud. So, when you find a combination that
 does it all with a simple and cheap BOM, I'm interested.
 
-### Why Is My RigControl Board Accessing Outside Web Sites? ###
-RigControl must access an outside site to learn its own public IP address,
-and it chooses randomly from a list of such sites. It must access an outside
-site to set its hostname in dynamic DNS, so that you can access it remotely.
-It calls github.com, k6bp.com, or hams.com to check if its software
-is up-to-date amd to access security bulletins, etc.
-Hams.com or k6bp.com may provide you with remote access.
-
 ### Issues
 Hardware flow control is not connected on the PCB between the CPU and the
 serial-to-USB chip. This saves some precious GPIO pins, but causes the
@@ -190,3 +182,19 @@ It is possible to construct a command-line that works.
 New hardware comes with the baud rate set to 115200, and reconfiguring
 the tool baud rate makes new hardware unflashable with the usual command-line
 as well.
+
+### RigControl Access to Outside Web Sites ###
+The point of RigControl is to make control of your radio accessable from the
+public internet, appropriately password-protected. To do this, RigControl must
+access an outside site to learn its own public IPV4 address, and it chooses
+randomly from a list of such sites. It can learn its own IPV6
+address without an outside site, but uses an outside site to check that its
+connectivity is not blocked by a firewall. It must access an outside site to set
+its hostname in dynamic DNS, so that you can access it remotely. It calls
+github.com, k6bp.com, or hams.com to check if its software is up-to-date and to
+access security bulletins, etc. Hams.com or k6bp.com may provide you with remote
+access.
+
+RigControl can implement a tunnel to provide outside access to a device on
+a heavily-firewalled network that the above methods won't work for. This is probably
+an extra-cost option, as an outside site must pass on all of the communication data.

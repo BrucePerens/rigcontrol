@@ -1,23 +1,30 @@
 #pragma once
 #include <nvs_flash.h>
 #include <nvs.h>
+#include <esp_console.h>
+
+// Use this for functions that should be called at initialization time
+// before main.
+#define CONSTRUCTOR __attribute__((constructor))
 
 typedef enum param_result {
-  ERROR = -2,
-  NOT_IN_PARAMETER_TABLE = -1,
-  NORMAL = 0,
-  SECRET = 1,
-  NOT_SET = 2
+  PR_ERROR = -2,
+  PR_NOT_IN_PARAMETER_TABLE = -1,
+  PR_NORMAL = 0,
+  PR_SECRET = 1,
+  PR_NOT_SET = 2
 } param_result_t;
 
 typedef void (*list_params_coroutine_t)(const char *, const char *, const char *, param_result_t);
 typedef void (*web_get_coroutine_t)(const char * data, size_t size);
 
-// Call this when a WiFi parameter has been changed by the user.
-extern void wifi_restart(void);
 extern nvs_handle_t nvs; // Open handle to non-volatile storage.
 // Microseconds since the time was last synchronized.
 extern int64_t time_last_synchronized;
+extern esp_console_repl_t * repl;
+
+// Call this when a WiFi parameter has been changed by the user.
+extern void wifi_restart(void);
 // Convert microseconds to human-readable days, hours, minutes, seconds.
 extern void timer_to_human(int64_t, char *, size_t);
 // Copy the public IP address to a buffer.
@@ -41,3 +48,4 @@ extern param_result_t param_erase(const char * name);
 typedef int (*pattern_coroutine_t)(const char * name, char * result, size_t result_size);
 // Perform variable substitution on a string.
 extern int pattern_string(const char * string, pattern_coroutine_t coroutine, char * buffer, size_t buffer_size);
+extern void register_command(const esp_console_cmd_t * command);

@@ -20,12 +20,12 @@ print_param(const char * name, const char * value, const char * explanation, par
 {
   const char * v = value;
   switch (type) {
-  case NORMAL:
+  case PR_NORMAL:
     break;
-  case NOT_SET:
+  case PR_NOT_SET:
     v = "(not set)";
     break;
-  case SECRET:
+  case PR_SECRET:
     v = "(secret)";
     break;
   default:
@@ -63,9 +63,9 @@ static int param(int argc, char * * argv)
   case 3:
     type = param_set(param_args.name->sval[0], param_args.value->sval[0]);
     switch (type) {
-    case ERROR:
+    case PR_ERROR:
       return -1;
-    case NOT_IN_PARAMETER_TABLE:
+    case PR_NOT_IN_PARAMETER_TABLE:
       fprintf(stderr, "Error: not in parameter table: %s\n",  param_args.name->sval[0]);
       return -1;
     default:
@@ -76,12 +76,12 @@ static int param(int argc, char * * argv)
   case 2:
     type = param_get(param_args.name->sval[0], buffer, sizeof(buffer));
     switch (type) {
-    case NORMAL:
+    case PR_NORMAL:
       break;
-    case NOT_SET:
+    case PR_NOT_SET:
       v = "(not set)";
       break;
-    case SECRET:
+    case PR_SECRET:
       v = "(secret)";
       break;
     default:
@@ -95,7 +95,7 @@ static int param(int argc, char * * argv)
   }
 }
 
-void install_param_command(void)
+CONSTRUCTOR void install_param_command(void)
 {
   param_args.name  = arg_str0(NULL, NULL, "name", "parameter name");
   param_args.value = arg_str0(NULL, NULL, "value", "value to set parameter");

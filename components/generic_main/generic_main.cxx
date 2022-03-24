@@ -16,50 +16,59 @@
 #include "nvs_flash.h"
 #include "nvs.h"
 #include "esp_netif.h"
-#include "driver/uart.h"
-#include "esp_console.h"
-#include "linenoise/linenoise.h"
-#include "argtable3/argtable3.h"
 #include <esp_crt_bundle.h>
 #include <esp_tls.h>
 #include <esp_random.h>
 #include <bootloader_random.h>
+#include <esp_console.h>
 
 extern void wifi_event_sta_start(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data);
 extern void wifi_event_sta_disconnected(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data);
 
-extern void user_install_commands(void);
 static void initialize(void);
 
+static const char TASK_NAME[] = "main";
 nvs_handle_t nvs;
 esp_netif_t *sta_netif;
 esp_netif_t *ap_netif;
-static const char TASK_NAME[] = "main";
+esp_console_repl_t *repl;
 
-extern void user_startup();
+extern "C" void user_startup();
 
-void app_main(void)
+extern "C" void app_main(void)
 {
   user_startup();
   initialize();
 }
 
+// The platform is supposed to run these for us, before main, but at this
+// writing, March 2022, it doesn't.
+static void run_constructors(void)
+{
+  typedef void (*constructor)();
+  extern const constructor __CTOR_LIST__[];
+  const constructor * c = __CTOR_LIST__;
+ 
+  fprintf(stderr, "Running constructors.\n");
+  fflush(stderr);
+  while ( *c ) {
+    (*c)();
+  }
+  fprintf(stderr, "Done running constructors.\n");
+  fflush(stderr);
+}
+
 static void initialize(void)
 {
-  esp_console_repl_t *repl = NULL;
-
-  // Configure the console command system.
-  esp_console_repl_config_t repl_config = ESP_CONSOLE_REPL_CONFIG_DEFAULT();
-  repl_config.task_stack_size = 30 * 1024;
-  repl_config.prompt = ">";
-  esp_console_dev_uart_config_t uart_config = ESP_CONSOLE_DEV_UART_CONFIG_DEFAULT();
-  ESP_ERROR_CHECK(esp_console_new_repl_uart(&uart_config, &repl_config, &repl));
+  run_constructors();
   // Give the internal random number generator some entropy from the CPU's
   // hardware RNG, just in case WiFi (which is also an entropy source)
   // doesn't start.
   bootloader_random_enable();
 
-  user_install_commands();
+  fprintf(stderr, "Starting console, repl is: %lx\n", (unsigned long)repl);
+  fflush(stderr);
+  sleep(5);
   ESP_ERROR_CHECK(esp_console_start_repl(repl));
 
   // Empty configuration for starting WiFi.

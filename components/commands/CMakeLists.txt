@@ -1,5 +1,5 @@
 idf_component_register(
-SRCS commands.c
+SRCS
   date.c
   ddns.c
   gpio.c

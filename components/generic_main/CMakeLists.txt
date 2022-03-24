@@ -1,6 +1,7 @@
 idf_component_register(
 SRCS
-  generic_main.c
+  command.c
+  generic_main.cxx
   param.c
   pattern_string.c
   public_ip.c

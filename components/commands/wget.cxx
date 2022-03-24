@@ -27,7 +27,7 @@ static int run(int argc, char * * argv)
   return 0;
 }
 
-void install_wget_command(void)
+CONSTRUCTOR void install_wget_command(void)
 {
 
   args.url  = arg_str1(NULL, NULL, "url", "URL to retrieve.");

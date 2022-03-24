@@ -5,6 +5,7 @@
 #include <esp_console.h>
 #include <esp_system.h>
 #include <argtable3/argtable3.h>
+#include "generic_main.h"
 
 extern esp_err_t print_real_time_stats(TickType_t xTicksToWait);
 
@@ -38,7 +39,7 @@ static int tasks(int argc, char * * argv)
   return 0;
 }
 
-void install_tasks_command(void)
+CONSTRUCTOR void install_tasks_command(void)
 {
   tasks_args.cpu  = arg_lit0(NULL, "cpu", "Collect CPU time usage for one second, and display.");
   tasks_args.end = arg_end(10);

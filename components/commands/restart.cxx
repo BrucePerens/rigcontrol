@@ -2,13 +2,14 @@
 #include <stdlib.h>
 #include <esp_console.h>
 #include <esp_system.h>
+#include "generic_main.h"
 
 static int restart(int argc, char * * argv)
 {
   esp_restart();
 }
 
-void install_restart_command(void)
+CONSTRUCTOR void install_restart_command(void)
 {
   static const esp_console_cmd_t param_cmd = {
     .command = "restart",

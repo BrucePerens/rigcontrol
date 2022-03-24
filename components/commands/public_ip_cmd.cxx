@@ -1,30 +1,32 @@
 #include <stdio.h>
-#include <string.h>
 #include <stdlib.h>
-#include <time.h>
+#include <string.h>
+#include <cJSON.h>
 #include <esp_console.h>
-#include <esp_system.h>
 #include <argtable3/argtable3.h>
-#include <esp_timer.h>
-#include <inttypes.h>
 #include "generic_main.h"
 
 static struct {
     struct arg_end * end;
 } args;
 
-static int run(int argc, char * * argv)
+int run(int argc, char * * argv)
 {
-
-  return 0;
+  char	data[128];
+  if ( public_ip(data, sizeof(data)) == 0 ) {
+    printf("%s\n", data);
+    return 0;
+  }
+  return -1;
 }
 
-void install_ddns_command(void)
+CONSTRUCTOR void install_public_ip_command(void)
 {
+
   args.end = arg_end(10);
   static const esp_console_cmd_t command = {
-    .command = "ddns",
-    .help = "Register the system with the configured dynamic DNS provider.",
+    .command = "public_ip",
+    .help = "Get the public IP used by this device.",
     .hint = NULL,
     .func = &run,
     .argtable = &args

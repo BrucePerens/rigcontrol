@@ -9,9 +9,9 @@ static int restart(int argc, char * * argv)
   esp_restart();
 }
 
-CONSTRUCTOR void install_restart_command(void)
+CONSTRUCTOR install(void)
 {
-  static const esp_console_cmd_t param_cmd = {
+  static const esp_console_cmd_t command = {
     .command = "restart",
     .help = "Restart this program.",
     .hint = NULL,
@@ -19,5 +19,5 @@ CONSTRUCTOR void install_restart_command(void)
     .argtable = NULL
   };
 
-  ESP_ERROR_CHECK( esp_console_cmd_register(&param_cmd) );
+  register_command(&command);
 }

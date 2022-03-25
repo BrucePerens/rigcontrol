@@ -1,20 +1,21 @@
 idf_component_register(
 SRCS
-  command.c
+  command.cxx
   generic_main.cxx
-  param.c
-  pattern_string.c
-  public_ip.c
-  timer_to_human.c
-  web_get.c
-  webserver.c
-  wifi.c
+  param.cxx
+  pattern_string.cxx
+  public_ip.cxx
+  timer_to_human.cxx
+  web_get.cxx
+  webserver.cxx
+  wifi.cxx
 INCLUDE_DIRS
   "."
   "include"
+PRIV_REQUIRES
+  commands
 REQUIRES
   console
-  commands
   driver
   esp_timer
   freertos

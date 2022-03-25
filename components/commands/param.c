@@ -95,13 +95,13 @@ static int param(int argc, char * * argv)
   }
 }
 
-CONSTRUCTOR void install_param_command(void)
+CONSTRUCTOR install(void)
 {
   param_args.name  = arg_str0(NULL, NULL, "name", "parameter name");
   param_args.value = arg_str0(NULL, NULL, "value", "value to set parameter");
   param_args.erase  = arg_litn(NULL, "erase", 0, 1, "[name] erase the parameter");
   param_args.end = arg_end(10);
-  static const esp_console_cmd_t param_cmd = {
+  static const esp_console_cmd_t command = {
     .command = "param",
     .help = "Read or set parameters in non-volatile storage.",
     .hint = "[name] [value] (none to list, name to read, name value to set)",
@@ -109,5 +109,5 @@ CONSTRUCTOR void install_param_command(void)
     .argtable = &param_args
   };
 
-  ESP_ERROR_CHECK( esp_console_cmd_register(&param_cmd) );
+  register_command(&command);
 }

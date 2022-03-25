@@ -1,7 +1,7 @@
 idf_component_register(
 SRCS
-  user.c
-  user_web_handlers.c
+  user.cxx
+  user_web_handlers.cxx
 INCLUDE_DIRS
   .
 # Components must be listed before any other components that they depend upon.

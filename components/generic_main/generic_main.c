@@ -33,7 +33,7 @@ esp_netif_t *sta_netif;
 esp_netif_t *ap_netif;
 esp_console_repl_t *repl;
 
-extern "C" void user_startup();
+extern void user_startup();
 
 extern "C" void app_main(void)
 {
@@ -41,26 +41,8 @@ extern "C" void app_main(void)
   initialize();
 }
 
-// The platform is supposed to run these for us, before main, but at this
-// writing, March 2022, it doesn't.
-static void run_constructors(void)
-{
-  typedef void (*constructor)();
-  extern const constructor __CTOR_LIST__[];
-  const constructor * c = __CTOR_LIST__;
- 
-  fprintf(stderr, "Running constructors.\n");
-  fflush(stderr);
-  while ( *c ) {
-    (*c)();
-  }
-  fprintf(stderr, "Done running constructors.\n");
-  fflush(stderr);
-}
-
 static void initialize(void)
 {
-  run_constructors();
   // Give the internal random number generator some entropy from the CPU's
   // hardware RNG, just in case WiFi (which is also an entropy source)
   // doesn't start.

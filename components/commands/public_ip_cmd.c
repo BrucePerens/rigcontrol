@@ -20,7 +20,7 @@ int run(int argc, char * * argv)
   return -1;
 }
 
-CONSTRUCTOR void install_public_ip_command(void)
+CONSTRUCTOR install(void)
 {
 
   args.end = arg_end(10);
@@ -32,5 +32,5 @@ CONSTRUCTOR void install_public_ip_command(void)
     .argtable = &args
   };
 
-  ESP_ERROR_CHECK( esp_console_cmd_register(&command) );
+  register_command(&command);
 }

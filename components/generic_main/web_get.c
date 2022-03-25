@@ -23,7 +23,7 @@ static esp_err_t event_handler(esp_http_client_event_t * event)
   case HTTP_EVENT_ON_DATA:
 
     if (user_data->coroutine) {
-      (*(user_data->coroutine))(event->data, event->data_len);
+      (*(user_data->coroutine))((const char *)event->data, event->data_len);
     }
     else {
       size_t size = user_data->size - user_data->index - 1;

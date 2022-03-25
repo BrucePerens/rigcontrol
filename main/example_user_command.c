@@ -11,8 +11,7 @@ static int run(int argc, char * * argv)
   return 0;
 }
 
-// CONSTRUCTOR means that this will be called before main.
-CONSTRUCTOR void user_install_commands()
+CONSTRUCTOR install()
 {
   args.end = arg_end(10);
   static const esp_console_cmd_t command = {
@@ -25,4 +24,3 @@ CONSTRUCTOR void user_install_commands()
 
   register_command(&command);
 }
-#endif

@@ -30,13 +30,13 @@ static const struct param params[] = {
   { "provider", "ddns_provider" },
   { "token", "ddns_token" },
   { "username", "ddns_username" },
-  { 0 }
+  { 0, 0 }
 };
 
 
 static const struct ddns_provider ddns_providers[] = {
   { "he.net", "{hostname} {password} {token} {username} {ipv4} {ipv6}", 0 },
-  { 0 }
+  { 0, 0, 0 }
 };
 
 // Perform variable substitution on a string.
@@ -117,7 +117,7 @@ static int run(int argc, char * * argv)
   return 0;
 }
 
-CONSTRUCTOR void install_ddns_command(void)
+CONSTRUCTOR install(void)
 {
   args.end = arg_end(10);
   static const esp_console_cmd_t command = {

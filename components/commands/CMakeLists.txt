@@ -1,15 +1,15 @@
 idf_component_register(
 SRCS
-  date.c
-  ddns.c
-  gpio.c
-  param.c
-  public_ip_cmd.c
-  realtime_tasks.c
-  restart.c
-  tasks.c
-  uptime.c
-  wget.c
+  date.cxx
+  ddns.cxx
+  gpio.cxx
+  param.cxx
+  public_ip_cmd.cxx
+  realtime_tasks.cxx
+  restart.cxx
+  tasks.cxx
+  uptime.cxx
+  wget.cxx
 INCLUDE_DIRS
   .
   include
@@ -26,3 +26,4 @@ REQUIRES
   lwip
   nvs_flash
 )
+idf_build_set_property(LINK_OPTIONS "-Wl,--whole-archive esp-idf/commands/libcommands.a -Wl,--no-whole-archive" APPEND)

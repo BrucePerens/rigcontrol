@@ -3,9 +3,7 @@
 #include <nvs.h>
 #include <esp_console.h>
 
-// Use this for functions that should be called at initialization time
-// before main.
-#define CONSTRUCTOR __attribute__((constructor))
+#define CONSTRUCTOR static void __attribute__ ((constructor))
 
 typedef enum param_result {
   PR_ERROR = -2,

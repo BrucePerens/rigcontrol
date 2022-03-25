@@ -39,11 +39,11 @@ static int tasks(int argc, char * * argv)
   return 0;
 }
 
-CONSTRUCTOR void install_tasks_command(void)
+CONSTRUCTOR install(void)
 {
   tasks_args.cpu  = arg_lit0(NULL, "cpu", "Collect CPU time usage for one second, and display.");
   tasks_args.end = arg_end(10);
-  static const esp_console_cmd_t tasks_cmd = {
+  static const esp_console_cmd_t command = {
     .command = "tasks",
     .help = "Display FreeRTOS tasks.",
     .hint = NULL,
@@ -51,5 +51,5 @@ CONSTRUCTOR void install_tasks_command(void)
     .argtable = &tasks_args
   };
 
-  ESP_ERROR_CHECK( esp_console_cmd_register(&tasks_cmd) );
+  register_command(&command);
 }

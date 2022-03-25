@@ -130,15 +130,15 @@ void stop_smart_config_task(bool external)
   esp_smartconfig_stop();
 
   if (handler_ip_event_sta_got_ip) {
-    esp_event_handler_unregister(IP_EVENT, IP_EVENT_STA_GOT_IP, handler_ip_event_sta_got_ip);
+    esp_event_handler_instance_unregister(IP_EVENT, IP_EVENT_STA_GOT_IP, handler_ip_event_sta_got_ip);
     handler_ip_event_sta_got_ip = NULL;
   }
   if (handler_sc_event_got_ssid_pswd) {
-    esp_event_handler_unregister(SC_EVENT, SC_EVENT_GOT_SSID_PSWD, handler_sc_event_got_ssid_pswd);
+    esp_event_handler_instance_unregister(SC_EVENT, SC_EVENT_GOT_SSID_PSWD, handler_sc_event_got_ssid_pswd);
     handler_sc_event_got_ssid_pswd = NULL;
   }
   if (handler_sc_event_send_ack_done) {
-    esp_event_handler_unregister(SC_EVENT, SC_EVENT_SEND_ACK_DONE, handler_sc_event_send_ack_done);
+    esp_event_handler_instance_unregister(SC_EVENT, SC_EVENT_SEND_ACK_DONE, handler_sc_event_send_ack_done);
     handler_sc_event_send_ack_done = NULL;
   }
   if (smart_config_task)

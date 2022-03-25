@@ -26,7 +26,7 @@ static struct {
 } gpio_args;
 
 int
-set_gpio_mode(int pin, enum GPIO_Mode mode)
+set_gpio_mode(gpio_num_t pin, enum GPIO_Mode mode)
 {
   gpio_config_t config;
   bool out = false;
@@ -59,7 +59,7 @@ set_gpio_mode(int pin, enum GPIO_Mode mode)
     gpio_set_drive_capability(pin, GPIO_DRIVE_CAP_2); // Medium.
     config.mode = GPIO_MODE_OUTPUT;
     config.pull_up_en = GPIO_PULLUP_DISABLE;
-    config.pull_down_en = GPIO_PULLUP_DISABLE;
+    config.pull_down_en = GPIO_PULLDOWN_DISABLE;
     config.intr_type = GPIO_INTR_DISABLE;
   }
   else {
@@ -68,11 +68,11 @@ set_gpio_mode(int pin, enum GPIO_Mode mode)
     switch (mode) {
     case FLOATING:
       config.pull_up_en = GPIO_PULLUP_DISABLE;
-      config.pull_down_en = GPIO_PULLUP_DISABLE;
+      config.pull_down_en = GPIO_PULLDOWN_DISABLE;
       break;
     case PULL_DOWN:
       config.pull_up_en = GPIO_PULLUP_DISABLE;
-      config.pull_down_en = GPIO_PULLUP_ENABLE;
+      config.pull_down_en = GPIO_PULLDOWN_ENABLE;
       break;
     case PULL_UP:
       config.pull_up_en = GPIO_PULLUP_ENABLE;
@@ -94,7 +94,7 @@ set_gpio_mode(int pin, enum GPIO_Mode mode)
 }
 
 int
-get_gpio_level(int pin)
+get_gpio_level(gpio_num_t pin)
 {
   int level = gpio_get_level(pin);
 
@@ -103,7 +103,7 @@ get_gpio_level(int pin)
 }
 
 int
-set_gpio_level(int pin, int level)
+set_gpio_level(gpio_num_t pin, int level)
 {
   esp_err_t err = gpio_set_level(pin, level != 0);
   if (err) {
@@ -132,28 +132,28 @@ static int gpio(int argc, char * * argv)
   }
 
   if (gpio_args.out->count > 0) {
-    set_gpio_mode(gpio_args.pin->ival[0], OUT);
+    set_gpio_mode((gpio_num_t)gpio_args.pin->ival[0], OUT);
   }
   else if (gpio_args.pull_down->count > 0) {
-    set_gpio_mode(gpio_args.pin->ival[0], PULL_DOWN);
+    set_gpio_mode((gpio_num_t)gpio_args.pin->ival[0], PULL_DOWN);
   }
   else if (gpio_args.pull_up->count > 0) {
-    set_gpio_mode(gpio_args.pin->ival[0], PULL_UP);
+    set_gpio_mode((gpio_num_t)gpio_args.pin->ival[0], PULL_UP);
   }
   else if (gpio_args.floating->count > 0) {
-    set_gpio_mode(gpio_args.pin->ival[0], FLOATING);
+    set_gpio_mode((gpio_num_t)gpio_args.pin->ival[0], FLOATING);
   }
   else if (gpio_args.level->count > 0) {
-    set_gpio_level(gpio_args.pin->ival[0], gpio_args.level->ival[0]);
+    set_gpio_level((gpio_num_t)gpio_args.pin->ival[0], gpio_args.level->ival[0]);
   }
   else {
-    get_gpio_level(gpio_args.pin->ival[0]);
+    get_gpio_level((gpio_num_t)gpio_args.pin->ival[0]);
   }
 
   return 0;
 }
 
-CONSTRUCTOR void install_gpio_command(void)
+CONSTRUCTOR install(void)
 {
   gpio_args.pin  = arg_int1(NULL, NULL, "pin", "pin to manipulate");
   gpio_args.level = arg_int0(NULL, NULL, "level", "value 0 or 1 to output");
@@ -163,7 +163,7 @@ CONSTRUCTOR void install_gpio_command(void)
   gpio_args.floating = arg_lit0(NULL, "float", "set pin to be a floating input");
   gpio_args.end = arg_end(10);
 
-  static const esp_console_cmd_t gpio_cmd = {
+  static const esp_console_cmd_t command = {
     .command = "gpio",
     .help = "Read from or output to GPIO pins.",
     .hint = "[pin] [level] or (pin to read, pin level to output)",
@@ -171,5 +171,5 @@ CONSTRUCTOR void install_gpio_command(void)
     .argtable = &gpio_args
   };
 
-  ESP_ERROR_CHECK( esp_console_cmd_register(&gpio_cmd) );
+  register_command(&command);
 }

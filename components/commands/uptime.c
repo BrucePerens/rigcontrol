@@ -32,7 +32,7 @@ static int run(int argc, char * * argv)
   return 0;
 }
 
-CONSTRUCTOR void install_uptime_command(void)
+CONSTRUCTOR install(void)
 {
   args.end = arg_end(10);
   static const esp_console_cmd_t command = {
@@ -43,5 +43,5 @@ CONSTRUCTOR void install_uptime_command(void)
     .argtable = &args
   };
 
-  ESP_ERROR_CHECK( esp_console_cmd_register(&command) );
+  register_command(&command);
 }

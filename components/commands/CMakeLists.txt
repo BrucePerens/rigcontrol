@@ -1,15 +1,15 @@
 idf_component_register(
 SRCS
-  date.cxx
-  ddns.cxx
-  gpio.cxx
-  param.cxx
-  public_ip_cmd.cxx
-  realtime_tasks.cxx
-  restart.cxx
-  tasks.cxx
-  uptime.cxx
-  wget.cxx
+  date.c
+  ddns.c
+  gpio.c
+  param.c
+  public_ip_cmd.c
+  realtime_tasks.c
+  restart.c
+  tasks.c
+  uptime.c
+  wget.c
 INCLUDE_DIRS
   .
   include

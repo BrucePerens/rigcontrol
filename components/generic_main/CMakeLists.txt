@@ -1,14 +1,14 @@
 idf_component_register(
 SRCS
-  command.cxx
-  generic_main.cxx
-  param.cxx
-  pattern_string.cxx
-  public_ip.cxx
-  timer_to_human.cxx
-  web_get.cxx
-  webserver.cxx
-  wifi.cxx
+  command.c
+  generic_main.c
+  param.c
+  pattern_string.c
+  public_ip.c
+  timer_to_human.c
+  web_get.c
+  webserver.c
+  wifi.c
 INCLUDE_DIRS
   "."
   "include"

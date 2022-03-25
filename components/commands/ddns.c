@@ -46,8 +46,12 @@ static const struct ddns_provider ddns_providers[] = {
 static int parameter(const char * name,  char * buffer, size_t buffer_size)
 {
   if ( strcmp(name, "ipv4") == 0 ) {
+    memcpy(buffer, "IPV4", 5);
+    return 0;
   }
   else if ( strcmp(name, "ipv6") == 0 ) {
+    memcpy(buffer, "IPV6", 5);
+    return 0;
   }
   else {
     const struct param * p = params;
@@ -58,14 +62,16 @@ static int parameter(const char * name,  char * buffer, size_t buffer_size)
 
         result = param_get(p->param_name, buffer, buffer_size);
         if ( result == PR_NORMAL || result == PR_SECRET )
-          return strlen(buffer);
+          return 0;
         else {
           fprintf(stderr, "DDNS parameter %s required and not set.\n", p->param_name);
           return -1;
         }
       }
+      p++;
     }
   }
+  fprintf(stderr, "No such DDNS parameter %s.\n", name);
   return 0;
 }
 
@@ -90,10 +96,11 @@ static int ddns()
   
   switch ( result ) {
   case PR_NOT_SET:
-    return 0;
+    fprintf(stderr, "DDNS provider not set.\n");
+    return -1;
   case PR_NORMAL:
   case PR_SECRET:
-    ;
+    break;
   default:
     fprintf(stderr, "Error reading ddns_provider parameter.\n");
     return -1;
@@ -105,7 +112,9 @@ static int ddns()
       send_ddns(p->url);
       if ( p->url_ipv6 )
         send_ddns(p->url_ipv6);
+      return 0;
     }
+    p++;
   }
   fprintf(stderr, "DDNS provider %s is not implemented.\n", ddns_provider);
   return -1;
@@ -114,6 +123,7 @@ static int ddns()
 static int run(int argc, char * * argv)
 {
   ddns();
+  printf("\n");
   return 0;
 }
 

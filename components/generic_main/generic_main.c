@@ -35,7 +35,7 @@ esp_console_repl_t *repl;
 
 extern void user_startup();
 
-extern "C" void app_main(void)
+void app_main(void)
 {
   user_startup();
   initialize();
@@ -48,9 +48,6 @@ static void initialize(void)
   // doesn't start.
   bootloader_random_enable();
 
-  fprintf(stderr, "Starting console, repl is: %lx\n", (unsigned long)repl);
-  fflush(stderr);
-  sleep(5);
   ESP_ERROR_CHECK(esp_console_start_repl(repl));
 
   // Empty configuration for starting WiFi.

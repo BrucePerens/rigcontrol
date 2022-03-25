@@ -88,7 +88,7 @@ static int param(int argc, char * * argv)
       fprintf(stderr, "Error: type %d.\n", type);
       return -1;
     }
-    printf("%s\t%s\n", param_args.name->sval[0], v);
+    printf("\n\n%s \t%s\n", param_args.name->sval[0], v);
     return 0;
   default:
     return -1;

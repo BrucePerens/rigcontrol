@@ -4,19 +4,6 @@
 #include <argtable3/argtable3.h>
 #include "generic_main.h"
 
-extern "C" {
-typedef struct {
-  void (*fn)(void);
-  uint32_t cores;
-} esp_system_init_fn_t;
-#define ESP_SYSTEM_INIT_FN(f, c, ...) \
-static void  __attribute__((used)) __VA_ARGS__ __esp_system_init_fn_##f(void); \
-static __attribute__((used)) esp_system_init_fn_t _SECTION_ATTR_IMPL(".esp_system_init_fn", f) \
-                    esp_system_init_fn_##f = { .fn = ( __esp_system_init_fn_##f), .cores = (c) }; \
-static __attribute__((used)) __VA_ARGS__ void __esp_system_init_fn_##f(void) // [refactor-todo] this can be made public API if we allow components to declare init functions,
-                                                                             // instead of calling them explicitly
-};
-
 static struct {
     struct arg_str * url;
     struct arg_end * end;

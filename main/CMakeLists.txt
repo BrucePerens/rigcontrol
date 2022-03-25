@@ -16,4 +16,5 @@ REQUIRES
   lwip
   nvs_flash
   esp_http_server
+  hamlib
 )

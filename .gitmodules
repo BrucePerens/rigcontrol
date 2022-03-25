@@ -1,0 +1,3 @@
+[submodule "components/hamlib/Hamlib"]
+	path = components/hamlib/Hamlib
+	url = https://github.com/Hamlib/Hamlib.git

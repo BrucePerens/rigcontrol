@@ -22,6 +22,11 @@
 #include "nvs_flash.h"
 #include "nvs.h"
 #include "esp_smartconfig.h"
+#include <esp_netif_net_stack.h>
+// Kludge beccause this file isn't exported, but it is necessary to get a LWIP
+// struct netif * from an esp_netif_t.
+#include <../lwip/esp_netif_lwip_internal.h>
+#include <lwip/dhcp6.h>
 #include "generic_main.h"
 
 /* FreeRTOS event group to signal when we are connected & ready to make a request */
@@ -34,7 +39,9 @@ enum EventBits {
 static const char TASK_NAME[] = "wifi smart config";
 extern nvs_handle_t nvs;
 static TaskHandle_t smart_config_task = NULL;
+static esp_event_handler_instance_t handler_wifi_event_sta_connected_to_ap = NULL;
 static esp_event_handler_instance_t handler_ip_event_sta_got_ip = NULL;
+static esp_event_handler_instance_t handler_ip_event_got_ip6 = NULL;
 static esp_event_handler_instance_t handler_sc_event_got_ssid_pswd = NULL;
 static esp_event_handler_instance_t handler_sc_event_send_ack_done = NULL;
 
@@ -80,19 +87,32 @@ void wifi_event_sta_disconnected(void* arg, esp_event_base_t event_base, int32_t
   xEventGroupClearBits(my_events, CONNECTED_BIT);
 }
 
+static void wifi_event_sta_connected_to_ap(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data) {
+  ESP_ERROR_CHECK_WITHOUT_ABORT(esp_netif_create_ip6_linklocal(sta_netif));
+  dhcp6_enable_stateful(sta_netif->lwip_netif);
+  dhcp6_enable_stateless(sta_netif->lwip_netif);
+}
+
 static void ip_event_sta_got_ip(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data) {
-  ip_event_got_ip_t* event = (ip_event_got_ip_t*) event_data;
+  ip_event_got_ip_t* event = (ip_event_got_ip_t*)event_data;
 
-  EventBits_t old_bits = xEventGroupGetBits(my_events);
+  // EventBits_t old_bits = xEventGroupGetBits(my_events);
 
-  if (old_bits & CONNECTED_BIT)
-    return;
+  // if (old_bits & CONNECTED_BIT)
+    // return;
 
   xEventGroupSetBits(my_events, CONNECTED_BIT);
 
   printf("WiFi connected, IP address: " IPSTR "\n", IP2STR(&event->ip_info.ip));
   fflush(stdout);
   start_webserver();
+}
+
+static void ip_event_got_ip6(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data) {
+  ip_event_got_ip6_t* event = (ip_event_got_ip6_t*)event_data;
+
+  fprintf(stderr, "WiFi connected, IPv6 address: " IPV6STR "\n", IPV62STR(event->ip6_info.ip));
+  fflush(stderr);
 }
 
 static void sc_event_got_ssid_pswd(void* arg, esp_event_base_t event_base,
@@ -191,7 +211,6 @@ static void wifi_smart_config(void * parm)
 static void wifi_connect_to_ap(const char * ssid, const char * password)
 {
   wifi_config_t cfg;
-  esp_event_handler_instance_t instance_got_ip;
 
   bzero(&cfg, sizeof(cfg));
   strncpy((char *)cfg.sta.ssid, ssid, sizeof(cfg.sta.ssid));
@@ -204,12 +223,28 @@ static void wifi_connect_to_ap(const char * ssid, const char * password)
 
   ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
   ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &cfg));
-  ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &ip_event_sta_got_ip, NULL) );
-  ESP_ERROR_CHECK(esp_event_handler_instance_register(IP_EVENT,
-                                                      IP_EVENT_STA_GOT_IP,
-                                                      &ip_event_sta_got_ip,
-                                                      NULL,
-                                                      &instance_got_ip));
+
+  ESP_ERROR_CHECK(esp_event_handler_instance_register(
+   WIFI_EVENT,
+   WIFI_EVENT_STA_CONNECTED,
+   &wifi_event_sta_connected_to_ap,
+   NULL,
+   &handler_wifi_event_sta_connected_to_ap));
+
+  ESP_ERROR_CHECK(esp_event_handler_instance_register(
+   IP_EVENT,
+   IP_EVENT_STA_GOT_IP,
+   &ip_event_sta_got_ip,
+   NULL,
+   &handler_ip_event_sta_got_ip));
+
+  ESP_ERROR_CHECK(esp_event_handler_instance_register(
+   IP_EVENT,
+   IP_EVENT_GOT_IP6,
+   &ip_event_got_ip6,
+   NULL,
+   &handler_ip_event_got_ip6));
+
   ESP_ERROR_CHECK( esp_wifi_connect() );
 }
 

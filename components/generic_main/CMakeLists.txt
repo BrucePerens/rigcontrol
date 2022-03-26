@@ -28,4 +28,5 @@ REQUIRES
   main
   bootloader_support
   esp_hw_support
+  esp_netif
 )

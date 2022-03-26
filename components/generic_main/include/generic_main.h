@@ -2,6 +2,7 @@
 #include <nvs_flash.h>
 #include <nvs.h>
 #include <esp_console.h>
+#include <esp_netif.h>
 
 #define CONSTRUCTOR static void __attribute__ ((constructor))
 
@@ -20,6 +21,8 @@ extern nvs_handle_t nvs; // Open handle to non-volatile storage.
 // Microseconds since the time was last synchronized.
 extern int64_t time_last_synchronized;
 extern esp_console_repl_t * repl;
+extern esp_netif_t *sta_netif;
+extern esp_netif_t *ap_netif;
 
 // Call this when a WiFi parameter has been changed by the user.
 extern void wifi_restart(void);

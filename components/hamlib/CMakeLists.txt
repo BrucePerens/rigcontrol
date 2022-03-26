@@ -1,3 +1,7 @@
+# LEFT OUT
+# ./Hamlib/rigs/winradio/g313-posix.c
+# ./Hamlib/rigs/winradio/linradio/wrg313api.c
+# serial.c network.c
 idf_component_register(
 SRCS
   ./Hamlib/src/cache.c
@@ -6,7 +10,6 @@ SRCS
   ./Hamlib/src/misc.c
   ./Hamlib/src/iofunc.c
   ./Hamlib/src/locator.c
-  ./Hamlib/src/network.c
   ./Hamlib/src/amp_reg.c
   ./Hamlib/src/rotator.c
   ./Hamlib/src/cm108.c
@@ -30,7 +33,6 @@ SRCS
   ./Hamlib/src/rig.c
   ./Hamlib/src/extamp.c
   ./Hamlib/src/snapshot_data.c
-  ./Hamlib/src/serial.c
   ./Hamlib/src/amplifier.c
   ./Hamlib/src/tones.c
   ./Hamlib/src/settings.c
@@ -307,8 +309,6 @@ SRCS
   ./Hamlib/rigs/kachina/505dsp.c
   ./Hamlib/rigs/kachina/kachina.c
   ./Hamlib/rigs/winradio/wr3100.c
-  ./Hamlib/rigs/winradio/linradio/wrg313api.c
-  ./Hamlib/rigs/winradio/g313-posix.c
   ./Hamlib/rigs/winradio/winradio.c
   ./Hamlib/rigs/winradio/wr3700.c
   ./Hamlib/rigs/winradio/wr3150.c

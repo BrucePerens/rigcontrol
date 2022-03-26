@@ -109,5 +109,5 @@ CONSTRUCTOR install(void)
     .argtable = &param_args
   };
 
-  register_command(&command);
+  command_register(&command);
 }

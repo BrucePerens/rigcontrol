@@ -51,5 +51,5 @@ CONSTRUCTOR install(void)
     .argtable = &tasks_args
   };
 
-  register_command(&command);
+  command_register(&command);
 }

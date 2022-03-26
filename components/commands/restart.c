@@ -19,5 +19,5 @@ CONSTRUCTOR install(void)
     .argtable = NULL
   };
 
-  register_command(&command);
+  command_register(&command);
 }

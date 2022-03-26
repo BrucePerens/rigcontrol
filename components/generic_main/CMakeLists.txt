@@ -1,5 +1,6 @@
 idf_component_register(
 SRCS
+  array.c
   command.c
   generic_main.c
   param.c

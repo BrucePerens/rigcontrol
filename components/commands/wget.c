@@ -41,5 +41,5 @@ CONSTRUCTOR install()
     .argtable = &args
   };
 
-  register_command(&command);
+  command_register(&command);
 }

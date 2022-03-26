@@ -49,4 +49,15 @@ extern param_result_t param_erase(const char * name);
 typedef int (*pattern_coroutine_t)(const char * name, char * result, size_t result_size);
 // Perform variable substitution on a string.
 extern int pattern_string(const char * string, pattern_coroutine_t coroutine, char * buffer, size_t buffer_size);
-extern void register_command(const esp_console_cmd_t * command);
+
+// Growing array.
+struct _Array;
+typedef struct _Array Array;
+extern Array * array_create(void);
+extern void array_destroy(Array * array);
+extern const void * array_add(Array * array, const void * data);
+extern const void * * array_data(Array * array);
+extern size_t array_size(Array * array);
+extern const void * array_get(Array * array, size_t index);
+extern void command_register(const esp_console_cmd_t * command);
+extern void command_add_registered_to_console(void);

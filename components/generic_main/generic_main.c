@@ -21,6 +21,7 @@
 #include <esp_random.h>
 #include <bootloader_random.h>
 #include <esp_console.h>
+#include "generic_main.h"
 
 extern void wifi_event_sta_start(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data);
 extern void wifi_event_sta_disconnected(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data);
@@ -31,7 +32,7 @@ static const char TASK_NAME[] = "main";
 nvs_handle_t nvs;
 esp_netif_t *sta_netif;
 esp_netif_t *ap_netif;
-esp_console_repl_t *repl;
+esp_console_repl_t *repl = 0;
 
 extern void user_startup();
 
@@ -48,6 +49,13 @@ static void initialize(void)
   // doesn't start.
   bootloader_random_enable();
 
+  // Configure the console command system.
+  esp_console_repl_config_t repl_config = ESP_CONSOLE_REPL_CONFIG_DEFAULT();
+  repl_config.task_stack_size = 30 * 1024;
+  repl_config.prompt = ">";
+  esp_console_dev_uart_config_t uart_config = ESP_CONSOLE_DEV_UART_CONFIG_DEFAULT();
+  ESP_ERROR_CHECK(esp_console_new_repl_uart(&uart_config, &repl_config, &repl));
+  command_add_registered_to_console();
   ESP_ERROR_CHECK(esp_console_start_repl(repl));
 
   // Empty configuration for starting WiFi.

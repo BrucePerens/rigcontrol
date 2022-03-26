@@ -1,26 +1,48 @@
+#include <stdlib.h>
+#include <string.h>
 #include "generic_main.h"
 #include <esp_console.h>
 #include <driver/uart.h>
 #include "linenoise/linenoise.h"
 
-static bool did_initialize = false;
+static Array * array = 0;
 
 // This is called from CONSTRUCTOR functions, before main().
-void register_command(const esp_console_cmd_t * command)
+void
+command_register(const esp_console_cmd_t * command)
 {
-  // Configure the console, so that we can register commands to it.
-  if ( !did_initialize ) {
-    repl = 0;
-    // Configure the console command system.
-    esp_console_repl_config_t repl_config = ESP_CONSOLE_REPL_CONFIG_DEFAULT();
-    repl_config.task_stack_size = 30 * 1024;
-    repl_config.prompt = ">";
-    esp_console_dev_uart_config_t uart_config = ESP_CONSOLE_DEV_UART_CONFIG_DEFAULT();
-    ESP_ERROR_CHECK(esp_console_new_repl_uart(&uart_config, &repl_config, &repl));
-    did_initialize = true;
-    fflush(stderr);
+  if ( !array ) {
+    array = array_create();
   }
+  array_add(array, (const void *)command);
+}
 
-  // Register the command.
-  ESP_ERROR_CHECK( esp_console_cmd_register(command) );
+static int
+compare(const void * _a, const void * _b)
+{
+  const esp_console_cmd_t * a = *(const esp_console_cmd_t * *)_a;
+  const esp_console_cmd_t * b = *(const esp_console_cmd_t * *)_b;
+  int result = strcmp(a->command, b->command);
+  return result;
+}
+
+void
+command_add_registered_to_console(void)
+{
+  size_t size;
+
+  if (!array || (size = array_size(array)) == 0) {
+    fprintf(stderr, "No commands registered.\n");
+    return;
+  }
+  
+  // Alphabetically sort the commands.
+  qsort(array_data(array), array_size(array), sizeof(void *), compare);
+
+  for ( size_t i = 0; i < size; i++ ) {
+    const esp_console_cmd_t * c = (const esp_console_cmd_t *)array_get(array, i);
+
+    ESP_ERROR_CHECK(esp_console_cmd_register(c));
+  }
+  array_destroy(array);
 }

@@ -37,6 +37,14 @@ enum EventBits {
 };
 
 static const char TASK_NAME[] = "wifi smart config";
+static const char * const ipv6_address_types[] = {
+    "unknown",
+    "global",
+    "link-local",
+    "site-local",
+    "unique-local",
+    "IPv4-mapped-IPv6"
+};
 extern nvs_handle_t nvs;
 static TaskHandle_t smart_config_task = NULL;
 static esp_event_handler_instance_t handler_wifi_event_sta_connected_to_ap = NULL;
@@ -80,8 +88,7 @@ void wifi_event_sta_start(void* arg, esp_event_base_t event_base, int32_t event_
 
 void wifi_event_sta_disconnected(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data)
 {
-  printf("Wifi disconnected.\n");
-  fflush(stdout);
+  fprintf(stderr, "Wifi disconnected.\n");
   stop_webserver();
   esp_wifi_connect();
   xEventGroupClearBits(my_events, CONNECTED_BIT);
@@ -103,16 +110,21 @@ static void ip_event_sta_got_ip(void* arg, esp_event_base_t event_base, int32_t 
 
   xEventGroupSetBits(my_events, CONNECTED_BIT);
 
-  printf("WiFi connected, IP address: " IPSTR "\n", IP2STR(&event->ip_info.ip));
-  fflush(stdout);
+  fprintf(stderr, "Got IPv4: interface %s, address " IPSTR "\n",
+  esp_netif_get_desc(event->esp_netif),
+  IP2STR(&event->ip_info.ip));
+
   start_webserver();
 }
 
 static void ip_event_got_ip6(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data) {
   ip_event_got_ip6_t* event = (ip_event_got_ip6_t*)event_data;
+  esp_ip6_addr_type_t ipv6_type = esp_netif_ip6_get_addr_type(&event->ip6_info.ip);
 
-  fprintf(stderr, "WiFi connected, IPv6 address: " IPV6STR "\n", IPV62STR(event->ip6_info.ip));
-  fflush(stderr);
+  fprintf(stderr, "Got IPV6: interface %s, address " IPV6STR ", type %s\n",
+  esp_netif_get_desc(event->esp_netif),
+  IPV62STR(event->ip6_info.ip),
+  ipv6_address_types[ipv6_type]);
 }
 
 static void sc_event_got_ssid_pswd(void* arg, esp_event_base_t event_base,

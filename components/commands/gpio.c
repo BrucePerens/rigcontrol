@@ -171,5 +171,5 @@ CONSTRUCTOR install(void)
     .argtable = &gpio_args
   };
 
-  command_register(&command);
+  gm_command_register(&command);
 }

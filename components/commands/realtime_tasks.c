@@ -34,32 +34,32 @@
 esp_err_t print_real_time_stats(TickType_t xTicksToWait)
 {
     TaskStatus_t *start_array = NULL, *end_array = NULL;
-    UBaseType_t start_array_size, end_array_size;
+    UBaseType_t start_gm_array_size, end_gm_array_size;
     uint32_t start_run_time, end_run_time;
     esp_err_t ret;
 
     //Allocate array to store current task states
-    start_array_size = uxTaskGetNumberOfTasks() + ARRAY_SIZE_OFFSET;
-    start_array = (TaskStatus_t *)malloc(sizeof(TaskStatus_t) * start_array_size);
+    start_gm_array_size = uxTaskGetNumberOfTasks() + ARRAY_SIZE_OFFSET;
+    start_array = (TaskStatus_t *)malloc(sizeof(TaskStatus_t) * start_gm_array_size);
     if (start_array == NULL)
         ret = ESP_ERR_NO_MEM;
     else {
       //Get current task states
-      start_array_size = uxTaskGetSystemState(start_array, start_array_size, &start_run_time);
-      if (start_array_size == 0)
+      start_gm_array_size = uxTaskGetSystemState(start_array, start_gm_array_size, &start_run_time);
+      if (start_gm_array_size == 0)
           ret = ESP_ERR_INVALID_SIZE;
       else {
         vTaskDelay(xTicksToWait);
     
         //Allocate array to store tasks states post delay
-        end_array_size = uxTaskGetNumberOfTasks() + ARRAY_SIZE_OFFSET;
-        end_array = (TaskStatus_t *)malloc(sizeof(TaskStatus_t) * end_array_size);
+        end_gm_array_size = uxTaskGetNumberOfTasks() + ARRAY_SIZE_OFFSET;
+        end_array = (TaskStatus_t *)malloc(sizeof(TaskStatus_t) * end_gm_array_size);
         if (end_array == NULL)
             ret = ESP_ERR_NO_MEM;
         else {
           //Get post delay task states
-          end_array_size = uxTaskGetSystemState(end_array, end_array_size, &end_run_time);
-          if (end_array_size == 0)
+          end_gm_array_size = uxTaskGetSystemState(end_array, end_gm_array_size, &end_run_time);
+          if (end_gm_array_size == 0)
               ret = ESP_ERR_INVALID_SIZE;
           else {
         
@@ -70,9 +70,9 @@ esp_err_t print_real_time_stats(TickType_t xTicksToWait)
             else {
               printf("| Task | Run Time | Percentage\n");
               //Match each task in start_array to those in the end_array
-              for (int i = 0; i < start_array_size; i++) {
+              for (int i = 0; i < start_gm_array_size; i++) {
                   int k = -1;
-                  for (int j = 0; j < end_array_size; j++) {
+                  for (int j = 0; j < end_gm_array_size; j++) {
                       if (start_array[i].xHandle == end_array[j].xHandle) {
                           k = j;
                           //Mark that task have been matched by overwriting their handles
@@ -90,12 +90,12 @@ esp_err_t print_real_time_stats(TickType_t xTicksToWait)
               }
           
               //Print unmatched tasks
-              for (int i = 0; i < start_array_size; i++) {
+              for (int i = 0; i < start_gm_array_size; i++) {
                   if (start_array[i].xHandle != NULL) {
                       printf("| %s | Deleted\n", start_array[i].pcTaskName);
                   }
               }
-              for (int i = 0; i < end_array_size; i++) {
+              for (int i = 0; i < end_gm_array_size; i++) {
                   if (end_array[i].xHandle != NULL) {
                       printf("| %s | Created\n", end_array[i].pcTaskName);
                   }

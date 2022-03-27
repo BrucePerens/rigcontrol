@@ -11,7 +11,7 @@ const int64_t minute = second * 60;
 const int64_t hour = minute * 60;
 const int64_t day = hour * 24;
 
-extern void timer_to_human(int64_t t, char * buffer, size_t size)
+extern void gm_timer_to_human(int64_t t, char * buffer, size_t size)
 {
   int64_t days = t / day;
   int64_t hours = (t % day) / hour;

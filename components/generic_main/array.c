@@ -5,17 +5,17 @@
 
 static const size_t increment_size = 20;
 
-struct _Array {
+struct _GM_Array {
   const void * *	data;
   size_t		used;
   size_t		size;
 };
-typedef struct _Array Array;
+typedef struct _GM_Array GM_Array;
 
-Array *
-array_create()
+GM_Array *
+gm_array_create()
 {
-  Array * array = (Array *)malloc(sizeof(Array));
+  GM_Array * array = (GM_Array *)malloc(sizeof(GM_Array));
   array->data = (const void * *)malloc(sizeof(*(array->data)) * increment_size);
   array->size = increment_size;
   array->used = 0;
@@ -23,14 +23,14 @@ array_create()
 }
 
 void
-array_destroy(Array * array)
+gm_array_destroy(GM_Array * array)
 {
   free(array->data);
   free(array);
 }
 
 const void *
-array_add(Array * array, const void * data)
+gm_array_add(GM_Array * array, const void * data)
 {
   if ( array->used == array->size ) {
     array->size += increment_size;
@@ -41,22 +41,22 @@ array_add(Array * array, const void * data)
 }
 
 const void * *
-array_data(Array * array)
+gm_array_data(GM_Array * array)
 {
   return array->data;
 }
 
 size_t
-array_size(Array * array)
+gm_array_size(GM_Array * array)
 {
   return array->used;
 }
 
 const void *
-array_get(Array * array, size_t index)
+gm_array_get(GM_Array * array, size_t index)
 {
   if ( index > array->used - 1 ) {
-    fprintf(stderr, "Array index %d out-of-bounds of size %d array.\n", index, array->size);
+    fprintf(stderr, "GM_Array index %d out-of-bounds of size %d array.\n", index, array->size);
     abort();
   }
   return array->data[index];

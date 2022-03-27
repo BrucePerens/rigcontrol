@@ -3,7 +3,7 @@
 #include <string.h>
 #include "generic_main.h"
 
-int pattern_string(const char * string, pattern_coroutine_t coroutine, char * buffer, size_t buffer_size)
+int gm_pattern_string(const char * string, gm_pattern_coroutine_t coroutine, char * buffer, size_t buffer_size)
 {
   char * out = buffer;
   const char * start = string;

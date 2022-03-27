@@ -9,7 +9,7 @@
 #include <inttypes.h>
 #include "generic_main.h"
 
-extern void timer_to_human(int64_t t, char * buffer, size_t size);
+extern void gm_timer_to_human(int64_t t, char * buffer, size_t size);
 
 static struct {
     struct arg_end * end;
@@ -26,7 +26,7 @@ static int run(int argc, char * * argv)
       return 1;
   }
 
-  timer_to_human(uptime, buffer, sizeof(buffer));
+  gm_timer_to_human(uptime, buffer, sizeof(buffer));
   printf("%s\n", buffer);
 
   return 0;
@@ -43,5 +43,5 @@ CONSTRUCTOR install(void)
     .argtable = &args
   };
 
-  command_register(&command);
+  gm_command_register(&command);
 }

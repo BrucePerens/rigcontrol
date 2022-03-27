@@ -29,12 +29,12 @@ static const char * choose_one()
   return url;
 }
 
-static int public_ip_internal(const char * url, char * data, size_t size)
+static int gm_public_ipv4_internal(const char * url, char * data, size_t size)
 {
   char	buffer[1024];
   int	return_value = -1;
 
-  int status = web_get(url, buffer, sizeof(buffer));
+  int status = gm_web_get(url, buffer, sizeof(buffer));
   if (status == 200) {
     struct cJSON * json = cJSON_Parse(buffer);
     if (json) {
@@ -50,10 +50,10 @@ static int public_ip_internal(const char * url, char * data, size_t size)
   return return_value;
 }
 
-int public_ip(char * data, size_t size)
+int gm_public_ipv4(char * data, size_t size)
 {
   for (int tries = 0; tries < (number_of_entries * 2); tries++) {
-    if (public_ip_internal(choose_one(), data, size) == 0)
+    if (gm_public_ipv4_internal(choose_one(), data, size) == 0)
       return 0;
   }
   return -1;

@@ -52,7 +52,7 @@ static void initialize(void)
   repl_config.prompt = ">";
   esp_console_dev_uart_config_t uart_config = ESP_CONSOLE_DEV_UART_CONFIG_DEFAULT();
   ESP_ERROR_CHECK(esp_console_new_repl_uart(&uart_config, &repl_config, &GM.repl));
-  command_add_registered_to_console();
+  gm_command_add_registered_to_console();
   ESP_ERROR_CHECK(esp_console_start_repl(GM.repl));
 
   // Empty configuration for starting WiFi.

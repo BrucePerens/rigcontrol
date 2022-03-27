@@ -22,7 +22,7 @@ static int run(int argc, char * * argv)
       return 1;
   }
 
-  web_get_with_coroutine(args.url->sval[0], web_data_coroutine);
+  gm_web_get_with_coroutine(args.url->sval[0], web_data_coroutine);
 
   return 0;
 }
@@ -41,5 +41,5 @@ CONSTRUCTOR install()
     .argtable = &args
   };
 
-  command_register(&command);
+  gm_command_register(&command);
 }

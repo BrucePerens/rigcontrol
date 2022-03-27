@@ -40,7 +40,7 @@ static const struct ddns_provider ddns_providers[] = {
 };
 
 // Perform variable substitution on a string.
-// extern int pattern_string(const char * string, pattern_coroutine_t coroutine, char * buffer, size_t buffer_size);
+// extern int gm_pattern_string(const char * string, gm_pattern_coroutine_t coroutine, char * buffer, size_t buffer_size);
 
 // Get a variable to substitute into the pattern string.
 static int parameter(const char * name,  char * buffer, size_t buffer_size)
@@ -58,9 +58,9 @@ static int parameter(const char * name,  char * buffer, size_t buffer_size)
 
     while ( p->name ) {
       if ( strcmp(name, p->name) == 0 ) {
-        enum param_result result;
+        gm_param_result_t result;
 
-        result = param_get(p->param_name, buffer, buffer_size);
+        result = gm_param_get(p->param_name, buffer, buffer_size);
         if ( result == PR_NORMAL || result == PR_SECRET )
           return 0;
         else {
@@ -80,7 +80,7 @@ send_ddns(const char * url)
 {
   char request[256];
 
-  pattern_string(url, parameter, request, sizeof(request));
+  gm_pattern_string(url, parameter, request, sizeof(request));
   printf("%s\n", request);
 
   return 0;
@@ -90,9 +90,9 @@ static int ddns()
 {
   char ddns_provider[64];
   const struct ddns_provider * p = ddns_providers;
-  enum param_result result;
+  gm_param_result_t result;
 
-  result = param_get("ddns_provider", ddns_provider, sizeof(ddns_provider));
+  result = gm_param_get("ddns_provider", ddns_provider, sizeof(ddns_provider));
   
   switch ( result ) {
   case PR_NOT_SET:
@@ -138,5 +138,5 @@ CONSTRUCTOR install(void)
     .argtable = &args
   };
 
-  command_register(&command);
+  gm_command_register(&command);
 }

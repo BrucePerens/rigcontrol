@@ -9,7 +9,7 @@ struct user_data {
   char * data;
   size_t size;
   size_t index;
-  web_get_coroutine_t coroutine;
+  gm_web_get_coroutine_t coroutine;
 };
 
 static esp_err_t event_handler(esp_http_client_event_t * event)
@@ -40,7 +40,7 @@ static esp_err_t event_handler(esp_http_client_event_t * event)
   return ESP_OK;
 }
 
-static int web_get_internal(const char * url, struct user_data * user_data)
+static int gm_web_get_internal(const char * url, struct user_data * user_data)
 {
   esp_http_client_config_t config = {};
 
@@ -68,18 +68,18 @@ static int web_get_internal(const char * url, struct user_data * user_data)
 }
 
 int
-web_get(const char *url, char *data, size_t size)
+gm_web_get(const char *url, char *data, size_t size)
 {
   struct user_data user_data = {};
   user_data.data = data;
   user_data.size = size;
-  return web_get_internal(url, &user_data);
+  return gm_web_get_internal(url, &user_data);
 }
 
 int
-web_get_with_coroutine(const char *url, web_get_coroutine_t coroutine)
+gm_web_get_with_coroutine(const char *url, gm_web_get_coroutine_t coroutine)
 {
   struct user_data user_data = {};
   user_data.coroutine = coroutine;
-  return web_get_internal(url, &user_data);
+  return gm_web_get_internal(url, &user_data);
 }

@@ -16,7 +16,7 @@ static struct {
 } param_args;
 
 static void
-print_param(const char * name, const char * value, const char * explanation, param_result_t type)
+print_param(const char * name, const char * value, const char * explanation, gm_param_result_t type)
 {
   const char * v = value;
   switch (type) {
@@ -39,7 +39,7 @@ static int param(int argc, char * * argv)
 {
   char buffer[128];
   const char * v = buffer;
-  param_result_t type;
+  gm_param_result_t type;
 
   int nerrors = arg_parse(argc, argv, (void **) &param_args);
   if (nerrors) {
@@ -52,16 +52,16 @@ static int param(int argc, char * * argv)
       fprintf(stderr, "name must be specified.\n");
       return -1;
     }
-    param_erase(param_args.name->sval[0]);
+    gm_param_erase(param_args.name->sval[0]);
     return 0;
   }
 
   switch (argc) {
   case 1:
-    list_params(print_param);
+    gm_param_list(print_param);
     return 0;
   case 3:
-    type = param_set(param_args.name->sval[0], param_args.value->sval[0]);
+    type = gm_param_set(param_args.name->sval[0], param_args.value->sval[0]);
     switch (type) {
     case PR_ERROR:
       return -1;
@@ -74,7 +74,7 @@ static int param(int argc, char * * argv)
     // [[fallthrough]];
     // fall through
   case 2:
-    type = param_get(param_args.name->sval[0], buffer, sizeof(buffer));
+    type = gm_param_get(param_args.name->sval[0], buffer, sizeof(buffer));
     switch (type) {
     case PR_NORMAL:
       break;
@@ -109,5 +109,5 @@ CONSTRUCTOR install(void)
     .argtable = &param_args
   };
 
-  command_register(&command);
+  gm_command_register(&command);
 }

@@ -4,7 +4,7 @@
 #include <time.h>
 #include "generic_main.h"
 
-extern void wifi_restart(void);
+extern void gm_wifi_restart(void);
 
 enum parameter_type {
   END = 0,
@@ -30,14 +30,14 @@ static const struct parameter parameters[] = {
   { "ddns_provider", STRING, false, "name of the Dynamic DNS provider.", 0 },
   { "ddns_token", STRING, true, "secret token to set in dynamic DNS.", 0 },
   { "ddns_username", STRING, false, "user name for secure access to the dynamic DNS host.", 0 },
-  { "ssid", STRING, false, "Name of WiFi access point", wifi_restart },
+  { "ssid", STRING, false, "Name of WiFi access point", gm_wifi_restart },
   { "timezone", STRING, false, "Set time zone (see https://github.com/nayarsystems/posix_tz_db/blob/master/zones.csv)", 0 },
-  { "wifi_password", STRING, true, "Password of WiFi access point", wifi_restart },
+  { "wifi_password", STRING, true, "Password of WiFi access point", gm_wifi_restart },
   { }
 };
 
 void
-list_params(list_params_coroutine_t coroutine)
+gm_param_list(gm_param_list_coroutine_t coroutine)
 {
   const struct parameter * p = parameters;
   char buffer[1024];
@@ -60,8 +60,8 @@ list_params(list_params_coroutine_t coroutine)
   }
 }
 
-param_result_t
-param_get(const char * key, char * buffer, size_t buffer_size)
+gm_param_result_t
+gm_param_get(const char * key, char * buffer, size_t buffer_size)
 {
   const struct parameter * p = parameters;
   while (p->type) {
@@ -87,8 +87,8 @@ param_get(const char * key, char * buffer, size_t buffer_size)
     return PR_NORMAL;
 }
 
-param_result_t
-param_set(const char * key, const char * value)
+gm_param_result_t
+gm_param_set(const char * key, const char * value)
 {
   const struct parameter * p = parameters;
   while (p->type) {
@@ -112,8 +112,8 @@ param_set(const char * key, const char * value)
   return PR_NORMAL;
 }
 
-param_result_t
-param_erase(const char * key)
+gm_param_result_t
+gm_param_erase(const char * key)
 {
   const struct parameter * p = parameters;
   while (p->type) {

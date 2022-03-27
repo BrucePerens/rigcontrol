@@ -60,7 +60,7 @@ static int run(int argc, char * * argv)
     ago = "";
   }
   else {
-    timer_to_human(duration, duration_buf, sizeof(duration_buf));
+    gm_timer_to_human(duration, duration_buf, sizeof(duration_buf));
   }
   localtime_r(&now, &timeinfo);
   strftime(strftime_buf, sizeof(strftime_buf), "%c", &timeinfo);
@@ -79,5 +79,5 @@ CONSTRUCTOR install(void)
     .argtable = &args
   };
 
-  command_register(&command);
+  gm_command_register(&command);
 }

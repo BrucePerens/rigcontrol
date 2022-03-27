@@ -269,7 +269,7 @@ static void wifi_connect_to_ap(const char * ssid, const char * password)
 // FIX: Every time I go through this loop, two more netif interfaces
 // are created. Perhaps this is happening in esp_smartconfig.
 // One side effect is that the "Got IP" message prints for each netif.
-void wifi_restart(void)
+void gm_wifi_restart(void)
 {
   stop_smart_config_task(true);
   stop_webserver();

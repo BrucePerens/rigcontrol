@@ -5,16 +5,16 @@
 #include <driver/uart.h>
 #include "linenoise/linenoise.h"
 
-static Array * array = 0;
+static GM_Array * array = 0;
 
 // This is called from CONSTRUCTOR functions, before main().
 void
-command_register(const esp_console_cmd_t * command)
+gm_command_register(const esp_console_cmd_t * command)
 {
   if ( !array ) {
-    array = array_create();
+    array = gm_array_create();
   }
-  array_add(array, (const void *)command);
+  gm_array_add(array, (const void *)command);
 }
 
 static int
@@ -27,22 +27,22 @@ compare(const void * _a, const void * _b)
 }
 
 void
-command_add_registered_to_console(void)
+gm_command_add_registered_to_console(void)
 {
   size_t size;
 
-  if (!array || (size = array_size(array)) == 0) {
+  if (!array || (size = gm_array_size(array)) == 0) {
     fprintf(stderr, "No commands registered.\n");
     return;
   }
   
   // Alphabetically sort the commands.
-  qsort(array_data(array), array_size(array), sizeof(void *), compare);
+  qsort(gm_array_data(array), gm_array_size(array), sizeof(void *), compare);
 
   for ( size_t i = 0; i < size; i++ ) {
-    const esp_console_cmd_t * c = (const esp_console_cmd_t *)array_get(array, i);
+    const esp_console_cmd_t * c = (const esp_console_cmd_t *)gm_array_get(array, i);
 
     ESP_ERROR_CHECK(esp_console_cmd_register(c));
   }
-  array_destroy(array);
+  gm_array_destroy(array);
 }

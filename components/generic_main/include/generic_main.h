@@ -3,6 +3,9 @@
 #include <nvs.h>
 #include <esp_console.h>
 #include <esp_netif.h>
+#include <esp_netif_types.h>
+#include <esp_netif_net_stack.h>
+#include <../lwip/esp_netif_lwip_internal.h>
 
 #define CONSTRUCTOR static void __attribute__ ((constructor))
 
@@ -14,13 +17,24 @@ typedef enum _gm_param_result {
   PR_NOT_SET = 2
 } gm_param_result_t;
 
+struct _gm_netif {
+  esp_netif_t *		netif;
+  struct netif *	lwip_netif;
+  esp_netif_ip_info_t	netif_info;
+  esp_ip6_addr_t	link_local_ip6;
+  esp_ip6_addr_t	router_ip6;
+  esp_ip6_addr_t	site_local_ip6;
+  esp_ip6_addr_t	site_unique_ip6;
+  esp_ip6_addr_t	public_ip6[3];
+};
+typedef struct _gm_netif gm_netif_t;
+
 struct generic_main {
   nvs_handle_t		nvs;
+  gm_netif_t		ap;
+  gm_netif_t		sta;
   esp_console_repl_t *	repl;
-  esp_netif_t *		ap_netif;
-  esp_netif_t *		sta_netif;
-  // Microseconds since the time was last synchronized.
-  int64_t time_last_synchronized;
+  int64_t		time_last_synchronized;
 };
 
 struct _GM_Array;

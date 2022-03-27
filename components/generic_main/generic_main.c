@@ -78,9 +78,9 @@ static void initialize(void)
 
 
   // Initialize the TCP/IP interfaces for WiFi.
-  GM.sta_netif = esp_netif_create_default_wifi_sta();
+  GM.sta.netif = esp_netif_create_default_wifi_sta();
   // GM.ap_netif = esp_netif_create_default_wifi_ap();
-  // assert(ap_netif);
+  // assert(GM.ap.netif);
 
   // Register the event handler for WiFi station ready.
   // When this is called, the event handler will decide whether to connect
@@ -91,6 +91,6 @@ static void initialize(void)
 
   ESP_ERROR_CHECK( esp_wifi_init(&cfg) );
   ESP_ERROR_CHECK( esp_wifi_set_mode(WIFI_MODE_STA) );
-  ESP_ERROR_CHECK(esp_netif_set_hostname(GM.sta_netif, "rigcontrol"));
+  ESP_ERROR_CHECK(esp_netif_set_hostname(GM.sta.netif, "rigcontrol"));
   ESP_ERROR_CHECK( esp_wifi_start() );
 }

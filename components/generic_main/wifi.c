@@ -95,9 +95,9 @@ void wifi_event_sta_disconnected(void* arg, esp_event_base_t event_base, int32_t
 }
 
 static void wifi_event_sta_connected_to_ap(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data) {
-  ESP_ERROR_CHECK_WITHOUT_ABORT(esp_netif_create_ip6_linklocal(GM.sta_netif));
-  dhcp6_enable_stateful(GM.sta_netif->lwip_netif);
-  dhcp6_enable_stateless(GM.sta_netif->lwip_netif);
+  ESP_ERROR_CHECK_WITHOUT_ABORT(esp_netif_create_ip6_linklocal(GM.sta.netif));
+  dhcp6_enable_stateful(GM.sta.netif->lwip_netif);
+  dhcp6_enable_stateless(GM.sta.netif->lwip_netif);
 }
 
 static void ip_event_sta_got_ip(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data) {

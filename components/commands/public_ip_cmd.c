@@ -22,10 +22,9 @@ int run(int argc, char * * argv)
 
 CONSTRUCTOR install(void)
 {
-
   args.end = arg_end(10);
   static const esp_console_cmd_t command = {
-    .command = "gm_public_ipv4",
+    .command = "public_ip",
     .help = "Get the public IP used by this device.",
     .hint = NULL,
     .func = &run,

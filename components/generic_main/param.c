@@ -4,7 +4,6 @@
 #include <time.h>
 #include "generic_main.h"
 
-extern nvs_handle_t nvs;
 extern void wifi_restart(void);
 
 enum parameter_type {
@@ -46,7 +45,7 @@ list_params(list_params_coroutine_t coroutine)
 
   while (p->type) {
     buffer_size = sizeof(buffer);
-    esp_err_t err = nvs_get_str(nvs, p->name, buffer, &buffer_size);
+    esp_err_t err = nvs_get_str(GM.nvs, p->name, buffer, &buffer_size);
     if (err != ESP_OK) {
       *buffer = '\0';
       (*coroutine)(p->name, buffer, p->explanation, PR_NOT_SET);
@@ -75,7 +74,7 @@ param_get(const char * key, char * buffer, size_t buffer_size)
     return PR_NOT_IN_PARAMETER_TABLE;
   }
 
-  esp_err_t err = nvs_get_str(nvs, key, buffer, &buffer_size);
+  esp_err_t err = nvs_get_str(GM.nvs, key, buffer, &buffer_size);
 
   if (err) {
     *buffer = '\0';
@@ -101,7 +100,7 @@ param_set(const char * key, const char * value)
     return PR_NOT_IN_PARAMETER_TABLE;
   }
 
-  esp_err_t err = (nvs_set_str(nvs, key, value));
+  esp_err_t err = (nvs_set_str(GM.nvs, key, value));
   if (err) {
     ESP_ERROR_CHECK(err);
     return PR_ERROR;
@@ -126,7 +125,7 @@ param_erase(const char * key)
     return PR_NOT_IN_PARAMETER_TABLE;
   }
 
-  esp_err_t err = (nvs_erase_key(nvs, key));
+  esp_err_t err = (nvs_erase_key(GM.nvs, key));
 
   switch (err) {
   case ESP_OK:

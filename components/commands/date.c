@@ -22,7 +22,7 @@ static void timezone_set(void)
 {
   char buffer[128];
   size_t buffer_size;
-  esp_err_t err = nvs_get_str(nvs, "timezone", buffer, &buffer_size);
+  esp_err_t err = nvs_get_str(GM.nvs, "timezone", buffer, &buffer_size);
 
   if (err) {
     unsetenv("TZ");
@@ -53,9 +53,9 @@ static int run(int argc, char * * argv)
 
   const char * ago = " ago";
   int64_t timer_now = esp_timer_get_time();
-  int64_t duration = timer_now - time_last_synchronized;
+  int64_t duration = timer_now - GM.time_last_synchronized;
 
-  if (time_last_synchronized == -1) {
+  if (GM.time_last_synchronized == -1) {
     strcpy(duration_buf, "never");
     ago = "";
   }

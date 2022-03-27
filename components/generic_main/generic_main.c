@@ -29,10 +29,7 @@ extern void wifi_event_sta_disconnected(void* arg, esp_event_base_t event_base, 
 static void initialize(void);
 
 static const char TASK_NAME[] = "main";
-nvs_handle_t nvs;
-esp_netif_t *sta_netif;
-esp_netif_t *ap_netif;
-esp_console_repl_t *repl = 0;
+struct generic_main GM = {};
 
 extern void user_startup();
 
@@ -54,9 +51,9 @@ static void initialize(void)
   repl_config.task_stack_size = 30 * 1024;
   repl_config.prompt = ">";
   esp_console_dev_uart_config_t uart_config = ESP_CONSOLE_DEV_UART_CONFIG_DEFAULT();
-  ESP_ERROR_CHECK(esp_console_new_repl_uart(&uart_config, &repl_config, &repl));
+  ESP_ERROR_CHECK(esp_console_new_repl_uart(&uart_config, &repl_config, &GM.repl));
   command_add_registered_to_console();
-  ESP_ERROR_CHECK(esp_console_start_repl(repl));
+  ESP_ERROR_CHECK(esp_console_start_repl(GM.repl));
 
   // Empty configuration for starting WiFi.
   wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
@@ -74,16 +71,15 @@ static void initialize(void)
   }
   ESP_ERROR_CHECK(err);
 
-  ESP_ERROR_CHECK(nvs_open("k6bp_rigcontrol", NVS_READWRITE, &nvs));
+  ESP_ERROR_CHECK(nvs_open("k6bp_rigcontrol", NVS_READWRITE, &GM.nvs));
 
   // Initialize the TCP/IP stack.
   ESP_ERROR_CHECK(esp_netif_init());
 
 
   // Initialize the TCP/IP interfaces for WiFi.
-  sta_netif = esp_netif_create_default_wifi_sta();
-  assert(sta_netif);
-  // ap_netif = esp_netif_create_default_wifi_ap();
+  GM.sta_netif = esp_netif_create_default_wifi_sta();
+  // GM.ap_netif = esp_netif_create_default_wifi_ap();
   // assert(ap_netif);
 
   // Register the event handler for WiFi station ready.
@@ -95,6 +91,6 @@ static void initialize(void)
 
   ESP_ERROR_CHECK( esp_wifi_init(&cfg) );
   ESP_ERROR_CHECK( esp_wifi_set_mode(WIFI_MODE_STA) );
-  ESP_ERROR_CHECK(esp_netif_set_hostname(sta_netif, "rigcontrol"));
+  ESP_ERROR_CHECK(esp_netif_set_hostname(GM.sta_netif, "rigcontrol"));
   ESP_ERROR_CHECK( esp_wifi_start() );
 }

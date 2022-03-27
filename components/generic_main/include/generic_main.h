@@ -17,12 +17,17 @@ typedef enum param_result {
 typedef void (*list_params_coroutine_t)(const char *, const char *, const char *, param_result_t);
 typedef void (*web_get_coroutine_t)(const char * data, size_t size);
 
-extern nvs_handle_t nvs; // Open handle to non-volatile storage.
-// Microseconds since the time was last synchronized.
-extern int64_t time_last_synchronized;
-extern esp_console_repl_t * repl;
-extern esp_netif_t *sta_netif;
-extern esp_netif_t *ap_netif;
+struct generic_main {
+  nvs_handle_t		nvs;
+  esp_console_repl_t *	repl;
+  esp_netif_t *		ap_netif;
+  esp_netif_t *		sta_netif;
+  // Microseconds since the time was last synchronized.
+  int64_t time_last_synchronized;
+};
+
+extern struct generic_main GM;
+
 
 // Call this when a WiFi parameter has been changed by the user.
 extern void wifi_restart(void);

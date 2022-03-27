@@ -45,7 +45,6 @@ static const char * const ipv6_address_types[] = {
     "unique-local",
     "IPv4-mapped-IPv6"
 };
-extern nvs_handle_t nvs;
 static TaskHandle_t smart_config_task = NULL;
 static esp_event_handler_instance_t handler_wifi_event_sta_connected_to_ap = NULL;
 static esp_event_handler_instance_t handler_ip_event_sta_got_ip = NULL;
@@ -71,8 +70,8 @@ void wifi_event_sta_start(void* arg, esp_event_base_t event_base, int32_t event_
   size_t ssid_size = sizeof(ssid);
   size_t password_size = sizeof(password);
 
-  esp_err_t ssid_err = nvs_get_str(nvs, "ssid", ssid, &ssid_size);
-  esp_err_t password_err = nvs_get_str(nvs, "wifi_password", password, &password_size);
+  esp_err_t ssid_err = nvs_get_str(GM.nvs, "ssid", ssid, &ssid_size);
+  esp_err_t password_err = nvs_get_str(GM.nvs, "wifi_password", password, &password_size);
 
   // Create a local event group for communication from event handlers to
   // tasks.
@@ -88,20 +87,22 @@ void wifi_event_sta_start(void* arg, esp_event_base_t event_base, int32_t event_
 
 void wifi_event_sta_disconnected(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data)
 {
-  fprintf(stderr, "Wifi disconnected.\n");
+  fprintf(stderr, "\nWifi disconnected.\n");
+  fflush(stderr);
   stop_webserver();
   esp_wifi_connect();
   xEventGroupClearBits(my_events, CONNECTED_BIT);
 }
 
 static void wifi_event_sta_connected_to_ap(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data) {
-  ESP_ERROR_CHECK_WITHOUT_ABORT(esp_netif_create_ip6_linklocal(sta_netif));
-  dhcp6_enable_stateful(sta_netif->lwip_netif);
-  dhcp6_enable_stateless(sta_netif->lwip_netif);
+  ESP_ERROR_CHECK_WITHOUT_ABORT(esp_netif_create_ip6_linklocal(GM.sta_netif));
+  dhcp6_enable_stateful(GM.sta_netif->lwip_netif);
+  dhcp6_enable_stateless(GM.sta_netif->lwip_netif);
 }
 
 static void ip_event_sta_got_ip(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data) {
   ip_event_got_ip_t* event = (ip_event_got_ip_t*)event_data;
+  // esp_netif_ip_info_t ip_info = {};
 
   // EventBits_t old_bits = xEventGroupGetBits(my_events);
 
@@ -110,9 +111,13 @@ static void ip_event_sta_got_ip(void* arg, esp_event_base_t event_base, int32_t 
 
   xEventGroupSetBits(my_events, CONNECTED_BIT);
 
-  fprintf(stderr, "Got IPv4: interface %s, address " IPSTR "\n",
+  
+  // ESP_ERROR_CHECK(esp_netif_get_ip_info(event->esp_netif, &ip_info));
+  fprintf(stderr, "\nGot IPv4: interface %s, address " IPSTR ", router " IPSTR "\n",
   esp_netif_get_desc(event->esp_netif),
-  IP2STR(&event->ip_info.ip));
+  IP2STR(&event->ip_info.ip),
+  IP2STR(&event->ip_info.gw));
+  fflush(stderr);
 
   start_webserver();
 }
@@ -121,10 +126,11 @@ static void ip_event_got_ip6(void* arg, esp_event_base_t event_base, int32_t eve
   ip_event_got_ip6_t* event = (ip_event_got_ip6_t*)event_data;
   esp_ip6_addr_type_t ipv6_type = esp_netif_ip6_get_addr_type(&event->ip6_info.ip);
 
-  fprintf(stderr, "Got IPV6: interface %s, address " IPV6STR ", type %s\n",
+  fprintf(stderr, "\nGot IPV6: interface %s, address " IPV6STR ", type %s\n",
   esp_netif_get_desc(event->esp_netif),
   IPV62STR(event->ip6_info.ip),
   ipv6_address_types[ipv6_type]);
+  fflush(stderr);
 }
 
 static void sc_event_got_ssid_pswd(void* arg, esp_event_base_t event_base,
@@ -143,9 +149,9 @@ static void sc_event_got_ssid_pswd(void* arg, esp_event_base_t event_base,
     memcpy(wifi_config.sta.bssid, evt->bssid, sizeof(wifi_config.sta.bssid));
   }
 
-  ESP_ERROR_CHECK(nvs_set_str(nvs, "ssid", (const char *)evt->ssid));
-  ESP_ERROR_CHECK(nvs_set_str(nvs, "wifi_password", (const char *)evt->password));
-  ESP_ERROR_CHECK(nvs_commit(nvs));
+  ESP_ERROR_CHECK(nvs_set_str(GM.nvs, "ssid", (const char *)evt->ssid));
+  ESP_ERROR_CHECK(nvs_set_str(GM.nvs, "wifi_password", (const char *)evt->password));
+  ESP_ERROR_CHECK(nvs_commit(GM.nvs));
   ESP_ERROR_CHECK( esp_wifi_disconnect() );
   ESP_ERROR_CHECK( esp_wifi_set_config(WIFI_IF_STA, &wifi_config) );
   esp_wifi_connect();

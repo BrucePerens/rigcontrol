@@ -23,9 +23,6 @@
 #include <esp_console.h>
 #include "generic_main.h"
 
-extern void wifi_event_sta_start(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data);
-extern void wifi_event_sta_disconnected(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data);
-
 static void initialize(void);
 
 static const char TASK_NAME[] = "main";
@@ -55,9 +52,6 @@ static void initialize(void)
   gm_command_add_registered_to_console();
   ESP_ERROR_CHECK(esp_console_start_repl(GM.repl));
 
-  // Empty configuration for starting WiFi.
-  wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
-
   // The global event loop is required for all event handling to work.
   ESP_ERROR_CHECK(esp_event_loop_create_default());
 
@@ -73,24 +67,5 @@ static void initialize(void)
 
   ESP_ERROR_CHECK(nvs_open("k6bp_rigcontrol", NVS_READWRITE, &GM.nvs));
 
-  // Initialize the TCP/IP stack.
-  ESP_ERROR_CHECK(esp_netif_init());
-
-
-  // Initialize the TCP/IP interfaces for WiFi.
-  GM.sta.netif = esp_netif_create_default_wifi_sta();
-  // GM.ap_netif = esp_netif_create_default_wifi_ap();
-  // assert(GM.ap.netif);
-
-  // Register the event handler for WiFi station ready.
-  // When this is called, the event handler will decide whether to connect
-  // to an access point, or start smart configuration for the WiFi SSID and
-  // password.
-  ESP_ERROR_CHECK( esp_event_handler_register(WIFI_EVENT, WIFI_EVENT_STA_START, &wifi_event_sta_start, NULL) );
-  ESP_ERROR_CHECK( esp_event_handler_register(WIFI_EVENT, WIFI_EVENT_STA_DISCONNECTED, &wifi_event_sta_disconnected, NULL) );
-
-  ESP_ERROR_CHECK( esp_wifi_init(&cfg) );
-  ESP_ERROR_CHECK( esp_wifi_set_mode(WIFI_MODE_STA) );
-  ESP_ERROR_CHECK(esp_netif_set_hostname(GM.sta.netif, "rigcontrol"));
-  ESP_ERROR_CHECK( esp_wifi_start() );
+  gm_wifi_start();
 }

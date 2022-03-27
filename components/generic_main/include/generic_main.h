@@ -18,14 +18,14 @@ typedef enum _gm_param_result {
 } gm_param_result_t;
 
 struct _gm_netif {
-  esp_netif_t *		netif;
+  esp_netif_t *		esp_netif;
   struct netif *	lwip_netif;
-  esp_netif_ip_info_t	netif_info;
-  esp_ip6_addr_t	link_local_ip6;
+  esp_netif_ip_info_t	ip_info;
+  esp_netif_ip6_info_t	link_local_ip6;
+  esp_netif_ip6_info_t	site_local_ip6;
+  esp_netif_ip6_info_t	site_unique_ip6;
+  esp_netif_ip6_info_t	public_ip6[3];
   esp_ip6_addr_t	router_ip6;
-  esp_ip6_addr_t	site_local_ip6;
-  esp_ip6_addr_t	site_unique_ip6;
-  esp_ip6_addr_t	public_ip6[3];
 };
 typedef struct _gm_netif gm_netif_t;
 
@@ -47,6 +47,7 @@ typedef int (*gm_pattern_coroutine_t)(const char * name, char * result, size_t r
 extern struct generic_main GM;
 
 
+extern bool			gm_all_zeroes(const void *, size_t);
 extern const void *		gm_array_add(GM_Array * array, const void * data);
 extern GM_Array *		gm_array_create(void);
 extern const void * *		gm_array_data(GM_Array * array);
@@ -65,8 +66,10 @@ extern gm_param_result_t	gm_param_set(const char * name, const char * value);
 extern int			gm_pattern_string(const char * string, gm_pattern_coroutine_t coroutine, char * buffer, size_t buffer_size);
 extern int			gm_public_ipv4(char * data, size_t size);
 
+extern void			gm_timer_to_human(int64_t, char *, size_t);
+
 extern int			gm_web_get(const char *url, char *data, size_t size);
 extern int			gm_web_get_with_coroutine(const char *url, gm_web_get_coroutine_t coroutine);
 
-extern void			gm_timer_to_human(int64_t, char *, size_t);
+extern void			gm_wifi_start(void);
 extern void			gm_wifi_restart(void);

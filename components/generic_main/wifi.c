@@ -139,7 +139,7 @@ ipv4_config_task(void * param)
   char	buffer[64];
 
   if ( gm_public_ipv4(buffer, sizeof(buffer)) == 0 ) {
-    GM.sta.public_ip4.addr = inet_addr(buffer);
+    GM.sta.public_ip4.addr = esp_ip4addr_aton(buffer);
     fprintf(stderr, "\nPublic IP address is %s\n", buffer);
     fflush(stderr);
   }
@@ -197,7 +197,7 @@ static void ip_event_got_ip6(void* arg, esp_event_base_t event_base, int32_t eve
   case ESP_IP6_ADDR_IS_GLOBAL:
     for ( unsigned int i = 0; i < public_address_count - 1; i++) {
        // If we already have this address, don't add it twice.
-       if (memcmp(&interface->public_ip6[i], &event->ip6_info, sizeof(event->ip6_info)))
+       if (memcmp(&interface->public_ip6[i], &event->ip6_info, sizeof(event->ip6_info)) == 0)
          break;
        // If one of the public address entries is all zeroes, copy the address into it.
        if (gm_all_zeroes(&interface->public_ip6[i], sizeof(&interface->public_ip6[0]))) {
@@ -205,6 +205,7 @@ static void ip_event_got_ip6(void* arg, esp_event_base_t event_base, int32_t eve
          break;
        }
     }
+    fflush(stderr);
     break;
   case ESP_IP6_ADDR_IS_LINK_LOCAL:
     interface->link_local_ip6 = event->ip6_info;

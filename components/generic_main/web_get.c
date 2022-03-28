@@ -44,8 +44,6 @@ static int gm_web_get_internal(const char * url, struct user_data * user_data)
 {
   esp_http_client_config_t config = {};
 
-
-
   config.url = url;
   config.event_handler = &event_handler;
   config.crt_bundle_attach = esp_crt_bundle_attach;

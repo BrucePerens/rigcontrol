@@ -8,6 +8,7 @@
 #include <esp_timer.h>
 #include <inttypes.h>
 #include "generic_main.h"
+#include <lwip/inet.h>
 
 struct param {
   const char * name;
@@ -35,7 +36,10 @@ static const struct param params[] = {
 
 
 static const struct ddns_provider ddns_providers[] = {
-  { "he.net", "{hostname} {password} {token} {username} {ipv4} {ipv6}", 0 },
+  { "he.net",
+    "https://{hostname}:{password}@dyn.dns.he.net/nic/update?hostname={hostname}&myip={ipv4}",
+    "https://{hostname}:{password}@dyn.dns.he.net/nic/update?hostname={hostname}&myip={ipv6}"
+  },
   { 0, 0, 0 }
 };
 
@@ -46,11 +50,11 @@ static const struct ddns_provider ddns_providers[] = {
 static int parameter(const char * name,  char * buffer, size_t buffer_size)
 {
   if ( strcmp(name, "ipv4") == 0 ) {
-    memcpy(buffer, "IPV4", 5);
+    esp_ip4addr_ntoa(&GM.sta.public_ip4, buffer, buffer_size);
     return 0;
   }
   else if ( strcmp(name, "ipv6") == 0 ) {
-    memcpy(buffer, "IPV6", 5);
+    snprintf(buffer, buffer_size, IPV6STR, IPV62STR(GM.sta.public_ip6[0].ip));
     return 0;
   }
   else {
@@ -79,9 +83,11 @@ static int
 send_ddns(const char * url)
 {
   char request[256];
+  char response[256];
 
   gm_pattern_string(url, parameter, request, sizeof(request));
-  printf("%s\n", request);
+  int status = gm_web_get(url, response, sizeof(response));
+  printf("%d %s\n", status, response);
 
   return 0;
 }

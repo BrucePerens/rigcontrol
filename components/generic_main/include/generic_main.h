@@ -21,6 +21,7 @@ struct _gm_netif {
   esp_netif_t *		esp_netif;
   struct netif *	lwip_netif;
   esp_netif_ip_info_t	ip_info;
+  esp_ip4_addr_t	public_ip4;
   esp_netif_ip6_info_t	link_local_ip6;
   esp_netif_ip6_info_t	site_local_ip6;
   esp_netif_ip6_info_t	site_unique_ip6;

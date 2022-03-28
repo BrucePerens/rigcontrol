@@ -27,6 +27,8 @@
 // struct netif * from an esp_netif_t.
 #include <../lwip/esp_netif_lwip_internal.h>
 #include <lwip/dhcp6.h>
+#include <lwip/inet.h>
+#include <lwip/sockets.h>
 #include "generic_main.h"
 
 /* FreeRTOS event group to signal when we are connected & ready to make a request */
@@ -45,7 +47,8 @@ static const char * const ipv6_address_types[] = {
     "unique-local",
     "IPv4-mapped-IPv6"
 };
-static TaskHandle_t smart_config_task = NULL;
+static TaskHandle_t smart_config_task_id = NULL;
+static TaskHandle_t ipv4_config_task_id = NULL;
 static esp_event_handler_instance_t handler_wifi_event_sta_connected_to_ap = NULL;
 static esp_event_handler_instance_t handler_ip_event_sta_got_ip = NULL;
 static esp_event_handler_instance_t handler_ip_event_got_ip6 = NULL;
@@ -55,7 +58,7 @@ static esp_event_handler_instance_t handler_sc_event_send_ack_done = NULL;
 extern void start_webserver(void);
 extern void stop_webserver();
 
-static void wifi_smart_config(void * parm);
+static void smart_config_task(void * parm);
 static void wifi_connect_to_ap(const char * ssid, const char * password);
 static void wifi_event_sta_start(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data);
 void wifi_event_sta_disconnected(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data);
@@ -111,7 +114,7 @@ void wifi_event_sta_start(void* arg, esp_event_base_t event_base, int32_t event_
   if (ssid_err == ESP_OK && password_err == ESP_OK && ssid_size > 1)
     wifi_connect_to_ap(ssid, password);
   else
-    xTaskCreate(wifi_smart_config, TASK_NAME, 4096, NULL, 3, &smart_config_task);
+    xTaskCreate(smart_config_task, TASK_NAME, 4096, NULL, 3, &smart_config_task_id);
 }
 
 void wifi_event_sta_disconnected(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data)
@@ -127,6 +130,20 @@ static void wifi_event_sta_connected_to_ap(void* arg, esp_event_base_t event_bas
   ESP_ERROR_CHECK_WITHOUT_ABORT(esp_netif_create_ip6_linklocal(GM.sta.esp_netif));
   dhcp6_enable_stateful(GM.sta.esp_netif->lwip_netif);
   dhcp6_enable_stateless(GM.sta.esp_netif->lwip_netif);
+}
+
+// IPv4 configuration that requires a task.
+static void
+ipv4_config_task(void * param)
+{
+  char	buffer[64];
+
+  if ( gm_public_ipv4(buffer, sizeof(buffer)) == 0 ) {
+    GM.sta.public_ip4.addr = inet_addr(buffer);
+    fprintf(stderr, "\nPublic IP address is %s\n", buffer);
+    fflush(stderr);
+  }
+  vTaskDelete(NULL);
 }
 
 // This handler is called only when the "sta" netif gets an IPV4 address.
@@ -147,6 +164,7 @@ static void ip_event_sta_got_ip(void* arg, esp_event_base_t event_base, int32_t 
   IP2STR(&event->ip_info.gw));
   fflush(stderr);
 
+  xTaskCreate(ipv4_config_task, TASK_NAME, 10240, NULL, 3, &ipv4_config_task_id);
   start_webserver();
 }
 
@@ -232,7 +250,7 @@ static void sc_event_send_ack_done(void* arg, esp_event_base_t event_base, int32
 
 void stop_smart_config_task(bool external)
 {
-  smart_config_task = NULL;
+  smart_config_task_id = NULL;
 
   esp_smartconfig_stop();
 
@@ -248,11 +266,11 @@ void stop_smart_config_task(bool external)
     esp_event_handler_instance_unregister(SC_EVENT, SC_EVENT_SEND_ACK_DONE, handler_sc_event_send_ack_done);
     handler_sc_event_send_ack_done = NULL;
   }
-  if (smart_config_task)
-    vTaskDelete(smart_config_task);
+  if (smart_config_task_id)
+    vTaskDelete(smart_config_task_id);
 }
 
-static void wifi_smart_config(void * parm)
+static void smart_config_task(void * parm)
 {
   EventBits_t uxBits;
 

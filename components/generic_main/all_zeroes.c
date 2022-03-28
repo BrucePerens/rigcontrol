@@ -3,6 +3,9 @@
 #include <stdbool.h>
 typedef uint32_t word;
 
+// Return true if the object at address has any non-zero data in it.
+// I've tried to optimize it to use 32-bit-word compares most of the time,
+// and only bytes when address or size are not on 32-bit-word boundaries.
 bool
 gm_all_zeroes(const void * address, size_t size)
 {
@@ -27,7 +30,7 @@ gm_all_zeroes(const void * address, size_t size)
         return false;
       break;
     case 3:
-      // There was only one unalinged byte before a word boundary.
+      // There was only one unaligned byte before a word boundary.
       // Compare just one byte.
       size--;
       if (*(const uint8_t *)address++)
@@ -37,6 +40,7 @@ gm_all_zeroes(const void * address, size_t size)
   // Address is now word-aligned.
   // Compare words (32-bits at a time) if possible.
   if (size >= sizeof(word)) {
+    // The optimizer should place addrress and waddress in the same register.
     const word * waddress = address;
     while (size != 0) {
       size -= sizeof(word);
@@ -46,7 +50,6 @@ gm_all_zeroes(const void * address, size_t size)
     address = waddress;
   }
   // Compare any remaining bytes.
-  // word-aligned.
   while (size != 0) {
     size--;
     if (*(const uint8_t *)address++)

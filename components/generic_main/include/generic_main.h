@@ -59,6 +59,8 @@ extern size_t			gm_array_size(GM_Array * array);
 extern void			gm_command_add_registered_to_console(void);
 extern void			gm_command_register(const esp_console_cmd_t * command);
 
+extern int			gm_ddns(void);
+
 extern gm_param_result_t	gm_param_erase(const char * name);
 extern gm_param_result_t	gm_param_get(const char * name, char * buffer, size_t size);
 extern void			gm_param_list(gm_param_list_coroutine_t coroutine);

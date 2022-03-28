@@ -48,6 +48,9 @@ static int gm_web_get_internal(const char * url, struct user_data * user_data)
   config.event_handler = &event_handler;
   config.crt_bundle_attach = esp_crt_bundle_attach;
   config.user_data = user_data;
+  // This doesn't seem to do anything if the basic authentication information isn't
+  // in the URL, so it can be left on all of the time. It's used by ddns().
+  config.auth_type = HTTP_AUTH_TYPE_BASIC;
 
   esp_http_client_handle_t client = esp_http_client_init(&config);
 

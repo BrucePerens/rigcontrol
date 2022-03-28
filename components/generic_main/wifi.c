@@ -29,6 +29,7 @@
 #include <lwip/dhcp6.h>
 #include <lwip/inet.h>
 #include <lwip/sockets.h>
+#include <pthread.h>
 #include "generic_main.h"
 
 /* FreeRTOS event group to signal when we are connected & ready to make a request */
@@ -38,7 +39,7 @@ enum EventBits {
   ESPTOUCH_DONE_BIT = 1 << 1
 };
 
-static const char TASK_NAME[] = "wifi smart config";
+static const char TASK_NAME[] = "wifi";
 static const char * const ipv6_address_types[] = {
     "unknown",
     "global",
@@ -47,10 +48,12 @@ static const char * const ipv6_address_types[] = {
     "unique-local",
     "IPv4-mapped-IPv6"
 };
+pthread_mutex_t ddns_mutex;
 static TaskHandle_t smart_config_task_id = NULL;
 static TaskHandle_t ipv4_config_task_id = NULL;
+static TaskHandle_t ipv6_config_task_id = NULL;
 static esp_event_handler_instance_t handler_wifi_event_sta_connected_to_ap = NULL;
-static esp_event_handler_instance_t handler_ip_event_sta_got_ip = NULL;
+static esp_event_handler_instance_t handler_ip_event_sta_got_ip4 = NULL;
 static esp_event_handler_instance_t handler_ip_event_got_ip6 = NULL;
 static esp_event_handler_instance_t handler_sc_event_got_ssid_pswd = NULL;
 static esp_event_handler_instance_t handler_sc_event_send_ack_done = NULL;
@@ -66,6 +69,8 @@ void wifi_event_sta_disconnected(void* arg, esp_event_base_t event_base, int32_t
 void
 gm_wifi_start(void)
 {
+  pthread_mutex_init(&ddns_mutex, 0);
+
   // Initialize the TCP/IP stack.
   ESP_ERROR_CHECK(esp_netif_init());
 
@@ -142,12 +147,27 @@ ipv4_config_task(void * param)
     GM.sta.public_ip4.addr = esp_ip4addr_aton(buffer);
     fprintf(stderr, "\nPublic IP address is %s\n", buffer);
     fflush(stderr);
+    
+    pthread_mutex_lock(&ddns_mutex);
+    gm_ddns();
+    pthread_mutex_unlock(&ddns_mutex);
   }
   vTaskDelete(NULL);
 }
 
+// IPv6 configuration that requires a task.
+static void
+ipv6_config_task(void * param)
+{
+  pthread_mutex_lock(&ddns_mutex);
+  gm_ddns();
+  pthread_mutex_unlock(&ddns_mutex);
+
+  vTaskDelete(NULL);
+}
+
 // This handler is called only when the "sta" netif gets an IPV4 address.
-static void ip_event_sta_got_ip(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data) {
+static void ip_event_sta_got_ip4(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data) {
   ip_event_got_ip_t* event = (ip_event_got_ip_t*)event_data;
 
   // Smartconfig waits on this bit, then prints a message.
@@ -177,6 +197,7 @@ static void ip_event_got_ip6(void* arg, esp_event_base_t event_base, int32_t eve
   esp_ip6_addr_type_t	ipv6_type = esp_netif_ip6_get_addr_type(&event->ip6_info.ip);
   const char *		netif_name = esp_netif_get_desc(event->esp_netif);
   gm_netif_t *		interface;
+  bool			is_station = false;
    
   fprintf(stderr, "\nGot IPV6: interface %s, address " IPV6STR ", type %s\n",
   netif_name,
@@ -184,8 +205,10 @@ static void ip_event_got_ip6(void* arg, esp_event_base_t event_base, int32_t eve
   ipv6_address_types[ipv6_type]);
   fflush(stderr);
 
-  if (strcmp(netif_name, "sta") == 0)
+  if (strcmp(netif_name, "sta") == 0) {
     interface = &GM.sta;
+    is_station = true;
+  }
   else if (strcmp(netif_name, "ap") == 0)
     interface = &GM.ap;
   else
@@ -202,6 +225,11 @@ static void ip_event_got_ip6(void* arg, esp_event_base_t event_base, int32_t eve
        // If one of the public address entries is all zeroes, copy the address into it.
        if (gm_all_zeroes(&interface->public_ip6[i], sizeof(&interface->public_ip6[0]))) {
          interface->public_ip6[i] = event->ip6_info;
+         if (is_station) {
+           // FIX: Start the IPV6 configuration task here.
+           // gm_ddns();
+           xTaskCreate(ipv6_config_task, TASK_NAME, 10240, NULL, 3, &ipv6_config_task_id);
+         }
          break;
        }
     }
@@ -255,9 +283,9 @@ void stop_smart_config_task(bool external)
 
   esp_smartconfig_stop();
 
-  if (handler_ip_event_sta_got_ip) {
-    esp_event_handler_instance_unregister(IP_EVENT, IP_EVENT_STA_GOT_IP, handler_ip_event_sta_got_ip);
-    handler_ip_event_sta_got_ip = NULL;
+  if (handler_ip_event_sta_got_ip4) {
+    esp_event_handler_instance_unregister(IP_EVENT, IP_EVENT_STA_GOT_IP, handler_ip_event_sta_got_ip4);
+    handler_ip_event_sta_got_ip4 = NULL;
   }
   if (handler_sc_event_got_ssid_pswd) {
     esp_event_handler_instance_unregister(SC_EVENT, SC_EVENT_GOT_SSID_PSWD, handler_sc_event_got_ssid_pswd);
@@ -280,9 +308,9 @@ static void smart_config_task(void * parm)
   ESP_ERROR_CHECK(esp_event_handler_instance_register(
    IP_EVENT,
    IP_EVENT_STA_GOT_IP,
-   &ip_event_sta_got_ip,
+   &ip_event_sta_got_ip4,
    NULL,
-   &handler_ip_event_sta_got_ip));
+   &handler_ip_event_sta_got_ip4));
 
   ESP_ERROR_CHECK(esp_event_handler_instance_register(
    SC_EVENT,
@@ -340,9 +368,9 @@ static void wifi_connect_to_ap(const char * ssid, const char * password)
   ESP_ERROR_CHECK(esp_event_handler_instance_register(
    IP_EVENT,
    IP_EVENT_STA_GOT_IP,
-   &ip_event_sta_got_ip,
+   &ip_event_sta_got_ip4,
    NULL,
-   &handler_ip_event_sta_got_ip));
+   &handler_ip_event_sta_got_ip4));
 
   ESP_ERROR_CHECK(esp_event_handler_instance_register(
    IP_EVENT,

@@ -3,6 +3,7 @@ SRCS
   all_zeroes.c
   array.c
   command.c
+  ddns.c
   generic_main.c
   param.c
   pattern_string.c

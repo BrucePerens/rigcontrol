@@ -52,16 +52,17 @@ int gm_pattern_string(const char * string, gm_pattern_coroutine_t coroutine, cha
           memcpy(out, var, name_size);
           out[name_size] = '\0';
 
+          int status;
           // Call the coroutine, it writes the replacement directly to the output
           // buffer. Note that the output buffer is both the input and output.
-          if ( (*coroutine)(out, out, buffer_size) == 0 ) {
+          if ( (status = ((*coroutine)(out, out, buffer_size))) == 0 ) {
             size_t result_size = strlen(out);
             out += result_size;
             buffer_size -= result_size;
             start = end + 1;
           }
           else {
-            fprintf(stderr, "No replacement for: %s\n", out);
+            fprintf(stderr, "No replacement for: %s, %d\n", out, status);
             return -1;
           }
         }

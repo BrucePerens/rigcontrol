@@ -3,8 +3,9 @@ SRCS
   all_zeroes.c
   array.c
   command.c
-  ddns.c
+  dynamic_dns.c
   generic_main.c
+  global.c
   param.c
   pattern_string.c
   port_control_protocol.c

@@ -46,6 +46,7 @@ typedef void (*gm_web_get_coroutine_t)(const char * data, size_t size);
 typedef int (*gm_pattern_coroutine_t)(const char * name, char * result, size_t result_size);
 
 extern struct generic_main GM;
+extern const char gm_nvs_index[];
 
 
 extern bool			gm_all_zeroes(const void *, size_t);

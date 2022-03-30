@@ -43,29 +43,27 @@ static void initialize(void)
   // doesn't start.
   bootloader_random_enable();
 
-  // Configure the console command system.
-  esp_console_repl_config_t repl_config = ESP_CONSOLE_REPL_CONFIG_DEFAULT();
-  repl_config.task_stack_size = 30 * 1024;
-  repl_config.prompt = ">";
-  esp_console_dev_uart_config_t uart_config = ESP_CONSOLE_DEV_UART_CONFIG_DEFAULT();
-  ESP_ERROR_CHECK(esp_console_new_repl_uart(&uart_config, &repl_config, &GM.repl));
-  gm_command_add_registered_to_console();
-  ESP_ERROR_CHECK(esp_console_start_repl(GM.repl));
-
-  // The global event loop is required for all event handling to work.
-  ESP_ERROR_CHECK(esp_event_loop_create_default());
-
   // Connect the non-volatile-storage FLASH partition. Initialize it if
   // necessary.
   esp_err_t err = nvs_flash_init();
   if (err == ESP_ERR_NVS_NO_FREE_PAGES || err == ESP_ERR_NVS_NEW_VERSION_FOUND) {
     ESP_LOGW(TASK_NAME, "Erasing and initializing non-volatile parameter storage.");
     ESP_ERROR_CHECK(nvs_flash_erase());
-    err = nvs_flash_init();
+    ESP_ERROR_CHECK(nvs_flash_init());
   }
-  ESP_ERROR_CHECK(err);
+  ESP_ERROR_CHECK(nvs_open(gm_nvs_index, NVS_READWRITE, &GM.nvs));
 
-  ESP_ERROR_CHECK(nvs_open("k6bp_rigcontrol", NVS_READWRITE, &GM.nvs));
+  // Configure the console command system.
+  esp_console_repl_config_t repl_config = ESP_CONSOLE_REPL_CONFIG_DEFAULT();
+  repl_config.task_stack_size = 40 * 1024;
+  repl_config.prompt = ">";
+  esp_console_dev_uart_config_t uart_config = ESP_CONSOLE_DEV_UART_CONFIG_DEFAULT();
+  ESP_ERROR_CHECK(esp_console_new_repl_uart(&uart_config, &repl_config, &GM.repl));
+  gm_command_add_registered_to_console();
+  ESP_ERROR_CHECK(esp_console_start_repl(GM.repl));
+  // The global event loop is required for all event handling to work.
+  ESP_ERROR_CHECK(esp_event_loop_create_default());
 
+  // Start WiFi, if it's already configured.
   gm_wifi_start();
 }

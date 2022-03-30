@@ -1,4 +1,7 @@
 #include <stdint.h>
+#include <lwip/sockets.h>
+#include <netinet/in.h>
+#include "generic_main.h"
 
 struct pcp {
   uint8_t	version;
@@ -35,12 +38,47 @@ struct pcp {
   };
 };
 
+enum pcp_version {
+  NAT_PMP = 0,
+  PORT_MAPPING_PROTOCOL = 2
+};
+
+// MAP and PEER are sent from any port on the host to 5351 on the router.
+// ANNOUNCE is broadcast from 5351 on the router to 5350 on a host.
+enum pcp_port {
+  PCP_PORT = 5351,
+  PCP_ANNOUNCE_PORT = 5350
+};
+const size_t	PCP_MAX_PAYLOAD = 1100;
+
 enum pcp_opcode {
   PCP_ANNOUNCE = 0,
   PCP_MAP = 1,
   PCP_PEER = 2
 };
 
+enum nat_pmp_opcode {
+  NAT_PMP_ANNOUNCE = 0,
+  NAT_PMP_MAP_UDP = 1,
+  NAT_PMP_MAP_TCP = 2
+};
+
+enum pcp_protocol {
+  PCP_TCP = 6,
+  PCP_UPD = 17
+};
+
+enum nat_pmp_response_code {
+  NAT_PMP_SUCCESS = 0,
+  NAT_PMP_UNSUPP_VERSION = 1,
+  NAT_PMP_NOT_AUTHORIZED = 2,
+  NAT_PMP_NETWORK_FAILURE = 3,
+  NAT_PMP_OUT_OF_RESOURCES = 4,
+  NAT_PMP_UNSUPPORTED_OPCODE = 5
+};
+
+// Ugh. The PCP response codes really should have included the first 5 NAT-PMP
+// response codes with the same values. They just include the first 3.
 enum pcp_response_code {
   PCP_SUCCESS = 0,
   PCP_UNSUPP_VERSION = 1,
@@ -57,3 +95,26 @@ enum pcp_response_code {
   PCP_ADDRESS_MISMATCH = 12,
   PCP_EXCESSIVE_REMOTE_PEERS = 13
 };
+
+int pcp(bool ipv6)
+{
+  struct sockaddr_storage	address;
+  int				ip_protocol;
+
+  if ( !ipv6 ) {
+    struct sockaddr_in * a4 = (struct sockaddr_in *)&address;
+    a4->sin_addr.s_addr = GM.sta.ip_info.gw.addr;
+    a4->sin_family = AF_INET;
+    a4->sin_port = htons(PCP_PORT);
+    ip_protocol = IPPROTO_IP;
+  }
+  else {
+    struct sockaddr_in6 * a6 = (struct sockaddr_in6 *)&address;
+    memcpy(&a6->sin6_addr.un, GM.sta.router_ip6.addr, sizeof(a6->sin6_addr.un));
+    a6->sin6_family = AF_INET6;
+    a6->sin6_port = htons(PCP_PORT);
+    a6->sin6_scope_id = esp_netif_get_netif_impl_index(GM.sta.esp_netif);
+    ip_protocol = IPPROTO_IPV6;
+  }
+  return 0;
+}

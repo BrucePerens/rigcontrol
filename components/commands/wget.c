@@ -11,7 +11,7 @@ static struct {
 
 static void web_data_coroutine(const char * data, size_t size)
 {
-  printf("%s", data);
+  gm_printf("%s", data);
 }
 
 static int run(int argc, char * * argv)

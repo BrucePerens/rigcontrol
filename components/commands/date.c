@@ -21,11 +21,13 @@ static struct {
 static void timezone_set(void)
 {
   char buffer[128];
-  size_t buffer_size;
+  size_t buffer_size = sizeof(buffer);
   esp_err_t err = nvs_get_str(GM.nvs, "timezone", buffer, &buffer_size);
 
   if (err) {
     unsetenv("TZ");
+    if (err != ESP_ERR_NVS_NOT_FOUND)
+      gm_printf("Error getting timezone: %s\n", esp_err_to_name(err));
   }
   else {
     setenv("TZ", buffer, 1);
@@ -64,7 +66,7 @@ static int run(int argc, char * * argv)
   }
   localtime_r(&now, &timeinfo);
   strftime(strftime_buf, sizeof(strftime_buf), "%c", &timeinfo);
-  printf("%s, last synchronized: %s%s\n", strftime_buf, duration_buf, ago);
+  gm_printf("%s, last synchronized: %s%s\n", strftime_buf, duration_buf, ago);
   return 0;
 }
 

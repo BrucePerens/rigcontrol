@@ -27,7 +27,7 @@ static int run(int argc, char * * argv)
   }
 
   gm_timer_to_human(uptime, buffer, sizeof(buffer));
-  printf("%s\n", buffer);
+  gm_printf("%s\n", buffer);
 
   return 0;
 }

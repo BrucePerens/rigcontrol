@@ -56,7 +56,7 @@ const void *
 gm_array_get(GM_Array * array, size_t index)
 {
   if ( index > array->used - 1 ) {
-    fprintf(stderr, "GM_Array index %d out-of-bounds of size %d array.\n", index, array->size);
+    gm_printf("GM_Array index %d out-of-bounds of size %d array.\n", index, array->size);
     abort();
   }
   return array->data[index];

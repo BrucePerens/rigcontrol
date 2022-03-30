@@ -14,7 +14,7 @@ int run(int argc, char * * argv)
 {
   char	data[128];
   if ( gm_public_ipv4(data, sizeof(data)) == 0 ) {
-    printf("%s\n", data);
+    gm_printf("%s\n", data);
     return 0;
   }
   return -1;

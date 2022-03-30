@@ -6,14 +6,15 @@ INCLUDE_DIRS
   .
 # Components must be listed before any other components that they depend upon.
 REQUIRES
-  generic_main
   commands
   console
   driver
+  esp_http_server
   esp_timer
   freertos
+  generic_main
   hal
   lwip
   nvs_flash
-  esp_http_server
+  tcpip_adapter
 )

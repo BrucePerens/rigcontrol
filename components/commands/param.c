@@ -29,10 +29,10 @@ print_param(const char * name, const char * value, const char * explanation, gm_
     v = "(secret)";
     break;
   default:
-    fprintf(stderr, "Error: type %d.\n", type);
+    gm_printf("Error: type %d.\n", type);
     return;
   }
-  printf("%-8s\t%-8s\t%s\n", name, v, explanation);
+  gm_printf("%-8s\t%-8s\t%s\n", name, v, explanation);
 }
 
 static int param(int argc, char * * argv)
@@ -49,7 +49,7 @@ static int param(int argc, char * * argv)
 
   if (param_args.erase->count > 0) {
     if (param_args.name->count < 1) {
-      fprintf(stderr, "name must be specified.\n");
+      gm_printf("name must be specified.\n");
       return -1;
     }
     gm_param_erase(param_args.name->sval[0]);
@@ -66,7 +66,7 @@ static int param(int argc, char * * argv)
     case PR_ERROR:
       return -1;
     case PR_NOT_IN_PARAMETER_TABLE:
-      fprintf(stderr, "Error: not in parameter table: %s\n",  param_args.name->sval[0]);
+      gm_printf("Error: not in parameter table: %s\n",  param_args.name->sval[0]);
       return -1;
     default:
       break;
@@ -85,10 +85,10 @@ static int param(int argc, char * * argv)
       v = "(secret)";
       break;
     default:
-      fprintf(stderr, "Error: type %d.\n", type);
+      gm_printf("Error: type %d.\n", type);
       return -1;
     }
-    printf("\n\n%s \t%s\n", param_args.name->sval[0], v);
+    gm_printf("\n\n%s \t%s\n", param_args.name->sval[0], v);
     return 0;
   default:
     return -1;

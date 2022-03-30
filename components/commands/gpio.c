@@ -49,7 +49,7 @@ set_gpio_mode(gpio_num_t pin, enum GPIO_Mode mode)
   }
 
   if (pin < 0 || pin > 63) {
-    fprintf(stderr, "pin must be in the range of 0-63.");
+    gm_printf("pin must be in the range of 0-63.");
     return -1;
   }
 
@@ -88,7 +88,7 @@ set_gpio_mode(gpio_num_t pin, enum GPIO_Mode mode)
     return -1;
   }
   else {
-    printf("OK\n");
+    gm_printf("OK\n");
     return 0;
   }
 }
@@ -98,7 +98,7 @@ get_gpio_level(gpio_num_t pin)
 {
   int level = gpio_get_level(pin);
 
-  printf("%d %d\n", pin, level);
+  gm_printf("%d %d\n", pin, level);
   return 0;
 }
 
@@ -107,13 +107,13 @@ set_gpio_level(gpio_num_t pin, int level)
 {
   esp_err_t err = gpio_set_level(pin, level != 0);
   if (err) {
-    fprintf(stderr, "Failed.");
+    gm_printf("Failed.");
     return -1;
   }
   else {
     int level = gpio_get_level(pin);
 
-    printf("%d %d\n", pin, level);
+    gm_printf("%d %d\n", pin, level);
   }
   return 0;
 }
@@ -127,7 +127,7 @@ static int gpio(int argc, char * * argv)
   }
 
   if (gpio_args.out->count + gpio_args.pull_down->count + gpio_args.pull_up->count + gpio_args.floating->count > 1) {
-    fprintf(stderr, "--out, --pull_down, --pull_up, and --float are mutually exclusive.");
+    gm_printf("--out, --pull_down, --pull_up, and --float are mutually exclusive.");
     return -1;
   }
 

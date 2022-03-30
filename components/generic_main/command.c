@@ -32,7 +32,7 @@ gm_command_add_registered_to_console(void)
   size_t size;
 
   if (!array || (size = gm_array_size(array)) == 0) {
-    fprintf(stderr, "No commands registered.\n");
+    gm_printf("No commands registered.\n");
     return;
   }
   

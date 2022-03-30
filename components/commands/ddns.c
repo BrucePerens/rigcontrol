@@ -17,7 +17,7 @@ static struct {
 static int run(int argc, char * * argv)
 {
   gm_ddns();
-  printf("\n");
+  gm_printf("\n");
   return 0;
 }
 

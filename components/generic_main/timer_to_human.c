@@ -13,10 +13,16 @@ const int64_t day = hour * 24;
 
 extern void gm_timer_to_human(int64_t t, char * buffer, size_t size)
 {
-  int64_t days = t / day;
-  int64_t hours = (t % day) / hour;
-  int64_t minutes = (t % hour) / minute;
-  int64_t seconds = (t % minute) / second;
+  int days = t / day;
+  int hours = (t % day) / hour;
+  int minutes = (t % hour) / minute;
+  int seconds = (t % minute) / second;
 
-  snprintf(buffer, size, "%" PRId64 " days, %" PRId64 ":%" PRId64 ":%" PRId64 "", days, hours, minutes, seconds);
+  if (days > 0) {
+    snprintf(buffer, size, "%d days, ", days);
+    size_t length = strlen(buffer);
+    buffer += length;
+    size -= size;
+  }
+  snprintf(buffer, size, "%02d:%02d:%02d", hours, minutes, seconds);
 }

@@ -1,6 +1,6 @@
 // Main
 //
-// Start the program. Initialize system facilities. Set up an event handler
+// Start the program. Initialize system facilities. Set up an event andler
 // to call wifi_event_sta_start() once the WiFi station starts and is ready
 // for configuration.
 //
@@ -38,6 +38,10 @@ void app_main(void)
 
 static void initialize(void)
 {
+  // Set the console print lock, so that things in tasks don't print over each other.
+  // This can't be used for non-tasks.
+  pthread_mutex_init(&GM.console_print_mutex, 0);
+
   // Give the internal random number generator some entropy from the CPU's
   // hardware RNG, just in case WiFi (which is also an entropy source)
   // doesn't start.
@@ -63,6 +67,26 @@ static void initialize(void)
   ESP_ERROR_CHECK(esp_console_start_repl(GM.repl));
   // The global event loop is required for all event handling to work.
   ESP_ERROR_CHECK(esp_event_loop_create_default());
+
+  // Get the factory-set MAC address, which is a permanent unique number programmed
+  // into e-fuse bits of this CPU, and thus is useful for identifying the device.
+  esp_efuse_mac_get_default(GM.factory_mac_address);
+
+  // This will be used for the name of the WiFi access point until the user sets the
+  // host name.
+  snprintf(
+   GM.unique_name,
+   sizeof(GM.unique_name),
+   "%s-%02x:%02x:%02x:%02x:%02x:%02x",
+   GM.application_name,
+   GM.factory_mac_address[0],
+   GM.factory_mac_address[1],
+   GM.factory_mac_address[2],
+   GM.factory_mac_address[3],
+   GM.factory_mac_address[4],
+   GM.factory_mac_address[5]);
+
+  gm_printf("Device name: %s\n", GM.unique_name);
 
   // Start WiFi, if it's already configured.
   gm_wifi_start();

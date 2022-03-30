@@ -1,9 +1,12 @@
 #include <stdio.h>
+#include <stdint.h>
 #include <esp_log.h>
+#include "generic_main.h"
 
 void user_startup(void)
 {
-  printf("\n*** K6BP RigControl ***\n");
-  // esp_log_level_set("*", ESP_LOG_WARN);
-  esp_log_level_set("*", ESP_LOG_INFO);
+  // This will be the default WiFi access point name, with the factory MAC address
+  // appended to it. Keep it short.
+  GM.application_name = "rigcontrol";
+  gm_printf("\n*** K6BP RigControl ***\n");
 }

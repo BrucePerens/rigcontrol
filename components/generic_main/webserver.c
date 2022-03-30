@@ -11,8 +11,6 @@
 #include <inttypes.h>
 #include "generic_main.h"
 
-int64_t time_last_synchronized = -1;
-
 extern void user_web_handlers(httpd_handle_t);
 
 // extern const uint8_t servercert_pem[] asm("_binary_servercert_pem_start");
@@ -24,13 +22,13 @@ static void time_was_synchronized(struct timeval * t)
   // The first time the clock is adjusted, it's changed immediately from the epoch
   // to the current time. This sets the SNTP code so that the second and subsequent
   // times, it is adjusted smoothly.
-  if (time_last_synchronized == -1) {
-    fprintf(stderr, "\nTime was synchronized.\n");
+  if (GM.time_last_synchronized == -1) {
+    gm_printf("Time was synchronized.\n");
     fflush(stderr);
     sntp_set_sync_mode(SNTP_SYNC_MODE_SMOOTH);
     sntp_restart();
   }
-  time_last_synchronized = esp_timer_get_time();
+  GM.time_last_synchronized = esp_timer_get_time();
 }
 
 void start_webserver(void)
@@ -68,7 +66,7 @@ void stop_webserver()
 {
   if (server) {
     sntp_stop();
-    time_last_synchronized = -1;
+    GM.time_last_synchronized = -1;
     httpd_stop(server);
     server = NULL;
   }

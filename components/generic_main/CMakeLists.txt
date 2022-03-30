@@ -9,6 +9,7 @@ SRCS
   param.c
   pattern_string.c
   port_control_protocol.c
+  printf.c
   public_ip.c
   timer_to_human.c
   web_get.c

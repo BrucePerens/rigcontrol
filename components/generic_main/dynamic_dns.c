@@ -62,14 +62,14 @@ static int parameter(const char * name,  char * buffer, size_t buffer_size)
         if ( result == PR_NORMAL || result == PR_SECRET )
           return 0;
         else {
-          fprintf(stderr, "DDNS parameter %s required and not set.\n", p->param_name);
+          gm_printf("Warning: DDNS parameter %s required and not set.\n", p->param_name);
           return -1;
         }
       }
       p++;
     }
   }
-  fprintf(stderr, "No such DDNS parameter %s.\n", name);
+  gm_printf("No such DDNS parameter %s.\n", name);
   return 0;
 }
 
@@ -82,12 +82,12 @@ send_ddns(const char * url)
   gm_pattern_string(url, parameter, request, sizeof(request));
   int status = gm_web_get(request, response, sizeof(response));
   if (status == 200) {
-    fprintf(stderr, "\nDynamic DNS succeeded: %s.\n", response);
+    gm_printf("\nDynamic DNS succeeded: %s.\n", response);
     fflush(stderr);
     return 0;
   }
   else {
-    fprintf(stderr, "Dynamic DNS failed: %d %s\n", status, response);
+    gm_printf("Dynamic DNS failed: %d %s\n", status, response);
     return -1;
   }
 }
@@ -97,18 +97,22 @@ int gm_ddns(void)
   char ddns_provider[64];
   const struct ddns_provider * p = ddns_providers;
   gm_param_result_t result;
+  static bool i_told_you_once = false;
 
   result = gm_param_get("ddns_provider", ddns_provider, sizeof(ddns_provider));
   
   switch ( result ) {
   case PR_NOT_SET:
-    fprintf(stderr, "DDNS provider not set.\n");
+    if (!i_told_you_once) {
+      gm_printf("Warning: DDNS provider not set.\n");
+      i_told_you_once = true;
+    }
     return -1;
   case PR_NORMAL:
   case PR_SECRET:
     break;
   default:
-    fprintf(stderr, "Error reading ddns_provider parameter.\n");
+    gm_printf("Error reading ddns_provider parameter.\n");
     return -1;
   }
 
@@ -123,6 +127,6 @@ int gm_ddns(void)
     }
     p++;
   }
-  fprintf(stderr, "DDNS provider %s is not implemented.\n", ddns_provider);
+  gm_printf("DDNS provider %s is not implemented.\n", ddns_provider);
   return -1;
 }

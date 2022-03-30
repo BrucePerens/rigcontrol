@@ -28,13 +28,13 @@ static int tasks(int argc, char * * argv)
     // The task statistics functions block interrupts while they are running,
     // and that does something odd to command-line processing, so that the
     // carriage return isn't printed. So, add one here.
-    printf("\n");
+    gm_printf("\n");
     print_real_time_stats(100);
   }
   else {
-    printf("Task Name\tStatus\tPrio\tHWM\tTask\tAffinity\n");
+    gm_printf("Task Name\tStatus\tPrio\tHWM\tTask\tAffinity\n");
     vTaskList(stats_buffer);
-    printf("%s\n", stats_buffer);
+    gm_printf("%s\n", stats_buffer);
   }
   return 0;
 }

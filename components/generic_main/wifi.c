@@ -124,7 +124,7 @@ void wifi_event_sta_start(void* arg, esp_event_base_t event_base, int32_t event_
 
 void wifi_event_sta_disconnected(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data)
 {
-  fprintf(stderr, "\nWifi disconnected.\n");
+  gm_printf("Wifi disconnected.\n");
   fflush(stderr);
   stop_webserver();
   esp_wifi_connect();
@@ -145,7 +145,7 @@ ipv4_config_task(void * param)
 
   if ( gm_public_ipv4(buffer, sizeof(buffer)) == 0 ) {
     GM.sta.public_ip4.addr = esp_ip4addr_aton(buffer);
-    fprintf(stderr, "\nPublic IP address is %s\n", buffer);
+    gm_printf("Public IP address is %s\n", buffer);
     fflush(stderr);
     
     pthread_mutex_lock(&ddns_mutex);
@@ -178,7 +178,7 @@ static void ip_event_sta_got_ip4(void* arg, esp_event_base_t event_base, int32_t
   GM.sta.lwip_netif = event->esp_netif->lwip_netif;
   GM.sta.ip_info = event->ip_info;
 
-  fprintf(stderr, "\nGot IPv4: interface %s, address " IPSTR ", router " IPSTR "\n",
+  gm_printf("Got IPv4: interface %s, address " IPSTR ", router " IPSTR "\n",
   esp_netif_get_desc(event->esp_netif),
   IP2STR(&event->ip_info.ip),
   IP2STR(&event->ip_info.gw));
@@ -199,7 +199,7 @@ static void ip_event_got_ip6(void* arg, esp_event_base_t event_base, int32_t eve
   gm_netif_t *		interface;
   bool			is_station = false;
    
-  fprintf(stderr, "\nGot IPV6: interface %s, address " IPV6STR ", type %s\n",
+  gm_printf("Got IPV6: interface %s, address " IPV6STR ", type %s\n",
   netif_name,
   IPV62STR(event->ip6_info.ip),
   ipv6_address_types[ipv6_type]);
@@ -384,7 +384,6 @@ static void wifi_connect_to_ap(const char * ssid, const char * password)
 
 // FIX: Every time I go through this loop, two more netif interfaces
 // are created. Perhaps this is happening in esp_smartconfig.
-// One side effect is that the "Got IP" message prints for each netif.
 void gm_wifi_restart(void)
 {
   stop_smart_config_task(true);

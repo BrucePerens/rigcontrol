@@ -6,6 +6,7 @@
 #include <esp_netif_types.h>
 #include <esp_netif_net_stack.h>
 #include <../lwip/esp_netif_lwip_internal.h>
+#include <pthread.h>
 
 #define CONSTRUCTOR static void __attribute__ ((constructor))
 
@@ -35,7 +36,11 @@ struct generic_main {
   gm_netif_t		ap;
   gm_netif_t		sta;
   esp_console_repl_t *	repl;
+  pthread_mutex_t 	console_print_mutex;
   int64_t		time_last_synchronized;
+  uint8_t		factory_mac_address[6];
+  const char *		application_name;
+  char			unique_name[64];
 };
 
 struct _GM_Array;
@@ -68,9 +73,12 @@ extern void			gm_param_list(gm_param_list_coroutine_t coroutine);
 extern gm_param_result_t	gm_param_set(const char * name, const char * value);
 
 extern int			gm_pattern_string(const char * string, gm_pattern_coroutine_t coroutine, char * buffer, size_t buffer_size);
+extern int			gm_printf(const char * format, ...);
 extern int			gm_public_ipv4(char * data, size_t size);
 
 extern void			gm_timer_to_human(int64_t, char *, size_t);
+
+extern int			gm_vprintf(const char * format, va_list args);
 
 extern int			gm_web_get(const char *url, char *data, size_t size);
 extern int			gm_web_get_with_coroutine(const char *url, gm_web_get_coroutine_t coroutine);

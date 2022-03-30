@@ -5,6 +5,7 @@
 #include <freertos/task.h>
 #include <freertos/semphr.h>
 #include <esp_system.h>
+#include "generic_main.h"
 
 #define ARRAY_SIZE_OFFSET   5   //Increase this if print_real_time_stats returns ESP_ERR_INVALID_SIZE
 
@@ -68,7 +69,7 @@ esp_err_t print_real_time_stats(TickType_t xTicksToWait)
             if (total_elapsed_time == 0)
                 ret = ESP_ERR_INVALID_STATE;
             else {
-              printf("| Task | Run Time | Percentage\n");
+              gm_printf("| Task | Run Time | Percentage\n");
               //Match each task in start_array to those in the end_array
               for (int i = 0; i < start_gm_array_size; i++) {
                   int k = -1;
@@ -85,19 +86,19 @@ esp_err_t print_real_time_stats(TickType_t xTicksToWait)
                   if (k >= 0) {
                       uint32_t task_elapsed_time = end_array[k].ulRunTimeCounter - start_array[i].ulRunTimeCounter;
                       uint32_t percentage_time = (task_elapsed_time * 100UL) / (total_elapsed_time * portNUM_PROCESSORS);
-                      printf("| %s | %d | %d%%\n", start_array[i].pcTaskName, task_elapsed_time, percentage_time);
+                      gm_printf("| %s | %d | %d%%\n", start_array[i].pcTaskName, task_elapsed_time, percentage_time);
                   }
               }
           
               //Print unmatched tasks
               for (int i = 0; i < start_gm_array_size; i++) {
                   if (start_array[i].xHandle != NULL) {
-                      printf("| %s | Deleted\n", start_array[i].pcTaskName);
+                      gm_printf("| %s | Deleted\n", start_array[i].pcTaskName);
                   }
               }
               for (int i = 0; i < end_gm_array_size; i++) {
                   if (end_array[i].xHandle != NULL) {
-                      printf("| %s | Created\n", end_array[i].pcTaskName);
+                      gm_printf("| %s | Created\n", end_array[i].pcTaskName);
                   }
               }
               ret = ESP_OK;

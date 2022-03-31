@@ -7,6 +7,7 @@
 
 // Print to the console, with mutual exclusion.
 // This is only usable in tasks, not anything at interrupt level.
+// Event loops each run in their own task, so it's usable from event handlers.
 int
 gm_vprintf(const char * pattern, va_list args)
 {

@@ -59,7 +59,7 @@ static void initialize(void)
 
   // Configure the console command system.
   esp_console_repl_config_t repl_config = ESP_CONSOLE_REPL_CONFIG_DEFAULT();
-  repl_config.task_stack_size = 40 * 1024;
+  repl_config.task_stack_size = 20 * 1024;
   repl_config.prompt = ">";
   esp_console_dev_uart_config_t uart_config = ESP_CONSOLE_DEV_UART_CONFIG_DEFAULT();
   ESP_ERROR_CHECK(esp_console_new_repl_uart(&uart_config, &repl_config, &GM.repl));

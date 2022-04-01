@@ -1,4 +1,5 @@
 #include <stdint.h>
+#include <sys/types.h>
 #include <lwip/sockets.h>
 #include <netinet/in.h>
 #include "generic_main.h"
@@ -98,17 +99,24 @@ enum pcp_response_code {
 
 int pcp(bool ipv6)
 {
+  struct pcp			packet[1100];
   struct sockaddr_storage	address;
+  struct sockaddr_storage	receive_address;
   int				ip_protocol;
+  ssize_t			address_size;
+  socklen_t			receive_size = 0;
 
   if ( !ipv6 ) {
+    address_size = sizeof(struct sockaddr_in);
     struct sockaddr_in * a4 = (struct sockaddr_in *)&address;
     a4->sin_addr.s_addr = GM.sta.ip_info.gw.addr;
     a4->sin_family = AF_INET;
     a4->sin_port = htons(PCP_PORT);
     ip_protocol = IPPROTO_IP;
+    
   }
   else {
+    address_size = sizeof(struct sockaddr_in6);
     struct sockaddr_in6 * a6 = (struct sockaddr_in6 *)&address;
     memcpy(&a6->sin6_addr.un, GM.sta.router_ip6.addr, sizeof(a6->sin6_addr.un));
     a6->sin6_family = AF_INET6;
@@ -116,5 +124,26 @@ int pcp(bool ipv6)
     a6->sin6_scope_id = esp_netif_get_netif_impl_index(GM.sta.esp_netif);
     ip_protocol = IPPROTO_IPV6;
   }
+
+  int sock = socket(address.ss_family, SOCK_DGRAM, ip_protocol);
+
+  ssize_t result = sendto(
+   sock,
+   packet,
+   sizeof(packet),
+   0,
+   (const struct sockaddr *)&address,
+   (socklen_t)address_size);
+
+   static int timeout = 5 * 1000;
+   setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO,(char*)&timeout,sizeof(timeout));
+
+  result = recvfrom(
+   sock,
+   packet,
+   sizeof(packet),
+   0,
+   (struct sockaddr *)&receive_address,
+   &receive_size);
   return 0;
 }

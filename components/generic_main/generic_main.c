@@ -19,7 +19,6 @@
 #include <esp_crt_bundle.h>
 #include <esp_tls.h>
 #include <esp_random.h>
-#include <bootloader_random.h>
 #include <esp_console.h>
 #include "generic_main.h"
 
@@ -41,11 +40,6 @@ static void initialize(void)
   // Set the console print lock, so that things in tasks don't print over each other.
   // This can't be used for non-tasks.
   pthread_mutex_init(&GM.console_print_mutex, 0);
-
-  // Give the internal random number generator some entropy from the CPU's
-  // hardware RNG, just in case WiFi (which is also an entropy source)
-  // doesn't start.
-  bootloader_random_enable();
 
   // Connect the non-volatile-storage FLASH partition. Initialize it if
   // necessary.

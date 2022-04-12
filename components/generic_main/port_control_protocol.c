@@ -4,40 +4,57 @@
 #include <netinet/in.h>
 #include "generic_main.h"
 
-struct pcp {
+struct nat_pmp_or_pcp {
   uint8_t	version;
-  uint8_t	r:1;
-  uint8_t	opcode:7;
+  uint8_t	opcode; // Also contains the request/response bit.
+  uint8_t	reserved;
+  uint8_t	result_code;
   union {
-    struct pcp_request {
-      uint16_t	reserved;
+    struct nat_pmp_packet {
+      struct nat_pmp_request {
+        uint16_t	internal_port;
+        uint16_t	external_port;
+        uint32_t	lifetime;
+      } request;
+      struct nat_pmp_response {
+        uint32_t	epoch;
+        uint16_t	internal_port;
+        uint16_t	external_port;
+        uint32_t	lifetime;
+      } response;
+    } nat_pmp;
+    struct pcp_packet {
       uint32_t	lifetime;
-      uint32_t	client_ip_address[4];
-    } request;
-    struct pcp_response {
-      uint8_t	reserved;
-      uint32_t	result_code;
-      uint32_t	lifetime;
-      uint32_t	epoch_time;
-      uint32_t	reserved1[3];
-    } response;
-  };
-  union {
-    struct pcp_map_peer {
-      // For MAP or PEER opcode.
-      uint32_t	nonce;
-      uint8_t	protocol;
-      uint8_t	reserved[3];
-      uint16_t	internal_port;
-      uint16_t	external_port;
-      uint32_t	external_ip_address[4];
-      // For PEER opcode only.
-      uint16_t	remote_peer_port;
-      uint16_t	reserved1;
-      uint32_t	remote_peer_address[4];
-    } mp;
+      union {
+        struct pcp_request {
+          struct in6_addr client_address;
+        } request;
+        struct pcp_response {
+          uint32_t	epoch_time;
+          uint32_t	reserved1[3];
+        } response;
+      };
+      union {
+        struct pcp_map_peer {
+          // For MAP or PEER opcode.
+          uint32_t	nonce[3];
+          uint8_t	protocol;
+          uint8_t	reserved[3];
+          uint16_t	internal_port;
+          uint16_t	external_port;
+          struct in6_addr external_address;
+          // For PEER opcode only.
+          uint16_t	remote_peer_port;
+          uint16_t	reserved1;
+          struct in6_addr	remote_peer_address;
+        } mp;
+      };
+    } pcp;
   };
 };
+
+const uint8_t pcp_ipv4_broadcast_address[4] = { 221, 0, 0, 4 };
+const uint8_t pcp_ipv6_broadcast_address[8] = { 0xff, 0x02, 0, 0, 0, 0, 0, 0x01 };
 
 enum pcp_version {
   NAT_PMP = 0,
@@ -66,7 +83,7 @@ enum nat_pmp_opcode {
 
 enum pcp_protocol {
   PCP_TCP = 6,
-  PCP_UPD = 17
+  PCP_UDP = 17
 };
 
 enum nat_pmp_response_code {
@@ -97,53 +114,86 @@ enum pcp_response_code {
   PCP_EXCESSIVE_REMOTE_PEERS = 13
 };
 
-int pcp(bool ipv6)
+int gm_port_control_protocol(bool ipv6)
 {
-  struct pcp			packet[1100];
-  struct sockaddr_storage	address;
+  struct nat_pmp_or_pcp		send_packet;
+  struct nat_pmp_or_pcp		receive_packet;
+  struct sockaddr_storage	send_address;
   struct sockaddr_storage	receive_address;
   int				ip_protocol;
-  ssize_t			address_size;
-  socklen_t			receive_size = 0;
+  socklen_t			send_address_size;
+  socklen_t			receive_address_size;
+  ssize_t			send_result;
+  ssize_t			receive_result;
+  struct timeval		timeout;
 
   if ( !ipv6 ) {
-    address_size = sizeof(struct sockaddr_in);
-    struct sockaddr_in * a4 = (struct sockaddr_in *)&address;
+    send_address_size = sizeof(struct sockaddr_in);
+    struct sockaddr_in * a4 = (struct sockaddr_in *)&send_address;
     a4->sin_addr.s_addr = GM.sta.ip_info.gw.addr;
     a4->sin_family = AF_INET;
     a4->sin_port = htons(PCP_PORT);
     ip_protocol = IPPROTO_IP;
-    
   }
   else {
-    address_size = sizeof(struct sockaddr_in6);
-    struct sockaddr_in6 * a6 = (struct sockaddr_in6 *)&address;
-    memcpy(&a6->sin6_addr.un, GM.sta.router_ip6.addr, sizeof(a6->sin6_addr.un));
+    send_address_size = sizeof(struct sockaddr_in6);
+    struct sockaddr_in6 * a6 = (struct sockaddr_in6 *)&send_address;
+    memcpy(&a6->sin6_addr.s6_addr, GM.sta.router_ip6.addr, sizeof(a6->sin6_addr.s6_addr));
     a6->sin6_family = AF_INET6;
     a6->sin6_port = htons(PCP_PORT);
     a6->sin6_scope_id = esp_netif_get_netif_impl_index(GM.sta.esp_netif);
     ip_protocol = IPPROTO_IPV6;
   }
 
-  int sock = socket(address.ss_family, SOCK_DGRAM, ip_protocol);
+  memset(&send_packet, '\0', sizeof(send_packet));
 
-  ssize_t result = sendto(
+  if ( !ipv6 ) {
+    send_packet.pcp.request.client_address.s6_addr[10] = 0xff;
+    send_packet.pcp.request.client_address.s6_addr[11] = 0xff;
+    memcpy(&send_packet.pcp.request.client_address.s6_addr[12], &GM.sta.ip_info.ip.addr, 4);
+  }
+  else {
+    struct sockaddr_in6 * a6 = (struct sockaddr_in6 *)&send_address;
+    memcpy(send_packet.pcp.request.client_address.s6_addr, &a6->sin6_addr.s6_addr, sizeof(a6->sin6_addr.s6_addr));
+  }
+
+  send_packet.version = PORT_MAPPING_PROTOCOL;
+  send_packet.opcode = PCP_MAP;
+  send_packet.pcp.lifetime = htonl(24 * 60 * 60);
+  esp_fill_random(send_packet.pcp.mp.nonce, sizeof(send_packet.pcp.mp.nonce));
+  send_packet.pcp.mp.protocol = PCP_TCP;
+  send_packet.pcp.mp.internal_port = htons(8080);
+  send_packet.pcp.mp.external_port = htons(8080);
+
+  int sock = socket(send_address.ss_family, SOCK_DGRAM, ip_protocol);
+
+  // Set the receive timeout for 5 seconds.
+  timeout.tv_sec = 5;
+  timeout.tv_usec = 0;
+  setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO,(char*)&timeout, sizeof(timeout));
+
+  int send_packet_size = (size_t)&(((struct nat_pmp_or_pcp *)0)->pcp.mp.remote_peer_port);
+  // Send the packet to the gateway.
+  send_result = sendto(
    sock,
-   packet,
-   sizeof(packet),
+   &send_packet,
+   send_packet_size,
    0,
-   (const struct sockaddr *)&address,
-   (socklen_t)address_size);
+   (const struct sockaddr *)&send_address,
+   send_address_size);
+  fprintf(stderr, "Send returned %d\n", send_result);
 
-   static int timeout = 5 * 1000;
-   setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO,(char*)&timeout,sizeof(timeout));
+  receive_address_size = sizeof(struct sockaddr_in6);
 
-  result = recvfrom(
+  // Receive the reply from the gateway, or not.
+  receive_result = recvfrom(
    sock,
-   packet,
-   sizeof(packet),
+   &receive_packet,
+   sizeof(receive_packet),
    0,
    (struct sockaddr *)&receive_address,
-   &receive_size);
+   &receive_address_size);
+  fprintf(stderr, "Receive returned %d\n", receive_result);
+  fprintf(stderr, "Result code %d\n", receive_packet.result_code);
   return 0;
 }

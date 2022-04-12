@@ -1,20 +1,7 @@
+file(GLOB DOT_C *.c)
 idf_component_register(
 SRCS
-  all_zeroes.c
-  array.c
-  command.c
-  dynamic_dns.c
-  generic_main.c
-  global.c
-  param.c
-  pattern_string.c
-  port_control_protocol.c
-  printf.c
-  public_ip.c
-  timer_to_human.c
-  web_get.c
-  webserver.c
-  wifi.c
+  ${DOT_C}
 INCLUDE_DIRS
   "."
   "include"

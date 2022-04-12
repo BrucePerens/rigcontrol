@@ -1,15 +1,7 @@
+file(GLOB DOT_C *.c)
 idf_component_register(
 SRCS
-  date.c
-  ddns.c
-  gpio.c
-  param.c
-  public_ip_cmd.c
-  realtime_tasks.c
-  restart.c
-  tasks.c
-  uptime.c
-  wget.c
+  ${DOT_C}
 INCLUDE_DIRS
   .
   include

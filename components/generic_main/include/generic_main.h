@@ -73,6 +73,7 @@ extern void			gm_param_list(gm_param_list_coroutine_t coroutine);
 extern gm_param_result_t	gm_param_set(const char * name, const char * value);
 
 extern int			gm_pattern_string(const char * string, gm_pattern_coroutine_t coroutine, char * buffer, size_t buffer_size);
+extern int			gm_port_control_protocol(bool ipv6);
 extern int			gm_printf(const char * format, ...);
 extern int			gm_public_ipv4(char * data, size_t size);
 

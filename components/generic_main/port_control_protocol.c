@@ -1,7 +1,6 @@
 #include <stdint.h>
 #include <sys/types.h>
 #include <lwip/sockets.h>
-#include <netinet/in.h>
 #include "generic_main.h"
 
 struct nat_pmp_or_pcp {
@@ -115,19 +114,7 @@ enum pcp_response_code {
   PCP_EXCESSIVE_REMOTE_PEERS = 13
 };
 
-struct gm_port_mapping { 
-  struct timeval granted_time;
-  uint32_t nonce[3];
-  uint32_t epoch;
-  uint32_t lifetime;
-  uint16_t internal_port;
-  uint16_t external_port;
-  struct in6_addr external_address;
-  bool ipv6;
-  bool tcp;
-};
-
-int gm_port_control_protocol1(struct gm_port_mapping * m)
+int gm_port_control_protocol(gm_port_mapping_t * m)
 {
   struct nat_pmp_or_pcp		send_packet = {};
   struct nat_pmp_or_pcp		receive_packet = {};
@@ -198,7 +185,7 @@ int gm_port_control_protocol1(struct gm_port_mapping * m)
 
   if ( send_result < map_packet_size ) {
     fprintf(stderr, "Send returned %d\n", send_result);
-    return 0;
+    return -1;
   }
 
   receive_address_size = sizeof(struct sockaddr_in6);
@@ -215,20 +202,20 @@ int gm_port_control_protocol1(struct gm_port_mapping * m)
   if ( receive_result >= map_packet_size ) {
     if ( memcmp(receive_packet.pcp.mp.nonce, send_packet.pcp.mp.nonce, sizeof(receive_packet.pcp.mp.nonce)) != 0 ) {
       fprintf(stderr, "Received nonce isn't equal to transmitted one.\n");
-      return 0;
+      return -1;
     }
     if ( receive_packet.result_code != PCP_SUCCESS ) {
       fprintf(stderr, "Received result code: %d.\n", receive_packet.result_code);
-      return 0;
+      return -1;
     }
     if ( receive_packet.opcode != (send_packet.opcode | 0x80) ) {
       fprintf(stderr, "Received opcode: %x.\n", receive_packet.opcode);
-      return 0;
+      return -1;
     }
   }
   else {
     fprintf(stderr, "Received result too small.\n");
-    return 0;
+    return -1;
   }
 
   gettimeofday(&m->granted_time, 0);
@@ -240,17 +227,16 @@ int gm_port_control_protocol1(struct gm_port_mapping * m)
   m->external_port = ntohs(receive_packet.pcp.mp.external_port);
   m->lifetime = ntohl(receive_packet.pcp.lifetime);
   memcpy(m->external_address.s6_addr, receive_packet.pcp.mp.external_address.s6_addr, sizeof(m->external_address.s6_addr));
-  return 0;
-}
 
-int gm_port_control_protocol(bool ipv6) {
-  struct gm_port_mapping m = {};
-  esp_fill_random(&m.nonce, sizeof(m.nonce));
-  m.ipv6 = false;
-  m.tcp = true;
-  m.internal_port = m.external_port = 8080;
-  m.lifetime = 24 * 60 * 60;
-  gm_port_control_protocol1(&m);
-  fprintf(stderr, "External address: %s, port: %d\n", inet_ntoa(m.external_address), m.external_port);
+  gm_port_mapping_t * * p = &GM.port_mappings;
+  while ( *p != 0 ) {
+    if ( *p == m ) {
+      p = 0;
+      break;
+    }
+    p = &((*p)->next);
+  }
+  if ( p )
+    *p = m;
   return 0;
 }

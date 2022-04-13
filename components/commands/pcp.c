@@ -12,9 +12,22 @@ static struct {
 
 static int run(int argc, char * * argv)
 {
+  gm_port_mapping_t * m = malloc(sizeof(*m));
+  memset(m, '\0', sizeof(*m));
   printf("\n"); 
-  gm_port_control_protocol(false);
-  return 0;
+  esp_fill_random(&m->nonce, sizeof(m->nonce));
+  m->ipv6 = false;
+  m->tcp = true;
+  m->internal_port = m->external_port = 8080;
+  m->lifetime = 24 * 60 * 60;
+  if ( gm_port_control_protocol(m) == 0 ) {
+    fprintf(stderr, "External address: %s, port: %d\n", inet_ntoa(m->external_address), m->external_port);
+    return 0;
+  }
+  else {
+    free(m);
+    return -1;
+  }
 }
 
 CONSTRUCTOR install(void)

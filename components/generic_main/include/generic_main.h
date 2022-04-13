@@ -5,6 +5,7 @@
 #include <esp_netif.h>
 #include <esp_netif_types.h>
 #include <esp_netif_net_stack.h>
+#include <netinet/in.h>
 #include <../lwip/esp_netif_lwip_internal.h>
 #include <pthread.h>
 
@@ -17,6 +18,19 @@ typedef enum _gm_param_result {
   PR_SECRET = 1,
   PR_NOT_SET = 2
 } gm_param_result_t;
+
+typedef struct _gm_port_mapping { 
+  struct timeval granted_time;
+  uint32_t nonce[3];
+  uint32_t epoch;
+  uint32_t lifetime;
+  uint16_t internal_port;
+  uint16_t external_port;
+  struct in6_addr external_address;
+  bool ipv6;
+  bool tcp;
+  struct _gm_port_mapping * next;
+} gm_port_mapping_t;
 
 struct _gm_netif {
   esp_netif_t *		esp_netif;
@@ -35,6 +49,7 @@ struct generic_main {
   nvs_handle_t		nvs;
   gm_netif_t		ap;
   gm_netif_t		sta;
+  gm_port_mapping_t *	port_mappings;
   esp_console_repl_t *	repl;
   pthread_mutex_t 	console_print_mutex;
   int64_t		time_last_synchronized;
@@ -73,7 +88,7 @@ extern void			gm_param_list(gm_param_list_coroutine_t coroutine);
 extern gm_param_result_t	gm_param_set(const char * name, const char * value);
 
 extern int			gm_pattern_string(const char * string, gm_pattern_coroutine_t coroutine, char * buffer, size_t buffer_size);
-extern int			gm_port_control_protocol(bool ipv6);
+extern int			gm_port_control_protocol(gm_port_mapping_t *);
 extern int			gm_printf(const char * format, ...);
 extern int			gm_public_ipv4(char * data, size_t size);
 

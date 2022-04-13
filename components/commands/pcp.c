@@ -12,6 +12,7 @@ static struct {
 
 static int run(int argc, char * * argv)
 {
+  printf("\n"); 
   gm_port_control_protocol(false);
   return 0;
 }

@@ -30,7 +30,7 @@ struct nat_pmp_or_pcp {
           struct in6_addr client_address;
         } request;
         struct pcp_response {
-          uint32_t	epoch_time;
+          uint32_t	epoch;
           uint32_t	reserved1[3];
         } response;
       };
@@ -52,6 +52,7 @@ struct nat_pmp_or_pcp {
     } pcp;
   };
 };
+const size_t map_packet_size = (size_t)&(((struct nat_pmp_or_pcp *)0)->pcp.mp.remote_peer_port);
 
 const uint8_t pcp_ipv4_broadcast_address[4] = { 221, 0, 0, 4 };
 const uint8_t pcp_ipv6_broadcast_address[8] = { 0xff, 0x02, 0, 0, 0, 0, 0, 0x01 };
@@ -114,20 +115,32 @@ enum pcp_response_code {
   PCP_EXCESSIVE_REMOTE_PEERS = 13
 };
 
-int gm_port_control_protocol(bool ipv6)
+struct gm_port_mapping { 
+  struct timeval granted_time;
+  uint32_t nonce[3];
+  uint32_t epoch;
+  uint32_t lifetime;
+  uint16_t internal_port;
+  uint16_t external_port;
+  struct in6_addr external_address;
+  bool ipv6;
+  bool tcp;
+};
+
+int gm_port_control_protocol1(struct gm_port_mapping * m)
 {
-  struct nat_pmp_or_pcp		send_packet;
-  struct nat_pmp_or_pcp		receive_packet;
-  struct sockaddr_storage	send_address;
-  struct sockaddr_storage	receive_address;
+  struct nat_pmp_or_pcp		send_packet = {};
+  struct nat_pmp_or_pcp		receive_packet = {};
+  struct sockaddr_storage	send_address = {};
+  struct sockaddr_storage	receive_address = {};
   int				ip_protocol;
   socklen_t			send_address_size;
   socklen_t			receive_address_size;
   ssize_t			send_result;
   ssize_t			receive_result;
-  struct timeval		timeout;
+  struct timeval		timeout = {};
 
-  if ( !ipv6 ) {
+  if ( !m->ipv6 ) {
     send_address_size = sizeof(struct sockaddr_in);
     struct sockaddr_in * a4 = (struct sockaddr_in *)&send_address;
     a4->sin_addr.s_addr = GM.sta.ip_info.gw.addr;
@@ -145,9 +158,7 @@ int gm_port_control_protocol(bool ipv6)
     ip_protocol = IPPROTO_IPV6;
   }
 
-  memset(&send_packet, '\0', sizeof(send_packet));
-
-  if ( !ipv6 ) {
+  if ( !m->ipv6 ) {
     send_packet.pcp.request.client_address.s6_addr[10] = 0xff;
     send_packet.pcp.request.client_address.s6_addr[11] = 0xff;
     memcpy(&send_packet.pcp.request.client_address.s6_addr[12], &GM.sta.ip_info.ip.addr, 4);
@@ -160,28 +171,35 @@ int gm_port_control_protocol(bool ipv6)
   send_packet.version = PORT_MAPPING_PROTOCOL;
   send_packet.opcode = PCP_MAP;
   send_packet.pcp.lifetime = htonl(24 * 60 * 60);
-  esp_fill_random(send_packet.pcp.mp.nonce, sizeof(send_packet.pcp.mp.nonce));
-  send_packet.pcp.mp.protocol = PCP_TCP;
-  send_packet.pcp.mp.internal_port = htons(8080);
-  send_packet.pcp.mp.external_port = htons(8080);
+  memcpy(send_packet.pcp.mp.nonce, m->nonce, sizeof(m->nonce));
+  send_packet.pcp.mp.protocol = m->tcp ? PCP_TCP : PCP_UDP;
+  send_packet.pcp.mp.internal_port = htons(m->internal_port);
+  send_packet.pcp.mp.external_port = htons(m->external_port);
+  send_packet.pcp.lifetime = htonl(m->lifetime);
+  memcpy(send_packet.pcp.mp.external_address.s6_addr, m->external_address.s6_addr, sizeof(m->external_address.s6_addr));
 
   int sock = socket(send_address.ss_family, SOCK_DGRAM, ip_protocol);
 
-  // Set the receive timeout for 5 seconds.
-  timeout.tv_sec = 5;
+  timeout.tv_sec = 2;
   timeout.tv_usec = 0;
   setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO,(char*)&timeout, sizeof(timeout));
 
-  int send_packet_size = (size_t)&(((struct nat_pmp_or_pcp *)0)->pcp.mp.remote_peer_port);
+  // The size of the packet does not include the portion used for the PEER operation.
+  // We have to trim any possible option segments from the packet, or populate them.
+
   // Send the packet to the gateway.
   send_result = sendto(
    sock,
    &send_packet,
-   send_packet_size,
+   map_packet_size,
    0,
    (const struct sockaddr *)&send_address,
    send_address_size);
-  fprintf(stderr, "Send returned %d\n", send_result);
+
+  if ( send_result < map_packet_size ) {
+    fprintf(stderr, "Send returned %d\n", send_result);
+    return 0;
+  }
 
   receive_address_size = sizeof(struct sockaddr_in6);
 
@@ -193,7 +211,46 @@ int gm_port_control_protocol(bool ipv6)
    0,
    (struct sockaddr *)&receive_address,
    &receive_address_size);
-  fprintf(stderr, "Receive returned %d\n", receive_result);
-  fprintf(stderr, "Result code %d\n", receive_packet.result_code);
+
+  if ( receive_result >= map_packet_size ) {
+    if ( memcmp(receive_packet.pcp.mp.nonce, send_packet.pcp.mp.nonce, sizeof(receive_packet.pcp.mp.nonce)) != 0 ) {
+      fprintf(stderr, "Received nonce isn't equal to transmitted one.\n");
+      return 0;
+    }
+    if ( receive_packet.result_code != PCP_SUCCESS ) {
+      fprintf(stderr, "Received result code: %d.\n", receive_packet.result_code);
+      return 0;
+    }
+    if ( receive_packet.opcode != (send_packet.opcode | 0x80) ) {
+      fprintf(stderr, "Received opcode: %x.\n", receive_packet.opcode);
+      return 0;
+    }
+  }
+  else {
+    fprintf(stderr, "Received result too small.\n");
+    return 0;
+  }
+
+  gettimeofday(&m->granted_time, 0);
+  memcpy(m->nonce, receive_packet.pcp.mp.nonce, sizeof(m->nonce));
+  m->epoch = receive_packet.pcp.response.epoch;
+  m->ipv6 = ip_protocol == IPPROTO_IPV6;
+  m->tcp = receive_packet.pcp.mp.protocol == PCP_TCP;
+  m->internal_port = ntohs(receive_packet.pcp.mp.internal_port);
+  m->external_port = ntohs(receive_packet.pcp.mp.external_port);
+  m->lifetime = ntohl(receive_packet.pcp.lifetime);
+  memcpy(m->external_address.s6_addr, receive_packet.pcp.mp.external_address.s6_addr, sizeof(m->external_address.s6_addr));
+  return 0;
+}
+
+int gm_port_control_protocol(bool ipv6) {
+  struct gm_port_mapping m = {};
+  esp_fill_random(&m.nonce, sizeof(m.nonce));
+  m.ipv6 = false;
+  m.tcp = true;
+  m.internal_port = m.external_port = 8080;
+  m.lifetime = 24 * 60 * 60;
+  gm_port_control_protocol1(&m);
+  fprintf(stderr, "External address: %s, port: %d\n", inet_ntoa(m.external_address), m.external_port);
   return 0;
 }

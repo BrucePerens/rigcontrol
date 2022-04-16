@@ -88,7 +88,7 @@ struct stun_attribute {
     struct {
       uint8_t hash[32];
     } fingerprint;
-  } value[];
+  } value;
 };
 
 void
@@ -165,7 +165,12 @@ int gm_stun(const char * host, const char * port, bool ipv6)
    (struct sockaddr *)&receive_address,
    &receive_address_size);
 
+  struct stun_attribute * attribute = (struct stun_attribute *)receive_attribute;
   fprintf(stderr, "Receive returned %d\n", receive_result);
+  fprintf(stderr, "Receive type: %x\n", ntohs(receive_packet->type));
+  fprintf(stderr, "First attribute type %d\n", htons(attribute->type));
+  fprintf(stderr, "Address: %x\n", htonl(attribute->value.mapped_address.ipv4));
+  
 
   return 0;
 }

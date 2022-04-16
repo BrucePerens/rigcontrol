@@ -136,9 +136,22 @@ decode_unknown_attributes(struct stun_attribute * a)
 }
 
 void
-decode_xor_mapped_address(struct stun_attribute * a)
+decode_xor_mapped_address(struct stun_attribute * a, struct stun_message * message)
 {
-  fprintf(stderr, "XOR-mapped address.\n");
+  char	buffer[128];
+
+  a->value.mapped_address.port ^= htons((stun_magic >> 16) & 0xffff);
+  if ( a->value.mapped_address.family == 1 ) {
+    a->value.mapped_address.ipv4 ^= htonl(stun_magic);
+  }
+  else {
+    *((uint32_t *)a->value.mapped_address.ipv6.s6_addr) ^= htonl(stun_magic);
+    *((uint32_t *)&a->value.mapped_address.ipv6.s6_addr[4]) ^= message->transaction_id[0];
+    *((uint32_t *)&a->value.mapped_address.ipv6.s6_addr[8]) ^= message->transaction_id[1];
+    *((uint32_t *)&a->value.mapped_address.ipv6.s6_addr[12]) ^= message->transaction_id[2];
+  }
+  inet_ntop(a->value.mapped_address.family == 1 ? AF_INET : AF_INET6, &a->value.mapped_address.ipv6, buffer, sizeof(buffer));
+  fprintf(stderr, "XOR mapped address: %s, port: %d\n", buffer, ntohs(a->value.mapped_address.port));
 }
 
 void
@@ -196,7 +209,7 @@ int gm_stun(const char * host, const char * port, bool ipv6)
 
   unsigned int message_class = STUN_REQUEST;
   unsigned int method = STUN_BINDING;
-  send_packet->magic_cookie = stun_magic;
+  send_packet->magic_cookie = htonl(stun_magic);
   send_packet->type = htons(((message_class & 0x1) << 4) | ((message_class & 0x2) << 8) | (method & 0xf));
   esp_fill_random(send_packet->transaction_id, sizeof(send_packet->transaction_id));
 
@@ -259,7 +272,7 @@ int gm_stun(const char * host, const char * port, bool ipv6)
       decode_unknown_attributes(attribute);
       break;
     case XOR_MAPPED_ADDRESS:
-      decode_xor_mapped_address(attribute);
+      decode_xor_mapped_address(attribute, receive_packet);
       break;
     case SOFTWARE:
       decode_software(attribute);

@@ -7,9 +7,9 @@
 #include "generic_main.h"
 
 static struct {
+    struct arg_lit * ipv6;
     struct arg_str * host;
     struct arg_str * port;
-    struct arg_lit * ipv6;
     struct arg_end * end;
 } args;
 
@@ -28,9 +28,9 @@ static int run(int argc, char * * argv)
 
 CONSTRUCTOR install(void)
 {
+  args.ipv6 =  arg_lit0("6", NULL, "Use IPv6 (default IPv4)");
   args.host  = arg_str1(NULL, NULL, "host", "STUN server hostname");
   args.port  = arg_str0(NULL, NULL, "port", "port number (default 3478)");
-  args.ipv6 =  arg_lit0("6", NULL, "Use IPv6 (default IPv4)");
   args.end = arg_end(10);
   static const esp_console_cmd_t command = {
     .command = "stun",

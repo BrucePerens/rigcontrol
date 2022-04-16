@@ -92,6 +92,8 @@ extern int			gm_port_control_protocol(gm_port_mapping_t *);
 extern int			gm_printf(const char * format, ...);
 extern int			gm_public_ipv4(char * data, size_t size);
 
+extern int			gm_stun(const char * host, const char * port, bool ipv6);
+
 extern void			gm_timer_to_human(int64_t, char *, size_t);
 
 extern int			gm_vprintf(const char * format, va_list args);

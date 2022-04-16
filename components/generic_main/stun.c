@@ -46,6 +46,25 @@ enum stun_methods {
   STUN_BINDING = 1
 };
 
+enum stun_attributes {
+  MAPPED_ADDRESS = 1,
+  USERNAME = 6,
+  MESSAGE_INTEGRITY = 8,
+  ERROR_CODE = 9,
+  UNKNOWN_ATTRIBUTES = 0x0a,
+  REALM = 0x14,
+  NONCE = 0x15,
+  XOR_MAPPED_ADDRESS = 0x20,
+  SOFTWARE = 0x8022,
+  ALTERNATE_SERVER = 0x8023,
+  FINGERPRINT = 0x8028,
+  MESSAGE_INTEGRITY_SHA256 = 0x1c,
+  PASSWORD_ALGORITHM = 0x1d,
+  USERHASH = 0x1e,
+  PASSWORD_ALGORITHMS = 0x8002,
+  ALTERNATE_DOMAIN = 0x8003
+};
+
 struct stun_message {
   uint16_t type; // First two bits must be zero. Message type and class interleaved.
   uint16_t length; // Does not include the 20-byte header size. Always a multiple of 4.
@@ -96,14 +115,60 @@ fingerprint(uint8_t * * attribute, uint16_t * length)
 {
 }
 
+void
+decode_mapped_address(struct stun_attribute * a)
+{
+  char	buffer[128];
+  inet_ntop(a->value.mapped_address.family == 1 ? AF_INET : AF_INET6, &a->value.mapped_address.ipv6, buffer, sizeof(buffer));
+  fprintf(stderr, "Mapped address: %s, port: %d\n", buffer, ntohs(a->value.mapped_address.port));
+}
+
+void
+decode_error_code(struct stun_attribute * a)
+{
+  fprintf(stderr, "Error code.\n");
+}
+
+void
+decode_unknown_attributes(struct stun_attribute * a)
+{
+  fprintf(stderr, "Unknown attribute.\n");
+}
+
+void
+decode_xor_mapped_address(struct stun_attribute * a)
+{
+  fprintf(stderr, "XOR-mapped address.\n");
+}
+
+void
+decode_software(struct stun_attribute * a)
+{
+  fprintf(stderr, "Software: ");
+  fwrite((char *)&a->value, 1, htons(a->length), stderr);
+  fprintf(stderr, "\n");
+}
+
+void
+decode_alternate_server(struct stun_attribute * a)
+{
+  fprintf(stderr, "Alternate Server: ");
+  fwrite((char *)&a->value, 1, htons(a->length), stderr);
+  fprintf(stderr, "\n");
+}
+
+void
+decode_fingerprint(struct stun_attribute * a)
+{
+  fprintf(stderr, "Fingerprint");
+}
+
 int gm_stun(const char * host, const char * port, bool ipv6)
 {
   uint32_t send_buffer[128] = {};
   uint32_t receive_buffer[256] = {};
   struct stun_message *	const	send_packet = (struct stun_message *)send_buffer; 
   struct stun_message *	const	receive_packet = (struct stun_message *)receive_buffer; 
-  uint8_t * send_attribute = send_packet->attributes;
-  uint8_t * receive_attribute = receive_packet->attributes;
   struct sockaddr_storage	receive_address = {};
   socklen_t			receive_address_size;
   ssize_t			send_result;
@@ -152,8 +217,10 @@ int gm_stun(const char * host, const char * port, bool ipv6)
 
   freeaddrinfo(send_address);
 
-  fprintf(stderr, "Send returned %d\n", send_result);
-
+  if ( send_result < (send_packet->length + 20) ) {
+    fprintf(stderr, "Send error.\n");
+    return -1;
+  }
   receive_address_size = sizeof(struct sockaddr_in6);
 
   // Receive the reply from the gateway, or not.
@@ -165,12 +232,60 @@ int gm_stun(const char * host, const char * port, bool ipv6)
    (struct sockaddr *)&receive_address,
    &receive_address_size);
 
-  struct stun_attribute * attribute = (struct stun_attribute *)receive_attribute;
-  fprintf(stderr, "Receive returned %d\n", receive_result);
-  fprintf(stderr, "Receive type: %x\n", ntohs(receive_packet->type));
-  fprintf(stderr, "First attribute type %d\n", htons(attribute->type));
-  fprintf(stderr, "Address: %x\n", htonl(attribute->value.mapped_address.ipv4));
-  
+  if ( receive_result < 22 )
+    return -1;
 
+  struct stun_attribute * attribute = (struct stun_attribute *)receive_packet->attributes;
+  uint16_t attribute_size = htons(receive_packet->length);
+  if ( attribute_size < (receive_result - 20) ) {
+    fprintf(stderr, "STUN packet was truncated.\n");
+    return -1;
+  }
+  
+  while ( attribute_size > 0 ) {
+    uint16_t type = htons(attribute->type);
+    uint16_t length = htons(attribute->length);
+    if ( length == 0 || length >= 768 ) {
+      fprintf(stderr, "STUN attribute length %d is invalid.\n", length);
+    }
+    switch ( type ) {
+    case MAPPED_ADDRESS:
+      decode_mapped_address(attribute);
+      break;
+    case ERROR_CODE:
+      decode_error_code(attribute);
+      break;
+    case UNKNOWN_ATTRIBUTES:
+      decode_unknown_attributes(attribute);
+      break;
+    case XOR_MAPPED_ADDRESS:
+      decode_xor_mapped_address(attribute);
+      break;
+    case SOFTWARE:
+      decode_software(attribute);
+      break;
+    case ALTERNATE_SERVER:
+      decode_alternate_server(attribute);
+      break;
+    case FINGERPRINT:
+      decode_fingerprint(attribute);
+      break;
+    default:
+      break;
+    }
+    uint16_t odd = length & 3;
+    unsigned int increment = length + 4;
+
+    // Pad strings to 32-bit boundaries.
+    if ( odd )
+      increment += (4 - odd);
+
+    if ( increment > attribute_size ) {
+      fprintf(stderr, "Attribute size mismatch.\n");
+      return -1;
+    }
+    attribute = (struct stun_attribute *)((uint8_t *)attribute + increment);
+    attribute_size -= increment;
+  }
   return 0;
 }

@@ -4,6 +4,8 @@
 #include <cJSON.h>
 #include <esp_console.h>
 #include <argtable3/argtable3.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
 #include "generic_main.h"
 
 static struct {
@@ -15,6 +17,10 @@ static struct {
 
 static int run(int argc, char * * argv)
 {
+  char	buffer[128];
+  struct sockaddr_storage sock;
+  int result;
+
   printf("\n"); 
   args.port->sval[0] = "3478";
   int nerrors = arg_parse(argc, argv, (void **) &args);
@@ -22,7 +28,19 @@ static int run(int argc, char * * argv)
     arg_print_errors(stderr, args.end, argv[0]);
       return 1;
   }
-  gm_stun(args.host->sval[0], args.port->sval[0], args.ipv6->count > 0);
+
+  result = gm_stun(args.host->sval[0], args.port->sval[0], args.ipv6->count > 0, (struct sockaddr *)&sock);
+  if ( result != 0 )
+    return 1;
+
+  void * address;
+  if ( sock.ss_family == AF_INET )
+    address = &((struct sockaddr_in *)&sock)->sin_addr.s_addr;
+  else
+    address = ((struct sockaddr_in6 *)&sock)->sin6_addr.s6_addr;
+
+  inet_ntop(sock.ss_family, address, buffer, sizeof(buffer));
+  fprintf(stderr, "Mapped address: at %x, %s, port: %d\n", (unsigned int)((struct sockaddr_in6 *)&sock)->sin6_addr.s6_addr, buffer, ((struct sockaddr_in6 *)&sock)->sin6_port);
   return 0;
 }
 

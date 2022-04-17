@@ -8,6 +8,7 @@
 #include <netinet/in.h>
 #include <../lwip/esp_netif_lwip_internal.h>
 #include <pthread.h>
+#include <sys/socket.h>
 
 #define CONSTRUCTOR static void __attribute__ ((constructor))
 
@@ -92,7 +93,7 @@ extern int			gm_port_control_protocol(gm_port_mapping_t *);
 extern int			gm_printf(const char * format, ...);
 extern int			gm_public_ipv4(char * data, size_t size);
 
-extern int			gm_stun(const char * host, const char * port, bool ipv6);
+extern int			gm_stun(const char * host, const char * port, bool ipv6, struct sockaddr * address);
 
 extern void			gm_timer_to_human(int64_t, char *, size_t);
 

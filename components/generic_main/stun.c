@@ -1,6 +1,5 @@
 #include <stdint.h>
 #include <sys/types.h>
-#include <sys/socket.h>
 #include <lwip/sockets.h>
 #include <netdb.h>
 #include "generic_main.h"
@@ -116,11 +115,26 @@ fingerprint(uint8_t * * attribute, uint16_t * length)
 }
 
 void
-decode_mapped_address(struct stun_attribute * a)
+decode_mapped_address(struct stun_attribute * a, struct sockaddr * address)
 {
-  char	buffer[128];
-  inet_ntop(a->value.mapped_address.family == 1 ? AF_INET : AF_INET6, &a->value.mapped_address.ipv6, buffer, sizeof(buffer));
-  fprintf(stderr, "Mapped address: %s, port: %d\n", buffer, ntohs(a->value.mapped_address.port));
+  if ( a->value.mapped_address.family == 1 ) {
+    struct sockaddr_in * in = (struct sockaddr_in *)address;
+    memset(in, '\0', sizeof(*in));
+    in->sin_family = AF_INET;
+    in->sin_port = htons(a->value.mapped_address.port);
+    in->sin_addr.s_addr = a->value.mapped_address.ipv4;
+    fprintf(stderr, "Mapped address at %x, %x, port %d.\n", (unsigned int)&in->sin_addr.s_addr, in->sin_addr.s_addr, in->sin_port);
+  }
+  else {
+    struct sockaddr_in6 * in6 = (struct sockaddr_in6 *)address;
+    memset(in6, '\0', sizeof(*in6));
+    in6->sin6_family = AF_INET6;
+    in6->sin6_port = htons(a->value.mapped_address.port);
+    *((uint32_t *)&(in6->sin6_addr.s6_addr[0])) = *((uint32_t *)(a->value.mapped_address.ipv6.s6_addr));
+    *((uint32_t *)&(in6->sin6_addr.s6_addr[4])) = *((uint32_t *)&(a->value.mapped_address.ipv6.s6_addr[4]));
+    *((uint32_t *)&(in6->sin6_addr.s6_addr[8])) = *((uint32_t *)&(a->value.mapped_address.ipv6.s6_addr[8]));
+    *((uint32_t *)&(in6->sin6_addr.s6_addr[12])) = *((uint32_t *)&(a->value.mapped_address.ipv6.s6_addr[12]));
+  }
 }
 
 void
@@ -136,22 +150,27 @@ decode_unknown_attributes(struct stun_attribute * a)
 }
 
 void
-decode_xor_mapped_address(struct stun_attribute * a, struct stun_message * message)
+decode_xor_mapped_address(struct stun_attribute * a, struct stun_message * message, struct sockaddr * address)
 {
-  char	buffer[128];
+  uint16_t	magic = htonl(stun_magic);
 
-  a->value.mapped_address.port ^= htons((stun_magic >> 16) & 0xffff);
   if ( a->value.mapped_address.family == 1 ) {
-    a->value.mapped_address.ipv4 ^= htonl(stun_magic);
+    struct sockaddr_in * in = (struct sockaddr_in *)address;
+    memset(in, '\0', sizeof(*in));
+    in->sin_family = AF_INET;
+    in->sin_port = htons(a->value.mapped_address.port) ^ ((magic >> 16) & 0xffff);
+    in->sin_addr.s_addr = a->value.mapped_address.ipv4 ^ magic;
   }
   else {
-    *((uint32_t *)a->value.mapped_address.ipv6.s6_addr) ^= htonl(stun_magic);
-    *((uint32_t *)&a->value.mapped_address.ipv6.s6_addr[4]) ^= message->transaction_id[0];
-    *((uint32_t *)&a->value.mapped_address.ipv6.s6_addr[8]) ^= message->transaction_id[1];
-    *((uint32_t *)&a->value.mapped_address.ipv6.s6_addr[12]) ^= message->transaction_id[2];
+    struct sockaddr_in6 * in6 = (struct sockaddr_in6 *)address;
+    memset(in6, '\0', sizeof(*in6));
+    in6->sin6_family = AF_INET6;
+    in6->sin6_port = htons(a->value.mapped_address.port);
+    *((uint32_t *)&(in6->sin6_addr.s6_addr[0])) = *((uint32_t *)(a->value.mapped_address.ipv6.s6_addr)) ^ magic;
+    *((uint32_t *)&(in6->sin6_addr.s6_addr[4])) = *((uint32_t *)&(a->value.mapped_address.ipv6.s6_addr[4])) ^ message->transaction_id[0];
+    *((uint32_t *)&(in6->sin6_addr.s6_addr[8])) = *((uint32_t *)&(a->value.mapped_address.ipv6.s6_addr[8])) ^ message->transaction_id[1];
+    *((uint32_t *)&(in6->sin6_addr.s6_addr[12])) = *((uint32_t *)&(a->value.mapped_address.ipv6.s6_addr[12])) ^ message->transaction_id[2];
   }
-  inet_ntop(a->value.mapped_address.family == 1 ? AF_INET : AF_INET6, &a->value.mapped_address.ipv6, buffer, sizeof(buffer));
-  fprintf(stderr, "XOR mapped address: %s, port: %d\n", buffer, ntohs(a->value.mapped_address.port));
 }
 
 void
@@ -176,7 +195,7 @@ decode_fingerprint(struct stun_attribute * a)
   fprintf(stderr, "Fingerprint");
 }
 
-int gm_stun(const char * host, const char * port, bool ipv6)
+int gm_stun(const char * host, const char * port, bool ipv6, struct sockaddr * address)
 {
   uint32_t send_buffer[128] = {};
   uint32_t receive_buffer[256] = {};
@@ -189,6 +208,8 @@ int gm_stun(const char * host, const char * port, bool ipv6)
   struct timeval		timeout = {};
   struct addrinfo		hints = {};
   struct addrinfo *		send_address = 0;
+  bool				got_xor_mapped_address = false;
+  bool				got_an_address = false;
 
   // Only return the address family that is requested in hints->ai_family.
   hints.ai_flags = AI_ADDRCONFIG;
@@ -263,16 +284,22 @@ int gm_stun(const char * host, const char * port, bool ipv6)
     }
     switch ( type ) {
     case MAPPED_ADDRESS:
-      decode_mapped_address(attribute);
+      if ( !got_xor_mapped_address ) {
+        got_an_address = true;
+        decode_mapped_address(attribute, address);
+      }
       break;
     case ERROR_CODE:
       decode_error_code(attribute);
+      return -1;
       break;
     case UNKNOWN_ATTRIBUTES:
       decode_unknown_attributes(attribute);
       break;
     case XOR_MAPPED_ADDRESS:
-      decode_xor_mapped_address(attribute, receive_packet);
+      got_an_address = true;
+      got_xor_mapped_address = true;
+      decode_xor_mapped_address(attribute, receive_packet, address);
       break;
     case SOFTWARE:
       decode_software(attribute);
@@ -300,5 +327,10 @@ int gm_stun(const char * host, const char * port, bool ipv6)
     attribute = (struct stun_attribute *)((uint8_t *)attribute + increment);
     attribute_size -= increment;
   }
-  return 0;
+  if ( got_an_address )
+    return 0;
+  else {
+    fprintf(stderr, "STUN message didn't include an address.\n");
+    return -1;
+  }
 }

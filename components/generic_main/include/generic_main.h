@@ -78,6 +78,7 @@ extern void			gm_array_destroy(GM_Array * array);
 extern const void *		gm_array_get(GM_Array * array, size_t index);
 extern size_t			gm_array_size(GM_Array * array);
 
+extern size_t			gm_choose_one(size_t number_of_entries);
 extern void			gm_command_add_registered_to_console(void);
 extern void			gm_command_register(const esp_console_cmd_t * command);
 

@@ -4,6 +4,7 @@
 #include <cJSON.h>
 #include <sys/random.h>
 #include "generic_main.h"
+#include <sys/socket.h>
 
 // Sites that return your external IP in JSON with { "ip": "address string" }
 // and don't have a problem being called by robots, or a fee.
@@ -16,18 +17,7 @@ const char * const urls[] = {
   "https://www.myexternalip.com/json",
   "https://ip.seeip.org/jsonip?",
 };
-const int number_of_entries = (sizeof(urls) / sizeof(*urls));
-
-static const char * choose_one()
-{
-  unsigned char random;
-
-  getrandom(&random, sizeof(random), 0);
-  
-  int index = random % number_of_entries;
-  const char * const url =  urls[index];
-  return url;
-}
+const size_t number_of_entries = (sizeof(urls) / sizeof(*urls));
 
 static int gm_public_ipv4_internal(const char * url, char * data, size_t size)
 {
@@ -53,7 +43,7 @@ static int gm_public_ipv4_internal(const char * url, char * data, size_t size)
 int gm_public_ipv4(char * data, size_t size)
 {
   for (int tries = 0; tries < (number_of_entries * 2); tries++) {
-    if (gm_public_ipv4_internal(choose_one(), data, size) == 0)
+    if (gm_public_ipv4_internal(urls[gm_choose_one(number_of_entries)], data, size) == 0)
       return 0;
   }
   return -1;

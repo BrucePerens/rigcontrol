@@ -109,12 +109,7 @@ struct stun_attribute {
   } value;
 };
 
-void
-fingerprint(uint8_t * * attribute, uint16_t * length)
-{
-}
-
-void
+static void
 decode_mapped_address(struct stun_attribute * a, struct sockaddr * address)
 {
   if ( a->value.mapped_address.family == 1 ) {
@@ -137,19 +132,19 @@ decode_mapped_address(struct stun_attribute * a, struct sockaddr * address)
   }
 }
 
-void
+static void
 decode_error_code(struct stun_attribute * a)
 {
   fprintf(stderr, "Error code.\n");
 }
 
-void
+static void
 decode_unknown_attributes(struct stun_attribute * a)
 {
   fprintf(stderr, "Unknown attribute.\n");
 }
 
-void
+static void
 decode_xor_mapped_address(struct stun_attribute * a, struct stun_message * message, struct sockaddr * address)
 {
   uint16_t	magic = htonl(stun_magic);
@@ -173,7 +168,7 @@ decode_xor_mapped_address(struct stun_attribute * a, struct stun_message * messa
   }
 }
 
-void
+static void
 decode_software(struct stun_attribute * a)
 {
   fprintf(stderr, "Software: ");
@@ -181,7 +176,7 @@ decode_software(struct stun_attribute * a)
   fprintf(stderr, "\n");
 }
 
-void
+static void
 decode_alternate_server(struct stun_attribute * a)
 {
   fprintf(stderr, "Alternate Server: ");
@@ -189,7 +184,7 @@ decode_alternate_server(struct stun_attribute * a)
   fprintf(stderr, "\n");
 }
 
-void
+static void
 decode_fingerprint(struct stun_attribute * a)
 {
   fprintf(stderr, "Fingerprint");
@@ -334,3 +329,14 @@ int gm_stun(const char * host, const char * port, bool ipv6, struct sockaddr * a
     return -1;
   }
 }
+
+#if 0
+int gm_stun(bool ipv6, struct sockaddr * address)
+{
+  for (int tries = 0; tries < (number_of_entries * 2); tries++) {
+    if (stun_internal(urls[gm_choose_one(number_of_entries)], data, size) == 0)
+      return 0;
+  }
+  return -1;
+}
+#endif

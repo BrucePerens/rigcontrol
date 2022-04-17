@@ -187,10 +187,10 @@ decode_alternate_server(struct stun_attribute * a)
 static void
 decode_fingerprint(struct stun_attribute * a)
 {
-  fprintf(stderr, "Fingerprint");
+  fprintf(stderr, "Fingerprint\n");
 }
 
-int gm_stun(const char * host, const char * port, bool ipv6, struct sockaddr * address)
+int stun_internal(const char * host, uint16_t port, bool ipv6, struct sockaddr * address)
 {
   uint32_t send_buffer[128] = {};
   uint32_t receive_buffer[256] = {};
@@ -205,6 +205,7 @@ int gm_stun(const char * host, const char * port, bool ipv6, struct sockaddr * a
   struct addrinfo *		send_address = 0;
   bool				got_xor_mapped_address = false;
   bool				got_an_address = false;
+  char				port_string[6];
 
   // Only return the address family that is requested in hints->ai_family.
   hints.ai_flags = AI_ADDRCONFIG;
@@ -216,7 +217,8 @@ int gm_stun(const char * host, const char * port, bool ipv6, struct sockaddr * a
   else
     hints.ai_family = AF_INET;
 
-  int gai_result =  getaddrinfo(host, port, &hints, &send_address);
+  snprintf(port_string, sizeof(port_string), "%d", port);
+  int gai_result =  getaddrinfo(host, port_string, &hints, &send_address);
 
   if ( gai_result != 0 ) {
     fprintf(stderr, "%s: getaddrinfo() error %d\n", host, gai_result);
@@ -330,13 +332,52 @@ int gm_stun(const char * host, const char * port, bool ipv6, struct sockaddr * a
   }
 }
 
+struct stun_server {
+  const char *	host;
+  uint16_t	port;
+};
+
+static const struct stun_server ipv4_servers[] = {
 #if 0
+  { "stun.ooma.com", 3478 },
+  { "stun.3cx.com", 3478 },
+  { "stun.ucsb.edu", 3478 },
+  { "stun.l.google.com", 19302 },
+  { "stun2.l.google.com", 19302 },
+  { "stun3.l.google.com", 19302 },
+  { "stun4.l.google.com", 19302 },
+#endif
+  // STUN multiplexed on port 80!
+  { "openrelay.metered.ca", 80 }
+};
+static const size_t	ipv4_table_count = sizeof(ipv4_servers) / sizeof(*ipv4_servers);
+
+static const struct stun_server ipv6_servers[] = {
+  { "stun.l.google.com", 19302 },
+  { "stun2.l.google.com", 19302 },
+  { "stun3.l.google.com", 19302 },
+  { "stun4.l.google.com", 19302 }
+};
+static const size_t	ipv6_table_count = sizeof(ipv6_servers) / sizeof(*ipv6_servers);
+
 int gm_stun(bool ipv6, struct sockaddr * address)
 {
-  for (int tries = 0; tries < (number_of_entries * 2); tries++) {
-    if (stun_internal(urls[gm_choose_one(number_of_entries)], data, size) == 0)
+  const struct stun_server *	servers;
+  size_t			count;
+
+  if ( ipv6 ) {
+    servers = ipv6_servers;
+    count = ipv6_table_count;
+  }
+  else {
+    servers = ipv4_servers;
+    count = ipv4_table_count;
+  }
+
+  for (int tries = 0; tries < 5; tries++) {
+    const struct stun_server * server = &servers[gm_choose_one(count)];
+    if ( stun_internal(server->host, server->port, ipv6, address) == 0 )
       return 0;
   }
   return -1;
 }
-#endif

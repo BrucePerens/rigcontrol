@@ -43,6 +43,8 @@ struct _gm_netif {
   esp_netif_ip6_info_t	site_unique_ip6;
   esp_netif_ip6_info_t	public_ip6[3];
   esp_ip6_addr_t	router_ip6;
+  struct sockaddr_storage stun_ip4;
+  struct sockaddr_storage stun_ip6;
 };
 typedef struct _gm_netif gm_netif_t;
 
@@ -94,7 +96,7 @@ extern int			gm_port_control_protocol(gm_port_mapping_t *);
 extern int			gm_printf(const char * format, ...);
 extern int			gm_public_ipv4(char * data, size_t size);
 
-extern int			gm_stun(const char * host, const char * port, bool ipv6, struct sockaddr * address);
+extern int			gm_stun(bool ipv6, struct sockaddr * address);
 
 extern void			gm_timer_to_human(int64_t, char *, size_t);
 

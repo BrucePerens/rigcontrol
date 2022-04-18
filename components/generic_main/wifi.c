@@ -186,7 +186,7 @@ static void ip_event_sta_got_ip4(void* arg, esp_event_base_t event_base, int32_t
   inet_ntop(AF_INET, &event->ip_info.ip.addr, buffer, sizeof(buffer));
   gm_printf("Got IPv4: interface %s, address %s ", esp_netif_get_desc(event->esp_netif), buffer);
   inet_ntop(AF_INET, &event->ip_info.gw.addr, buffer, sizeof(buffer));
-  gm_printf("router %s\n");
+  gm_printf("router %s\n", buffer);
   fflush(stderr);
 
   xTaskCreate(ipv4_config_task, TASK_NAME, 10240, NULL, 3, &ipv4_config_task_id);

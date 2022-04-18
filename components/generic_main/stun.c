@@ -237,7 +237,6 @@ int stun_internal(const char * host, uint16_t port, bool ipv6, struct sockaddr *
   timeout.tv_usec = 0;
   setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO,(char*)&timeout, sizeof(timeout));
 
-  // Send the packet to the gateway.
   send_result = sendto(
    sock,
    send_packet,
@@ -254,7 +253,6 @@ int stun_internal(const char * host, uint16_t port, bool ipv6, struct sockaddr *
   }
   receive_address_size = sizeof(struct sockaddr_in6);
 
-  // Receive the reply from the gateway, or not.
   receive_result = recvfrom(
    sock,
    receive_packet,

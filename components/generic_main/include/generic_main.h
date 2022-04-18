@@ -35,16 +35,26 @@ typedef struct _gm_port_mapping {
 
 struct _gm_netif {
   esp_netif_t *		esp_netif;
-  struct netif *	lwip_netif;
-  esp_netif_ip_info_t	ip_info;
-  esp_ip4_addr_t	public_ip4;
-  esp_netif_ip6_info_t	link_local_ip6;
-  esp_netif_ip6_info_t	site_local_ip6;
-  esp_netif_ip6_info_t	site_unique_ip6;
-  esp_netif_ip6_info_t	public_ip6[3];
-  esp_ip6_addr_t	router_ip6;
-  struct sockaddr_storage stun_ip4;
-  struct sockaddr_storage stun_ip6;
+  // lwip_netif is esp_netif->lwip_netif
+  struct {
+    struct sockaddr_in	address;
+    struct sockaddr_in	router;
+    uint32_t		netmask;
+    struct sockaddr_in	public;
+    int			nat;	// 1 for NAT, 2 for double-nat.
+    gm_port_mapping_t *	port_mappings;
+  } ip4;
+  struct {
+    struct sockaddr_in6	link_local;
+    struct sockaddr_in6	site_local;
+    struct sockaddr_in6	site_unique;
+    struct sockaddr_in6	global[3];
+    struct sockaddr_in6 router;
+    struct sockaddr_in6	public;
+    gm_port_mapping_t *	port_mappings;
+    bool pat66; // True if there is prefix-address-translation. Ugh.
+    bool nat6;  // True if there is NAT6 that is not PAT66. Double-ugh.
+  } ip6;
 };
 typedef struct _gm_netif gm_netif_t;
 
@@ -52,7 +62,6 @@ struct generic_main {
   nvs_handle_t		nvs;
   gm_netif_t		ap;
   gm_netif_t		sta;
-  gm_port_mapping_t *	port_mappings;
   esp_console_repl_t *	repl;
   pthread_mutex_t 	console_print_mutex;
   int64_t		time_last_synchronized;

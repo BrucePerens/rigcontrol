@@ -144,7 +144,8 @@ ipv4_config_task(void * param)
   char	buffer[64];
 
   if ( gm_public_ipv4(buffer, sizeof(buffer)) == 0 ) {
-    GM.sta.public_ip4.addr = esp_ip4addr_aton(buffer);
+    GM.sta.ip4.public.sin_family = AF_INET;
+    GM.sta.ip4.public.sin_addr.s_addr = esp_ip4addr_aton(buffer);
     gm_printf("Public IP address is %s\n", buffer);
     fflush(stderr);
     
@@ -166,32 +167,37 @@ ipv6_config_task(void * param)
   vTaskDelete(NULL);
 }
 
-// This handler is called only when the "sta" netif gets an IPV4 address.
+// This handler is called only when the "sta" netif gets an IPv4 address.
 static void ip_event_sta_got_ip4(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data) {
   ip_event_got_ip_t* event = (ip_event_got_ip_t*)event_data;
+  char	buffer[64];
 
   // Smartconfig waits on this bit, then prints a message.
   xEventGroupSetBits(my_events, CONNECTED_BIT);
 
   // Save the IP information for other facilities, like NAT-PCP, to use.
   GM.sta.esp_netif = event->esp_netif;
-  GM.sta.lwip_netif = event->esp_netif->lwip_netif;
-  GM.sta.ip_info = event->ip_info;
+  GM.sta.ip4.address.sin_family = AF_INET;
+  GM.sta.ip4.address.sin_addr.s_addr = event->ip_info.ip.addr;
+  GM.sta.ip4.router.sin_family = AF_INET;
+  GM.sta.ip4.router.sin_addr.s_addr = event->ip_info.gw.addr;
+  GM.sta.ip4.netmask = event->ip_info.netmask.addr;
 
-  gm_printf("Got IPv4: interface %s, address " IPSTR ", router " IPSTR "\n",
-  esp_netif_get_desc(event->esp_netif),
-  IP2STR(&event->ip_info.ip),
-  IP2STR(&event->ip_info.gw));
+  inet_ntop(AF_INET, &event->ip_info.ip.addr, buffer, sizeof(buffer));
+  gm_printf("Got IPv4: interface %s, address %s ", esp_netif_get_desc(event->esp_netif), buffer);
+  inet_ntop(AF_INET, &event->ip_info.gw.addr, buffer, sizeof(buffer));
+  gm_printf("router %s\n");
   fflush(stderr);
 
   xTaskCreate(ipv4_config_task, TASK_NAME, 10240, NULL, 3, &ipv4_config_task_id);
   start_webserver();
 }
 
-// This handler is called when any netif gets an IPV6 address.
+// This handler is called when any netif gets an IPv6 address.
 static void ip_event_got_ip6(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data) {
   const unsigned int public_address_count = \
-   sizeof(GM.sta.public_ip6) / sizeof(*GM.sta.public_ip6);
+   sizeof(GM.sta.ip6.global) / sizeof(*GM.sta.ip6.global);
+   char buffer[64];
 
   ip_event_got_ip6_t *	event = (ip_event_got_ip6_t*)event_data;
   esp_ip6_addr_type_t	ipv6_type = esp_netif_ip6_get_addr_type(&event->ip6_info.ip);
@@ -199,9 +205,10 @@ static void ip_event_got_ip6(void* arg, esp_event_base_t event_base, int32_t eve
   gm_netif_t *		interface;
   bool			is_station = false;
    
-  gm_printf("Got IPV6: interface %s, address " IPV6STR ", type %s\n",
+  inet_ntop(AF_INET6, &event->ip6_info.ip.addr, buffer, sizeof(buffer));
+  gm_printf("Got IPv6: interface %s, address, type %s\n",
   netif_name,
-  IPV62STR(event->ip6_info.ip),
+  buffer,
   ipv6_address_types[ipv6_type]);
   fflush(stderr);
 
@@ -220,13 +227,14 @@ static void ip_event_got_ip6(void* arg, esp_event_base_t event_base, int32_t eve
   case ESP_IP6_ADDR_IS_GLOBAL:
     for ( unsigned int i = 0; i < public_address_count - 1; i++) {
        // If we already have this address, don't add it twice.
-       if (memcmp(&interface->public_ip6[i], &event->ip6_info, sizeof(event->ip6_info)) == 0)
+       if (memcmp(interface->ip6.global[i].sin6_addr.s6_addr, event->ip6_info.ip.addr, sizeof(event->ip6_info.ip.addr)) == 0)
          break;
        // If one of the public address entries is all zeroes, copy the address into it.
-       if (gm_all_zeroes(&interface->public_ip6[i], sizeof(&interface->public_ip6[0]))) {
-         interface->public_ip6[i] = event->ip6_info;
+       if (gm_all_zeroes(&interface->ip6.global[i].sin6_addr.s6_addr, sizeof(&interface->ip6.global[0].sin6_addr.s6_addr))) {
+         interface->ip6.global[i].sin6_family = AF_INET6;
+         memcpy(interface->ip6.global[i].sin6_addr.s6_addr, event->ip6_info.ip.addr, sizeof(event->ip6_info.ip.addr));
          if (is_station) {
-           // FIX: Start the IPV6 configuration task here.
+           // FIX: Start the IPv6 configuration task here.
            // gm_ddns();
            xTaskCreate(ipv6_config_task, TASK_NAME, 10240, NULL, 3, &ipv6_config_task_id);
          }
@@ -236,13 +244,16 @@ static void ip_event_got_ip6(void* arg, esp_event_base_t event_base, int32_t eve
     fflush(stderr);
     break;
   case ESP_IP6_ADDR_IS_LINK_LOCAL:
-    interface->link_local_ip6 = event->ip6_info;
+    interface->ip6.link_local.sin6_family = AF_INET6;
+    memcpy(interface->ip6.link_local.sin6_addr.s6_addr, event->ip6_info.ip.addr, sizeof(event->ip6_info.ip.addr));
     break;
   case ESP_IP6_ADDR_IS_SITE_LOCAL:
-    interface->site_local_ip6 = event->ip6_info;
+    interface->ip6.site_local.sin6_family = AF_INET6;
+    memcpy(interface->ip6.site_local.sin6_addr.s6_addr, event->ip6_info.ip.addr, sizeof(event->ip6_info.ip.addr));
     break;
   case ESP_IP6_ADDR_IS_UNIQUE_LOCAL:
-    interface->site_unique_ip6 = event->ip6_info;
+    interface->ip6.site_unique.sin6_family = AF_INET6;
+    memcpy(interface->ip6.site_unique.sin6_addr.s6_addr, event->ip6_info.ip.addr, sizeof(event->ip6_info.ip.addr));
     break;
   case ESP_IP6_ADDR_IS_IPV4_MAPPED_IPV6:
     break;

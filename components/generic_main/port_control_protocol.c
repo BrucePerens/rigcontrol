@@ -126,11 +126,12 @@ int gm_port_control_protocol(gm_port_mapping_t * m)
   ssize_t			send_result;
   ssize_t			receive_result;
   struct timeval		timeout = {};
+  gm_port_mapping_t * *		p;
 
   if ( !m->ipv6 ) {
     send_address_size = sizeof(struct sockaddr_in);
     struct sockaddr_in * a4 = (struct sockaddr_in *)&send_address;
-    a4->sin_addr.s_addr = GM.sta.ip_info.gw.addr;
+    a4->sin_addr.s_addr = GM.sta.ip4.router.sin_addr.s_addr;
     a4->sin_family = AF_INET;
     a4->sin_port = htons(PCP_PORT);
     ip_protocol = IPPROTO_IP;
@@ -138,7 +139,7 @@ int gm_port_control_protocol(gm_port_mapping_t * m)
   else {
     send_address_size = sizeof(struct sockaddr_in6);
     struct sockaddr_in6 * a6 = (struct sockaddr_in6 *)&send_address;
-    memcpy(&a6->sin6_addr.s6_addr, GM.sta.router_ip6.addr, sizeof(a6->sin6_addr.s6_addr));
+    memcpy(&a6->sin6_addr.s6_addr, GM.sta.ip6.router.sin6_addr.s6_addr, sizeof(a6->sin6_addr.s6_addr));
     a6->sin6_family = AF_INET6;
     a6->sin6_port = htons(PCP_PORT);
     a6->sin6_scope_id = esp_netif_get_netif_impl_index(GM.sta.esp_netif);
@@ -148,7 +149,7 @@ int gm_port_control_protocol(gm_port_mapping_t * m)
   if ( !m->ipv6 ) {
     send_packet.pcp.request.client_address.s6_addr[10] = 0xff;
     send_packet.pcp.request.client_address.s6_addr[11] = 0xff;
-    memcpy(&send_packet.pcp.request.client_address.s6_addr[12], &GM.sta.ip_info.ip.addr, 4);
+    memcpy(&send_packet.pcp.request.client_address.s6_addr[12], &GM.sta.ip4.address.sin_addr.s_addr, 4);
   }
   else {
     struct sockaddr_in6 * a6 = (struct sockaddr_in6 *)&send_address;
@@ -228,7 +229,10 @@ int gm_port_control_protocol(gm_port_mapping_t * m)
   m->lifetime = ntohl(receive_packet.pcp.lifetime);
   memcpy(m->external_address.s6_addr, receive_packet.pcp.mp.external_address.s6_addr, sizeof(m->external_address.s6_addr));
 
-  gm_port_mapping_t * * p = &GM.port_mappings;
+  if ( m->ipv6 )
+    p = &GM.sta.ip6.port_mappings;
+  else
+    p = &GM.sta.ip4.port_mappings;
   while ( *p != 0 ) {
     if ( *p == m ) {
       p = 0;

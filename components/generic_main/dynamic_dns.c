@@ -8,6 +8,7 @@
 #include <esp_timer.h>
 #include <inttypes.h>
 #include "generic_main.h"
+#include <arpa/inet.h>
 #include <lwip/inet.h>
 #include "generic_main.h"
 
@@ -44,11 +45,11 @@ static const struct ddns_provider ddns_providers[] = {
 static int parameter(const char * name,  char * buffer, size_t buffer_size)
 {
   if ( strcmp(name, "ipv4") == 0 ) {
-    esp_ip4addr_ntoa(&GM.sta.public_ip4, buffer, buffer_size);
+    inet_ntop(AF_INET, &GM.sta.ip4.public.sin_addr.s_addr, buffer, buffer_size);
     return 0;
   }
   else if ( strcmp(name, "ipv6") == 0 ) {
-    snprintf(buffer, buffer_size, IPV6STR, IPV62STR(GM.sta.public_ip6[0].ip));
+    inet_ntop(AF_INET6, &GM.sta.ip6.public.sin6_addr.s6_addr, buffer, buffer_size);
     return 0;
   }
   else {
@@ -120,7 +121,7 @@ int gm_ddns(void)
   while ( p->name ) {
     if ( strcmp(p->name, ddns_provider) == 0 ) {
       send_ddns(p->url);
-      if (p->url_ipv6 && !gm_all_zeroes(&GM.sta.public_ip6[0].ip, sizeof(GM.sta.public_ip6[0].ip))) {
+      if (p->url_ipv6 && !gm_all_zeroes(&GM.sta.ip6.public.sin6_addr.s6_addr, sizeof(GM.sta.ip6.public.sin6_addr.s6_addr))) {
         send_ddns(p->url_ipv6);
       }
       return 0;

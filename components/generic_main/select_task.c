@@ -3,6 +3,10 @@
 // 64-bit time_t at https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/system/system_time.html#bit-time-t
 // You should NOT release production binaries with 16-bit time.
 //
+// Provide a task that does select() on file descriptors that have been registered with it, and calls handlers when there are
+// events upon those file descriptors. This allows us to do event-driven I/O without depending upon the yet-immature ESP-IDF
+// ASIO port.
+//
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -30,11 +34,16 @@ static fd_set read_fds = {};
 static fd_set write_fds = {};
 static fd_set exception_fds = {};
 static int fd_limit = 0;
-gm_fd_handler_t handlers[NUMBER_OF_FDS];
-time_t timeouts[NUMBER_OF_FDS];
+static gm_fd_handler_t handlers[NUMBER_OF_FDS];
+static time_t timeouts[NUMBER_OF_FDS];
 
 void
 gm_fd_register(int fd, gm_fd_handler_t handler, bool readable, bool writable, bool exception, uint32_t seconds) {
+  int limit = fd + 1;
+
+  if ( fd_limit < limit )
+    fd_limit = limit;
+
   handlers[fd] = handler;
 
   if ( seconds )
@@ -65,6 +74,16 @@ gm_fd_unregister(int fd) {
   FD_CLR(fd, &read_fds);
   FD_CLR(fd, &write_fds);
   FD_CLR(fd, &exception_fds);
+
+  // If the last FD is cleared, set fd_limit to the highest remaining set fd, plus one. 
+  if ( fd_limit == fd + 1 ) {
+    for ( int i = fd_limit - 2; i >= 0; i-- ) {
+       if ( FD_ISSET(i, &read_fds) || FD_ISSET(i, &write_fds) || FD_ISSET(i, &exception_fds) ) {
+          fd_limit = i + 1;
+          break;
+       }
+    }
+  }
 }
 
 static void

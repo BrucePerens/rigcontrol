@@ -5,11 +5,10 @@ controller using an ESP-32 Audio Kit card commonly sold on AliExpress for
 around $14.
 [Search for sales on AliExpress](https://www.aliexpress.com/premium/ESP32%25252dAudio%25252dKit.html).
 
-The software is currently in "Hello World" stage: it can configure its
-WiFi, set the time from SNTP, start a web server, and access the public
-Internet.
-Some debugging and maintenance commands are implemented on the USB serial
-console. No ham radio control is implemented yet.
+The software is currently in "Hello World" stage:
+No ham radio control is implemented yet. The utility internet functions are mostly done.
+It can make itself accessible on the public internet, even if the operator is net-naive. It sets its clock and approximate
+location from outside servers.
 
 Without any additional hardware, K6BP RigControl
 can connect to any transceiver that implements *CAT* or *CI-V* using 5V or 3.3V
@@ -186,15 +185,26 @@ as well.
 ### RigControl Access to Outside Web Sites ###
 The point of RigControl is to make control of your radio accessable from the
 public internet, appropriately password-protected. To do this, RigControl must
-access an outside site to learn its own public IPV4 address, and it chooses
-randomly from a list of such sites. It can learn its own IPV6
+access an outside site to learn its own public address, and to check that its
 address without an outside site, but uses an outside site to check that its
-connectivity is not blocked by a firewall. It must access an outside site to set
+connectivity is not blocked by a firewall. It will attempt to create a pinhole in
+your firewall using NAT-PMP or PCP so that it is directly accessible on the public
+internet.  It must access an outside site to set
 its hostname in dynamic DNS, so that you can access it remotely. It calls
 github.com, k6bp.com, or hams.com to check if its software is up-to-date and to
-access security bulletins, etc. Hams.com or k6bp.com may provide you with remote
-access.
+access security bulletins, etc.
 
-RigControl can implement a tunnel to provide outside access to a device on
-a heavily-firewalled network that the above methods won't work for. This is probably
-an extra-cost option, as an outside site must pass on all of the communication data.
+RigControl can implement a TURN tunnel to provide outside access to a device on
+a network that the above methods won't work for. Currently https://www.metered.ca/tools/openrelay/
+provides free TURN.
+
+### TO DO
+* UPnP. It's overcomplicated compared to NAT-PMP and PCP, but some routers may have UPnP and not the other two.
+* Access-point mode. Should just be activating existing APIs.
+* mDNS. Should just be activating existing APIs.
+* Web configuration for the parameters that currently work from the command line.
+* All of the ham radio functions.
+
+### Warning
+Before you release production binaries of this application, you must rebuild your toolset to use a 64-bit time_t. Instructions
+are at https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/system/system_time.html#bit-time-t

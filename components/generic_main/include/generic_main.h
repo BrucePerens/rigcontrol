@@ -106,6 +106,7 @@ extern int			gm_printf(const char * format, ...);
 extern int			gm_public_ipv4(char * data, size_t size);
 
 extern int			gm_stun(bool ipv6, struct sockaddr * address);
+extern void			gm_select_task(void);
 
 extern void			gm_timer_to_human(int64_t, char *, size_t);
 

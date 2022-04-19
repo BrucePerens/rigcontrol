@@ -41,6 +41,8 @@ static void initialize(void)
   // This can't be used for non-tasks.
   pthread_mutex_init(&GM.console_print_mutex, 0);
 
+  gm_select_task();
+
   // Connect the non-volatile-storage FLASH partition. Initialize it if
   // necessary.
   esp_err_t err = nvs_flash_init();

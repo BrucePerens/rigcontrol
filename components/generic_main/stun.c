@@ -115,15 +115,13 @@ struct stun_server {
 };
 
 static const struct stun_server ipv4_servers[] = {
-#if 0
   { "stun.ooma.com", 3478 },
   { "stun.3cx.com", 3478 },
-  { "stun.ucsb.edu", 3478 },
+  // { "stun.ucsb.edu", 3478 },
   { "stun.l.google.com", 19302 },
   { "stun2.l.google.com", 19302 },
   { "stun3.l.google.com", 19302 },
   { "stun4.l.google.com", 19302 },
-#endif
   // STUN multiplexed on port 80!
   { "openrelay.metered.ca", 80 }
 };
@@ -273,6 +271,10 @@ send_stun_request(bool ipv6)
     return -1;
 
   int sock = socket (send_address->ai_family, SOCK_DGRAM, send_address->ai_protocol);
+  if ( sock < 0 ) {
+    fprintf(stderr, "Can't get socket: %s\n", strerror(errno));
+    return -1;
+  }
 
   send_packet->magic_cookie = htonl(stun_magic);
   send_packet->type = htons(((message_class & 0x1) << 4) | ((message_class & 0x2) << 8) | (method & 0xf));
@@ -290,6 +292,7 @@ send_stun_request(bool ipv6)
 
   if ( send_result < (send_packet->length + 20) ) {
     fprintf(stderr, "Send error.\n");
+    close(sock);
     return -1;
   }
   return sock;
@@ -371,7 +374,8 @@ int receive_stun_response(int sock, struct sockaddr * address)
   uint32_t receive_buffer[256] = {};
   struct stun_message *	const	receive_packet = (struct stun_message *)receive_buffer; 
   ssize_t			receive_result;
-  struct timeval		timeout = { 2, 0 }; // 2 seconds, no microseconds.
+  struct timeval		timeout = { 3, 0 }; // 2 seconds, no microseconds.
+  int result;
 
   setsockopt (sock, SOL_SOCKET, SO_RCVTIMEO, (char *) &timeout,
 	    sizeof (timeout));
@@ -384,23 +388,28 @@ int receive_stun_response(int sock, struct sockaddr * address)
    0,
    0);
 
-  if ( receive_result < 22 )
+  if ( receive_result < 22 ) {
+    close(sock);
     return -1;
+  }
 
-  return process_received_packet(receive_packet, address, receive_result);
+  result = process_received_packet(receive_packet, address, receive_result);
+  close(sock);
+  return result;
 }
 
 int stun_internal(bool ipv6, struct sockaddr * address)
 {
-  int				sock;
+  int	sock;
+  int	status;
 
   if ( (sock = send_stun_request(ipv6)) < 0 )
     return -1;
 
-  if ( receive_stun_response(sock, address) != 0 )
-    return -1;
+  status = receive_stun_response(sock, address);
+  close(sock);
 
-  return 0;
+  return status;
 }
 
 int gm_stun(bool ipv6, struct sockaddr * address)

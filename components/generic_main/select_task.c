@@ -36,11 +36,13 @@ static fd_set exception_fds = {};
 static int fd_limit = 0;
 static gm_fd_handler_t handlers[NUMBER_OF_FDS];
 static void * data[NUMBER_OF_FDS];
-static time_t timeouts[NUMBER_OF_FDS];
+static struct timeval timeouts[NUMBER_OF_FDS];
 
 void
 gm_fd_register(int fd, gm_fd_handler_t handler, void * d, bool readable, bool writable, bool exception, uint32_t seconds) {
   int limit = fd + 1;
+  struct timeval now;
+  struct timeval * t;
 
   if ( fd_limit < limit )
     fd_limit = limit;
@@ -48,10 +50,17 @@ gm_fd_register(int fd, gm_fd_handler_t handler, void * d, bool readable, bool wr
   handlers[fd] = handler;
   data[fd] = d;
 
-  if ( seconds )
-    timeouts[fd] = time(0) + seconds;
-  else
-    timeouts[fd] = 0;
+  gettimeofday(&now, 0);
+
+  t = &timeouts[fd];
+
+  if ( seconds ) {
+    t->tv_sec = now.tv_sec + seconds;
+    t->tv_usec = now.tv_usec;
+  }
+  else {
+    timerclear(t);
+  }
   
   if ( readable )
     FD_SET(fd, &read_fds);
@@ -73,7 +82,7 @@ void
 gm_fd_unregister(int fd) {
   handlers[fd] = (gm_fd_handler_t)0;
   data[fd] = 0;
-  timeouts[fd] = 0;
+  timerclear(&timeouts[fd]);
   FD_CLR(fd, &read_fds);
   FD_CLR(fd, &write_fds);
   FD_CLR(fd, &exception_fds);
@@ -96,46 +105,42 @@ select_task(void * param)
     fd_set read_now;
     fd_set write_now;
     fd_set exception_now;
-    struct timeval tv = {};
-    time_t now = time(0);
+    struct timeval now;
+    struct timeval min_time = { 0x7fffffff, 0 }; // Absurdly long time.
     int number_of_set_fds;
-    time_t min_time = 0x7fffffff; // Absurdly long time.
 
 
+    gettimeofday(&now, 0);
 
     for ( unsigned int i = 0; i < NUMBER_OF_FDS; i++ ) {
-      time_t t = timeouts[i];
+      struct timeval * t = &timeouts[i];
 
-      if ( t ) {
-        time_t when;
+      if ( timerisset(t) ) {
+        struct timeval when;
 
-        if ( t >= now ) {
-          min_time = 0;
+        if ( timercmp(t, &now, >) ) {
+          timerclear(&min_time);
           break; // Can't get lower than this, so no point in checking more values.
         }
-  
-        // The granularity of the timer is 1 second. This means that if the user asks for a 1 second timeout, the actual time
-        // will be between 1 and 2 seconds.
-        when = (t - now) + 1;
-        
-        if ( when < min_time )
+        else {
+          timersub(&now, t, &when);
+        }
+      
+        if ( timercmp(&when, &min_time, <) )
           min_time = when;
       }
     }
-
-    tv.tv_sec = min_time;
-    tv.tv_usec = 0;
 
     memcpy(&read_now, &read_fds, sizeof(read_now));
     memcpy(&write_now, &write_fds, sizeof(write_now));
     memcpy(&exception_now, &exception_fds, sizeof(exception_now));
 
     // `now` must be the time before select was called, so that
-    number_of_set_fds = select(fd_limit, &read_now, &write_now, &exception_now, &tv);
+    number_of_set_fds = select(fd_limit, &read_now, &write_now, &exception_now, &min_time);
 
     if ( number_of_set_fds > 0 ) {
       for ( unsigned int i = 0; i < NUMBER_OF_FDS; i++ ) {
-        time_t t = timeouts[i];
+        struct timeval * t = &timeouts[i];
         bool readable = false;
         bool writable = false;
         bool exception = false;
@@ -147,7 +152,7 @@ select_task(void * param)
           writable = true;
         if ( FD_ISSET(i, &exception_now) )
           exception = true;
-        if ( t >= now ) {
+        if ( t->tv_sec > now.tv_sec || (t->tv_sec == now.tv_sec && t->tv_usec > now.tv_usec) ) {
           timeout = true;
           gm_fd_unregister(i);
         }
@@ -158,8 +163,8 @@ select_task(void * param)
     }
     else if ( number_of_set_fds == 0 ) {
       for ( unsigned int i = 0; i < NUMBER_OF_FDS; i++ ) {
-        time_t t = timeouts[i];
-        if ( t >= now ) {
+        struct timeval * t = &timeouts[i];
+        if ( t->tv_sec > now.tv_sec || (t->tv_sec == now.tv_sec && t->tv_usec > now.tv_usec) ) {
           gm_fd_unregister(i);
           (*handlers[i])(i, false, false, false, true);
         }
@@ -169,7 +174,6 @@ select_task(void * param)
       // Select failed.
       fprintf(stderr, "Select failed with error: %s\n", strerror(errno));
     }
-
   }
 }
 

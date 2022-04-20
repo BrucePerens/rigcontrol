@@ -24,9 +24,9 @@
 #include <sys/un.h>
 #include <sys/stat.h>
 #include <errno.h>
+#include "generic_main.h"
 
 #define NUMBER_OF_FDS	100
-typedef void (*gm_fd_handler_t)(int fd, bool readable, bool writable, bool exception, bool timeout);
 
 static TaskHandle_t select_task_id = NULL;
 
@@ -35,16 +35,18 @@ static fd_set write_fds = {};
 static fd_set exception_fds = {};
 static int fd_limit = 0;
 static gm_fd_handler_t handlers[NUMBER_OF_FDS];
+static void * data[NUMBER_OF_FDS];
 static time_t timeouts[NUMBER_OF_FDS];
 
 void
-gm_fd_register(int fd, gm_fd_handler_t handler, bool readable, bool writable, bool exception, uint32_t seconds) {
+gm_fd_register(int fd, gm_fd_handler_t handler, void * d, bool readable, bool writable, bool exception, uint32_t seconds) {
   int limit = fd + 1;
 
   if ( fd_limit < limit )
     fd_limit = limit;
 
   handlers[fd] = handler;
+  data[fd] = d;
 
   if ( seconds )
     timeouts[fd] = time(0) + seconds;
@@ -70,6 +72,7 @@ gm_fd_register(int fd, gm_fd_handler_t handler, bool readable, bool writable, bo
 void
 gm_fd_unregister(int fd) {
   handlers[fd] = (gm_fd_handler_t)0;
+  data[fd] = 0;
   timeouts[fd] = 0;
   FD_CLR(fd, &read_fds);
   FD_CLR(fd, &write_fds);
@@ -102,17 +105,22 @@ select_task(void * param)
 
     for ( unsigned int i = 0; i < NUMBER_OF_FDS; i++ ) {
       time_t t = timeouts[i];
-      time_t when;
 
-      if ( t >= now ) {
-        min_time = 0;
-        break; // Can't get lower than this, so no point in checking more values.
+      if ( t ) {
+        time_t when;
+
+        if ( t >= now ) {
+          min_time = 0;
+          break; // Can't get lower than this, so no point in checking more values.
+        }
+  
+        // The granularity of the timer is 1 second. This means that if the user asks for a 1 second timeout, the actual time
+        // will be between 1 and 2 seconds.
+        when = (t - now) + 1;
+        
+        if ( when < min_time )
+          min_time = when;
       }
-
-      when = t - now;
-      
-      if ( when < min_time )
-        min_time = when;
     }
 
     tv.tv_sec = min_time;
@@ -122,6 +130,7 @@ select_task(void * param)
     memcpy(&write_now, &write_fds, sizeof(write_now));
     memcpy(&exception_now, &exception_fds, sizeof(exception_now));
 
+    // `now` must be the time before select was called, so that
     number_of_set_fds = select(fd_limit, &read_now, &write_now, &exception_now, &tv);
 
     if ( number_of_set_fds > 0 ) {

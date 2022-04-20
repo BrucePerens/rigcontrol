@@ -109,6 +109,34 @@ struct stun_attribute {
   } value;
 };
 
+struct stun_server {
+  const char *	host;
+  uint16_t	port;
+};
+
+static const struct stun_server ipv4_servers[] = {
+#if 0
+  { "stun.ooma.com", 3478 },
+  { "stun.3cx.com", 3478 },
+  { "stun.ucsb.edu", 3478 },
+  { "stun.l.google.com", 19302 },
+  { "stun2.l.google.com", 19302 },
+  { "stun3.l.google.com", 19302 },
+  { "stun4.l.google.com", 19302 },
+#endif
+  // STUN multiplexed on port 80!
+  { "openrelay.metered.ca", 80 }
+};
+static const size_t	ipv4_table_count = sizeof(ipv4_servers) / sizeof(*ipv4_servers);
+
+static const struct stun_server ipv6_servers[] = {
+  { "stun.l.google.com", 19302 },
+  { "stun2.l.google.com", 19302 },
+  { "stun3.l.google.com", 19302 },
+  { "stun4.l.google.com", 19302 }
+};
+static const size_t	ipv6_table_count = sizeof(ipv6_servers) / sizeof(*ipv6_servers);
+
 static void
 decode_mapped_address(struct stun_attribute * a, struct sockaddr * address)
 {
@@ -190,21 +218,11 @@ decode_fingerprint(struct stun_attribute * a)
   fprintf(stderr, "Fingerprint\n");
 }
 
-int stun_internal(const char * host, uint16_t port, bool ipv6, struct sockaddr * address)
+struct addrinfo *
+get_address(const char * host, uint16_t port, bool ipv6)
 {
-  uint32_t send_buffer[128] = {};
-  uint32_t receive_buffer[256] = {};
-  struct stun_message *	const	send_packet = (struct stun_message *)send_buffer; 
-  struct stun_message *	const	receive_packet = (struct stun_message *)receive_buffer; 
-  struct sockaddr_storage	receive_address = {};
-  socklen_t			receive_address_size;
-  ssize_t			send_result;
-  ssize_t			receive_result;
-  struct timeval		timeout = {};
-  struct addrinfo		hints = {};
   struct addrinfo *		send_address = 0;
-  bool				got_xor_mapped_address = false;
-  bool				got_an_address = false;
+  struct addrinfo		hints = {};
   char				port_string[6];
 
   // Only return the address family that is requested in hints->ai_family.
@@ -222,20 +240,43 @@ int stun_internal(const char * host, uint16_t port, bool ipv6, struct sockaddr *
 
   if ( gai_result != 0 ) {
     fprintf(stderr, "%s: getaddrinfo() error %d\n", host, gai_result);
-    return -1;
+    return 0;
+  }
+  return send_address;
+}
+
+static int
+send_stun_request(bool ipv6)
+{
+  uint32_t send_buffer[128] = {};
+  struct stun_message *	const	send_packet = (struct stun_message *)send_buffer; 
+  struct addrinfo *		send_address;
+  ssize_t			send_result;
+  unsigned			int message_class = STUN_REQUEST;
+  unsigned			int method = STUN_BINDING;
+  const struct stun_server *	servers;
+  size_t			count;
+  const struct stun_server *	server;
+
+  if ( ipv6 ) {
+    servers = ipv6_servers;
+    count = ipv6_table_count;
+  }
+  else {
+    servers = ipv4_servers;
+    count = ipv4_table_count;
   }
 
-  unsigned int message_class = STUN_REQUEST;
-  unsigned int method = STUN_BINDING;
-  send_packet->magic_cookie = htonl(stun_magic);
-  send_packet->type = htons(((message_class & 0x1) << 4) | ((message_class & 0x2) << 8) | (method & 0xf));
-  esp_fill_random(send_packet->transaction_id, sizeof(send_packet->transaction_id));
+  server = &servers[gm_choose_one(count)];
+
+  if ( (send_address = get_address(server->host, server->port, ipv6)) == 0 )
+    return -1;
 
   int sock = socket (send_address->ai_family, SOCK_DGRAM, send_address->ai_protocol);
 
-  timeout.tv_sec = 2;
-  timeout.tv_usec = 0;
-  setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO,(char*)&timeout, sizeof(timeout));
+  send_packet->magic_cookie = htonl(stun_magic);
+  send_packet->type = htons(((message_class & 0x1) << 4) | ((message_class & 0x2) << 8) | (method & 0xf));
+  esp_fill_random(send_packet->transaction_id, sizeof(send_packet->transaction_id));
 
   send_result = sendto(
    sock,
@@ -251,19 +292,14 @@ int stun_internal(const char * host, uint16_t port, bool ipv6, struct sockaddr *
     fprintf(stderr, "Send error.\n");
     return -1;
   }
-  receive_address_size = sizeof(struct sockaddr_in6);
+  return sock;
+}
 
-  receive_result = recvfrom(
-   sock,
-   receive_packet,
-   sizeof(receive_buffer),
-   0,
-   (struct sockaddr *)&receive_address,
-   &receive_address_size);
-
-  if ( receive_result < 22 )
-    return -1;
-
+static int
+process_received_packet(struct stun_message * receive_packet, struct sockaddr * address, ssize_t receive_result)
+{
+  bool				got_xor_mapped_address = false;
+  bool				got_an_address = false;
   struct stun_attribute * attribute = (struct stun_attribute *)receive_packet->attributes;
   uint16_t attribute_size = htons(receive_packet->length);
   if ( attribute_size < (receive_result - 20) ) {
@@ -330,51 +366,47 @@ int stun_internal(const char * host, uint16_t port, bool ipv6, struct sockaddr *
   }
 }
 
-struct stun_server {
-  const char *	host;
-  uint16_t	port;
-};
+int receive_stun_response(int sock, struct sockaddr * address)
+{
+  uint32_t receive_buffer[256] = {};
+  struct stun_message *	const	receive_packet = (struct stun_message *)receive_buffer; 
+  ssize_t			receive_result;
+  struct timeval		timeout = { 2, 0 }; // 2 seconds, no microseconds.
 
-static const struct stun_server ipv4_servers[] = {
-#if 0
-  { "stun.ooma.com", 3478 },
-  { "stun.3cx.com", 3478 },
-  { "stun.ucsb.edu", 3478 },
-  { "stun.l.google.com", 19302 },
-  { "stun2.l.google.com", 19302 },
-  { "stun3.l.google.com", 19302 },
-  { "stun4.l.google.com", 19302 },
-#endif
-  // STUN multiplexed on port 80!
-  { "openrelay.metered.ca", 80 }
-};
-static const size_t	ipv4_table_count = sizeof(ipv4_servers) / sizeof(*ipv4_servers);
+  setsockopt (sock, SOL_SOCKET, SO_RCVTIMEO, (char *) &timeout,
+	    sizeof (timeout));
 
-static const struct stun_server ipv6_servers[] = {
-  { "stun.l.google.com", 19302 },
-  { "stun2.l.google.com", 19302 },
-  { "stun3.l.google.com", 19302 },
-  { "stun4.l.google.com", 19302 }
-};
-static const size_t	ipv6_table_count = sizeof(ipv6_servers) / sizeof(*ipv6_servers);
+  receive_result = recvfrom(
+   sock,
+   receive_packet,
+   sizeof(receive_buffer),
+   0,
+   0,
+   0);
+
+  if ( receive_result < 22 )
+    return -1;
+
+  return process_received_packet(receive_packet, address, receive_result);
+}
+
+int stun_internal(bool ipv6, struct sockaddr * address)
+{
+  int				sock;
+
+  if ( (sock = send_stun_request(ipv6)) < 0 )
+    return -1;
+
+  if ( receive_stun_response(sock, address) != 0 )
+    return -1;
+
+  return 0;
+}
 
 int gm_stun(bool ipv6, struct sockaddr * address)
 {
-  const struct stun_server *	servers;
-  size_t			count;
-
-  if ( ipv6 ) {
-    servers = ipv6_servers;
-    count = ipv6_table_count;
-  }
-  else {
-    servers = ipv4_servers;
-    count = ipv4_table_count;
-  }
-
   for (int tries = 0; tries < 5; tries++) {
-    const struct stun_server * server = &servers[gm_choose_one(count)];
-    if ( stun_internal(server->host, server->port, ipv6, address) == 0 )
+    if ( stun_internal(ipv6, address) == 0 )
       return 0;
   }
   return -1;

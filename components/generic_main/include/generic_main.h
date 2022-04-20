@@ -20,6 +20,8 @@ typedef enum _gm_param_result {
   PR_NOT_SET = 2
 } gm_param_result_t;
 
+typedef void (*gm_fd_handler_t)(int fd, bool readable, bool writable, bool exception, bool timeout);
+
 typedef struct _gm_port_mapping { 
   struct timeval granted_time;
   uint32_t nonce[3];
@@ -95,6 +97,8 @@ extern void			gm_command_register(const esp_console_cmd_t * command);
 
 extern int			gm_ddns(void);
 
+extern void			gm_fd_register(int fd, gm_fd_handler_t handler, void * data, bool readable, bool writable, bool exception, uint32_t seconds);
+extern void			gm_fd_unregister(int fd);
 extern gm_param_result_t	gm_param_erase(const char * name);
 extern gm_param_result_t	gm_param_get(const char * name, char * buffer, size_t size);
 extern void			gm_param_list(gm_param_list_coroutine_t coroutine);

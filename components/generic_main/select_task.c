@@ -210,5 +210,7 @@ select_task(void * param)
 void
 gm_select_task(void)
 {
+  // The event server wakes up select() when a file descriptor is registered or unregistered.
+  gm_event_server();
   xTaskCreate(select_task, "select", 10240, NULL, 3, &select_task_id);
 }

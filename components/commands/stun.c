@@ -15,8 +15,7 @@ static struct {
 
 static int run(int argc, char * * argv)
 {
-  char	buffer[128];
-  struct sockaddr_storage sock;
+  static struct sockaddr_storage sock;
   int result;
 
   printf("\n"); 
@@ -30,14 +29,6 @@ static int run(int argc, char * * argv)
   if ( result != 0 )
     return 1;
 
-  void * address;
-  if ( sock.ss_family == AF_INET )
-    address = &((struct sockaddr_in *)&sock)->sin_addr.s_addr;
-  else
-    address = ((struct sockaddr_in6 *)&sock)->sin6_addr.s6_addr;
-
-  inet_ntop(sock.ss_family, address, buffer, sizeof(buffer));
-  fprintf(stderr, "Mapped address: %s, port: %d\n", buffer, ((struct sockaddr_in6 *)&sock)->sin6_port);
   return 0;
 }
 

@@ -138,13 +138,14 @@ static const size_t	ipv6_table_count = sizeof(ipv6_servers) / sizeof(*ipv6_serve
 static void
 decode_mapped_address(struct stun_attribute * a, struct sockaddr * address)
 {
+  fprintf(stderr, "Mapped address.\n");
+
   if ( a->value.mapped_address.family == 1 ) {
     struct sockaddr_in * in = (struct sockaddr_in *)address;
     memset(in, '\0', sizeof(*in));
     in->sin_family = AF_INET;
     in->sin_port = htons(a->value.mapped_address.port);
     in->sin_addr.s_addr = a->value.mapped_address.ipv4;
-    fprintf(stderr, "Mapped address at %x, %x, port %d.\n", (unsigned int)&in->sin_addr.s_addr, in->sin_addr.s_addr, in->sin_port);
   }
   else {
     struct sockaddr_in6 * in6 = (struct sockaddr_in6 *)address;
@@ -174,6 +175,8 @@ static void
 decode_xor_mapped_address(struct stun_attribute * a, struct stun_message * message, struct sockaddr * address)
 {
   uint16_t	magic = htonl(stun_magic);
+
+  fprintf(stderr, "XOR-mapped address.\n");
 
   if ( a->value.mapped_address.family == 1 ) {
     struct sockaddr_in * in = (struct sockaddr_in *)address;
@@ -398,18 +401,27 @@ int receive_stun_response(int sock, struct sockaddr * address)
   return result;
 }
 
+static void
+stun_receive_handler(int fd, void * data, bool readable, bool writable, bool exception, bool timeout)
+{
+  fprintf(stderr, "Stun receive handler: readable = %d, writable = %d, exception = %d, timeout = %d\n", readable, writable, exception, timeout);
+  if ( readable ) {
+    receive_stun_response(fd, data);
+  }
+  gm_fd_unregister(fd);
+}
+
 int stun_internal(bool ipv6, struct sockaddr * address)
 {
   int	sock;
-  int	status;
 
   if ( (sock = send_stun_request(ipv6)) < 0 )
     return -1;
 
-  status = receive_stun_response(sock, address);
-  close(sock);
+  fprintf(stderr, "Register STUN receive.\n");
+  gm_fd_register(sock, stun_receive_handler, address, true, false, true, 5);
 
-  return status;
+  return 0;
 }
 
 int gm_stun(bool ipv6, struct sockaddr * address)

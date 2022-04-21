@@ -20,7 +20,7 @@ typedef enum _gm_param_result {
   PR_NOT_SET = 2
 } gm_param_result_t;
 
-typedef void (*gm_fd_handler_t)(int fd, bool readable, bool writable, bool exception, bool timeout);
+typedef void (*gm_fd_handler_t)(int fd, void * data, bool readable, bool writable, bool exception, bool timeout);
 
 typedef struct _gm_port_mapping { 
   struct timeval granted_time;

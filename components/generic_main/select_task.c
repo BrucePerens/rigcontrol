@@ -89,6 +89,7 @@ gm_fd_unregister(int fd) {
 
   // If the last FD is cleared, set fd_limit to the highest remaining set fd, plus one. 
   if ( fd_limit == fd + 1 ) {
+    fd_limit = 0;
     for ( int i = fd_limit - 2; i >= 0; i-- ) {
        if ( FD_ISSET(i, &read_fds) || FD_ISSET(i, &write_fds) || FD_ISSET(i, &exception_fds) ) {
           fd_limit = i + 1;
@@ -105,6 +106,7 @@ select_task(void * param)
     fd_set read_now;
     fd_set write_now;
     fd_set exception_now;
+    fd_set monitored_fds = {};
     struct timeval now;
     struct timeval min_time = { 0x7fffffff, 0 }; // Absurdly long time.
     int number_of_set_fds;
@@ -112,7 +114,7 @@ select_task(void * param)
 
     gettimeofday(&now, 0);
 
-    for ( unsigned int i = 0; i < NUMBER_OF_FDS; i++ ) {
+    for ( unsigned int i = 0; i < fd_limit; i++ ) {
       struct timeval * t = &timeouts[i];
 
       if ( timerisset(t) ) {
@@ -135,38 +137,47 @@ select_task(void * param)
     memcpy(&write_now, &write_fds, sizeof(write_now));
     memcpy(&exception_now, &exception_fds, sizeof(exception_now));
 
-    // `now` must be the time before select was called, so that
+    if ( min_time.tv_sec > 1 ) {
+      min_time.tv_sec = 1;
+      min_time.tv_usec = 0;
+    }
     number_of_set_fds = select(fd_limit, &read_now, &write_now, &exception_now, &min_time);
 
     if ( number_of_set_fds > 0 ) {
-      for ( unsigned int i = 0; i < NUMBER_OF_FDS; i++ ) {
-        struct timeval * t = &timeouts[i];
-        bool readable = false;
-        bool writable = false;
-        bool exception = false;
-        bool timeout = false;
-
-        if ( FD_ISSET(i, &read_now) )
-          readable = true;
-        if ( FD_ISSET(i, &write_now) )
-          writable = true;
-        if ( FD_ISSET(i, &exception_now) )
-          exception = true;
-        if ( t->tv_sec > now.tv_sec || (t->tv_sec == now.tv_sec && t->tv_usec > now.tv_usec) ) {
-          timeout = true;
-          gm_fd_unregister(i);
+      for ( unsigned int i = 0; i < fd_limit; i++ ) {
+        if ( FD_ISSET(i, &monitored_fds) ) {
+          struct timeval * t = &timeouts[i];
+          bool readable = false;
+          bool writable = false;
+          bool exception = false;
+          bool timeout = false;
+  
+          if ( FD_ISSET(i, &read_now) )
+            readable = true;
+          if ( FD_ISSET(i, &write_now) )
+            writable = true;
+          if ( FD_ISSET(i, &exception_now) )
+            exception = true;
+          if ( t->tv_sec > now.tv_sec || (t->tv_sec == now.tv_sec && t->tv_usec > now.tv_usec) ) {
+            timeout = true;
+          }
+  
+          if ( readable || writable || exception || timeout )
+            (handlers[i])(i, data[i], readable, writable, exception, timeout);
+  
+          if ( timeout )
+            gm_fd_unregister(i);
         }
-
-        if ( readable || writable || exception || timeout )
-          (*handlers[i])(i, readable, writable, exception, timeout);
       }
     }
     else if ( number_of_set_fds == 0 ) {
-      for ( unsigned int i = 0; i < NUMBER_OF_FDS; i++ ) {
-        struct timeval * t = &timeouts[i];
-        if ( t->tv_sec > now.tv_sec || (t->tv_sec == now.tv_sec && t->tv_usec > now.tv_usec) ) {
-          gm_fd_unregister(i);
-          (*handlers[i])(i, false, false, false, true);
+      for ( unsigned int i = 0; i < fd_limit; i++ ) {
+        if ( FD_ISSET(i, &monitored_fds) ) {
+          struct timeval * t = &timeouts[i];
+          if ( t->tv_sec > now.tv_sec || (t->tv_sec == now.tv_sec && t->tv_usec > now.tv_usec) ) {
+            (handlers[i])(i, data[i], false, false, false, true);
+            gm_fd_unregister(i);
+          }
         }
       }
     }

@@ -34,9 +34,9 @@ static fd_set read_fds = {};
 static fd_set write_fds = {};
 static fd_set exception_fds = {};
 static int fd_limit = 0;
-static gm_fd_handler_t handlers[NUMBER_OF_FDS];
-static void * data[NUMBER_OF_FDS];
-static struct timeval timeouts[NUMBER_OF_FDS];
+static gm_fd_handler_t handlers[NUMBER_OF_FDS] = {};
+static void * data[NUMBER_OF_FDS] = {};
+static struct timeval timeouts[NUMBER_OF_FDS] = {};
 
 void
 gm_fd_register(int fd, gm_fd_handler_t handler, void * d, bool readable, bool writable, bool exception, uint32_t seconds) {
@@ -112,40 +112,57 @@ select_task(void * param)
     int number_of_set_fds;
 
 
-    gettimeofday(&now, 0);
-
-    for ( unsigned int i = 0; i < fd_limit; i++ ) {
-      struct timeval * t = &timeouts[i];
-
-      if ( timerisset(t) ) {
-        struct timeval when;
-
-        if ( timercmp(t, &now, >) ) {
-          timerclear(&min_time);
-          break; // Can't get lower than this, so no point in checking more values.
-        }
-        else {
-          timersub(&now, t, &when);
-        }
-      
-        if ( timercmp(&when, &min_time, <) )
-          min_time = when;
-      }
-    }
-
     memcpy(&read_now, &read_fds, sizeof(read_now));
     memcpy(&write_now, &write_fds, sizeof(write_now));
     memcpy(&exception_now, &exception_fds, sizeof(exception_now));
+
+    gettimeofday(&now, 0);
+
+    for ( unsigned int i = 0; i < fd_limit; i++ ) {
+
+      if ( FD_ISSET(i, &read_now) || FD_ISSET(i, &write_now) || FD_ISSET(i, &exception_now) ) {
+        FD_SET(i, &monitored_fds);
+
+
+        struct timeval * t = &timeouts[i];
+        struct timeval x;
+  
+        timersub(t, &now, &x);
+        fprintf(stderr, "Monitoring %d, seconds: %ld, microseconds %ld\n", i, x.tv_sec, x.tv_usec);
+
+        if ( timerisset(t) ) {
+          struct timeval when;
+
+          if ( timercmp(t, &now, <) ) {
+            timerclear(&min_time);
+            fprintf(stderr, "Set timeout to zero.\n");
+            break; // Can't get lower than this, so no point in checking more values.
+          }
+          else {
+            timersub(t, &now, &when);
+            fprintf(stderr, "Set timeout to %ld %ld.\n", when.tv_sec, when.tv_usec);
+          }
+        
+          if ( timercmp(&when, &min_time, <) )
+            min_time = when;
+        }
+      }
+    }
 
     if ( min_time.tv_sec > 1 ) {
       min_time.tv_sec = 1;
       min_time.tv_usec = 0;
     }
+    if ( !timerisset(&min_time) )
+      fprintf(stderr, "Doing select with immediate return.\n");
     number_of_set_fds = select(fd_limit, &read_now, &write_now, &exception_now, &min_time);
+    if ( fd_limit > 0 )
+      fprintf(stderr, "select found %d fds.\n", number_of_set_fds);
 
     if ( number_of_set_fds > 0 ) {
       for ( unsigned int i = 0; i < fd_limit; i++ ) {
         if ( FD_ISSET(i, &monitored_fds) ) {
+          fprintf(stderr, "Monitoring %d.\n", i);
           struct timeval * t = &timeouts[i];
           bool readable = false;
           bool writable = false;
@@ -158,15 +175,16 @@ select_task(void * param)
             writable = true;
           if ( FD_ISSET(i, &exception_now) )
             exception = true;
-          if ( t->tv_sec > now.tv_sec || (t->tv_sec == now.tv_sec && t->tv_usec > now.tv_usec) ) {
+          if ( timercmp(t, &now, <) )
             timeout = true;
+  
+          if ( readable || writable || exception || timeout ) {
+            fprintf(stderr, "Handler %d, readable: %d, writable %d, exception: %d, timeout: %d\n", i, readable, writable, exception, timeout);
+            (handlers[i])(i, data[i], readable, writable, exception, timeout);
+            if ( timeout )
+              gm_fd_unregister(i);
           }
   
-          if ( readable || writable || exception || timeout )
-            (handlers[i])(i, data[i], readable, writable, exception, timeout);
-  
-          if ( timeout )
-            gm_fd_unregister(i);
         }
       }
     }
@@ -174,7 +192,8 @@ select_task(void * param)
       for ( unsigned int i = 0; i < fd_limit; i++ ) {
         if ( FD_ISSET(i, &monitored_fds) ) {
           struct timeval * t = &timeouts[i];
-          if ( t->tv_sec > now.tv_sec || (t->tv_sec == now.tv_sec && t->tv_usec > now.tv_usec) ) {
+          if ( timercmp(t, &now, <) ) {
+            fprintf(stderr, "Calling %d handler for timeout.\n", i);
             (handlers[i])(i, data[i], false, false, false, true);
             gm_fd_unregister(i);
           }

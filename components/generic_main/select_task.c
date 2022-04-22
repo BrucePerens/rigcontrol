@@ -76,6 +76,8 @@ gm_fd_register(int fd, gm_fd_handler_t handler, void * d, bool readable, bool wr
     FD_SET(fd, &exception_fds);
   else
     FD_CLR(fd, &exception_fds);
+
+  gm_select_wakeup();
 }
 
 void
@@ -97,6 +99,7 @@ gm_fd_unregister(int fd) {
        }
     }
   }
+  gm_select_wakeup();
 }
 
 static void
@@ -108,9 +111,8 @@ select_task(void * param)
     fd_set exception_now;
     fd_set monitored_fds = {};
     struct timeval now;
-    struct timeval min_time = { 0x7fffffff, 0 }; // Absurdly long time.
+    struct timeval min_time = { 365 * 24 * 60 * 60, 0 }; // Absurdly long time.
     int number_of_set_fds;
-
 
     memcpy(&read_now, &read_fds, sizeof(read_now));
     memcpy(&write_now, &write_fds, sizeof(write_now));
@@ -122,14 +124,10 @@ select_task(void * param)
 
       if ( FD_ISSET(i, &read_now) || FD_ISSET(i, &write_now) || FD_ISSET(i, &exception_now) ) {
         FD_SET(i, &monitored_fds);
-
+        fprintf(stderr, "Monitoring fd %d\n", i);
 
         struct timeval * t = &timeouts[i];
-        struct timeval x;
   
-        timersub(t, &now, &x);
-        fprintf(stderr, "Monitoring %d, seconds: %ld, microseconds %ld\n", i, x.tv_sec, x.tv_usec);
-
         if ( timerisset(t) ) {
           struct timeval when;
 
@@ -139,6 +137,7 @@ select_task(void * param)
             break; // Can't get lower than this, so no point in checking more values.
           }
           else {
+
             timersub(t, &now, &when);
             fprintf(stderr, "Set timeout to %ld %ld.\n", when.tv_sec, when.tv_usec);
           }
@@ -149,12 +148,7 @@ select_task(void * param)
       }
     }
 
-    if ( min_time.tv_sec > 1 ) {
-      min_time.tv_sec = 1;
-      min_time.tv_usec = 0;
-    }
-    if ( !timerisset(&min_time) )
-      fprintf(stderr, "Doing select with immediate return.\n");
+    fprintf(stderr, "Doing select %ld %ld.\n", min_time.tv_sec, min_time.tv_usec);
     number_of_set_fds = select(fd_limit, &read_now, &write_now, &exception_now, &min_time);
     if ( fd_limit > 0 )
       fprintf(stderr, "select found %d fds.\n", number_of_set_fds);
@@ -175,7 +169,7 @@ select_task(void * param)
             writable = true;
           if ( FD_ISSET(i, &exception_now) )
             exception = true;
-          if ( timercmp(t, &now, <) )
+          if ( timerisset(t) && timercmp(t, &now, <) )
             timeout = true;
   
           if ( readable || writable || exception || timeout ) {
@@ -192,7 +186,7 @@ select_task(void * param)
       for ( unsigned int i = 0; i < fd_limit; i++ ) {
         if ( FD_ISSET(i, &monitored_fds) ) {
           struct timeval * t = &timeouts[i];
-          if ( timercmp(t, &now, <) ) {
+          if ( timerisset(t) && timercmp(t, &now, <) ) {
             fprintf(stderr, "Calling %d handler for timeout.\n", i);
             (handlers[i])(i, data[i], false, false, false, true);
             gm_fd_unregister(i);
@@ -211,6 +205,7 @@ void
 gm_select_task(void)
 {
   // The event server wakes up select() when a file descriptor is registered or unregistered.
+  // It will set up an FD to wait upon for accept() before the first select() is called.
   gm_event_server();
   xTaskCreate(select_task, "select", 10240, NULL, 3, &select_task_id);
 }

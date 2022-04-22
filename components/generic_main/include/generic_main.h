@@ -21,6 +21,7 @@ typedef enum _gm_param_result {
 } gm_param_result_t;
 
 typedef void (*gm_fd_handler_t)(int fd, void * data, bool readable, bool writable, bool exception, bool timeout);
+typedef void (*gm_run_t)(void *);
 
 typedef struct _gm_port_mapping { 
   struct timeval granted_time;
@@ -99,8 +100,10 @@ extern int			gm_ddns(void);
 
 extern void			gm_event_server(void);
 
+extern void			gm_fast_run(gm_run_t * function);
 extern void			gm_fd_register(int fd, gm_fd_handler_t handler, void * data, bool readable, bool writable, bool exception, uint32_t seconds);
 extern void			gm_fd_unregister(int fd);
+
 extern gm_param_result_t	gm_param_erase(const char * name);
 extern gm_param_result_t	gm_param_get(const char * name, char * buffer, size_t size);
 extern void			gm_param_list(gm_param_list_coroutine_t coroutine);
@@ -113,6 +116,7 @@ extern int			gm_public_ipv4(char * data, size_t size);
 
 extern int			gm_stun(bool ipv6, struct sockaddr * address);
 extern void			gm_select_task(void);
+extern void			gm_select_wakeup(void);
 
 extern void			gm_timer_to_human(int64_t, char *, size_t);
 

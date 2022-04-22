@@ -393,8 +393,6 @@ static void wifi_connect_to_ap(const char * ssid, const char * password)
   ESP_ERROR_CHECK( esp_wifi_connect() );
 }
 
-// FIX: Every time I go through this loop, two more netif interfaces
-// are created. Perhaps this is happening in esp_smartconfig.
 void gm_wifi_restart(void)
 {
   stop_smart_config_task(true);

@@ -100,7 +100,7 @@ extern int			gm_ddns(void);
 
 extern void			gm_event_server(void);
 
-extern void			gm_fast_run(gm_run_t * function);
+extern void			gm_fast_run(gm_run_t function, void * data);
 extern void			gm_fd_register(int fd, gm_fd_handler_t handler, void * data, bool readable, bool writable, bool exception, uint32_t seconds);
 extern void			gm_fd_unregister(int fd);
 

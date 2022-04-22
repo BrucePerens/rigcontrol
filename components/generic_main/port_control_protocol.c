@@ -185,7 +185,7 @@ int gm_port_control_protocol(gm_port_mapping_t * m)
    send_address_size);
 
   if ( send_result < map_packet_size ) {
-    fprintf(stderr, "Send returned %d\n", send_result);
+    gm_printf("Send returned %d\n", send_result);
     return -1;
   }
 
@@ -202,20 +202,20 @@ int gm_port_control_protocol(gm_port_mapping_t * m)
 
   if ( receive_result >= map_packet_size ) {
     if ( memcmp(receive_packet.pcp.mp.nonce, send_packet.pcp.mp.nonce, sizeof(receive_packet.pcp.mp.nonce)) != 0 ) {
-      fprintf(stderr, "Received nonce isn't equal to transmitted one.\n");
+      gm_printf("Received nonce isn't equal to transmitted one.\n");
       return -1;
     }
     if ( receive_packet.result_code != PCP_SUCCESS ) {
-      fprintf(stderr, "Received result code: %d.\n", receive_packet.result_code);
+      gm_printf("Received result code: %d.\n", receive_packet.result_code);
       return -1;
     }
     if ( receive_packet.opcode != (send_packet.opcode | 0x80) ) {
-      fprintf(stderr, "Received opcode: %x.\n", receive_packet.opcode);
+      gm_printf("Received opcode: %x.\n", receive_packet.opcode);
       return -1;
     }
   }
   else {
-    fprintf(stderr, "Received result too small.\n");
+    gm_printf("Received result too small.\n");
     return -1;
   }
 

@@ -37,6 +37,7 @@ static int fd_limit = 0;
 static gm_fd_handler_t handlers[NUMBER_OF_FDS] = {};
 static void * data[NUMBER_OF_FDS] = {};
 static struct timeval timeouts[NUMBER_OF_FDS] = {};
+static volatile bool	in_select = false;
 
 void
 gm_fd_register(int fd, gm_fd_handler_t handler, void * d, bool readable, bool writable, bool exception, uint32_t seconds) {
@@ -77,7 +78,8 @@ gm_fd_register(int fd, gm_fd_handler_t handler, void * d, bool readable, bool wr
   else
     FD_CLR(fd, &exception_fds);
 
-  gm_select_wakeup();
+  if ( in_select )
+    gm_select_wakeup();
 }
 
 void
@@ -92,14 +94,15 @@ gm_fd_unregister(int fd) {
   // If the last FD is cleared, set fd_limit to the highest remaining set fd, plus one. 
   if ( fd_limit == fd + 1 ) {
     fd_limit = 0;
-    for ( int i = fd_limit - 2; i >= 0; i-- ) {
+    for ( int i = fd - 1; i >= 0; i-- ) {
        if ( FD_ISSET(i, &read_fds) || FD_ISSET(i, &write_fds) || FD_ISSET(i, &exception_fds) ) {
           fd_limit = i + 1;
           break;
        }
     }
   }
-  gm_select_wakeup();
+  if ( in_select )
+    gm_select_wakeup();
 }
 
 static void
@@ -114,6 +117,8 @@ select_task(void * param)
     struct timeval min_time = { 365 * 24 * 60 * 60, 0 }; // Absurdly long time.
     int number_of_set_fds;
 
+    in_select = true;
+
     memcpy(&read_now, &read_fds, sizeof(read_now));
     memcpy(&write_now, &write_fds, sizeof(write_now));
     memcpy(&exception_now, &exception_fds, sizeof(exception_now));
@@ -124,7 +129,6 @@ select_task(void * param)
 
       if ( FD_ISSET(i, &read_now) || FD_ISSET(i, &write_now) || FD_ISSET(i, &exception_now) ) {
         FD_SET(i, &monitored_fds);
-        fprintf(stderr, "Monitoring fd %d\n", i);
 
         struct timeval * t = &timeouts[i];
   
@@ -133,14 +137,10 @@ select_task(void * param)
 
           if ( timercmp(t, &now, <) ) {
             timerclear(&min_time);
-            fprintf(stderr, "Set timeout to zero.\n");
             break; // Can't get lower than this, so no point in checking more values.
           }
-          else {
-
+          else
             timersub(t, &now, &when);
-            fprintf(stderr, "Set timeout to %ld %ld.\n", when.tv_sec, when.tv_usec);
-          }
         
           if ( timercmp(&when, &min_time, <) )
             min_time = when;
@@ -148,15 +148,12 @@ select_task(void * param)
       }
     }
 
-    fprintf(stderr, "Doing select %ld %ld.\n", min_time.tv_sec, min_time.tv_usec);
     number_of_set_fds = select(fd_limit, &read_now, &write_now, &exception_now, &min_time);
-    if ( fd_limit > 0 )
-      fprintf(stderr, "select found %d fds.\n", number_of_set_fds);
+    in_select = false;
 
     if ( number_of_set_fds > 0 ) {
       for ( unsigned int i = 0; i < fd_limit; i++ ) {
         if ( FD_ISSET(i, &monitored_fds) ) {
-          fprintf(stderr, "Monitoring %d.\n", i);
           struct timeval * t = &timeouts[i];
           bool readable = false;
           bool writable = false;
@@ -169,34 +166,68 @@ select_task(void * param)
             writable = true;
           if ( FD_ISSET(i, &exception_now) )
             exception = true;
-          if ( timerisset(t) && timercmp(t, &now, <) )
-            timeout = true;
+          if ( timerisset(t) ) {
+            if ( timercmp(t, &now, <) )
+              timeout = true;
+            else {
+              // Compensate for timer granularity, rather than looping through select() until the
+              // timer runs out. 
+              struct timeval remaining;
+
+              timersub(t, &now, &remaining);
+              if ( remaining.tv_sec == 0 && remaining.tv_usec < 10000 )
+                timeout = true;
+            }
+          }
   
           if ( readable || writable || exception || timeout ) {
-            fprintf(stderr, "Handler %d, readable: %d, writable %d, exception: %d, timeout: %d\n", i, readable, writable, exception, timeout);
-            (handlers[i])(i, data[i], readable, writable, exception, timeout);
+            // Save the handler and data before unregister. Call unregister _before_ calling the handler,
+            // which may call register for the same FD.
+            gm_fd_handler_t handler = handlers[i];
+            void * d = data[i];
+
             if ( timeout )
               gm_fd_unregister(i);
+            (handler)(i, d, readable, writable, exception, timeout);
           }
   
         }
       }
     }
     else if ( number_of_set_fds == 0 ) {
+      bool timeout = false;
+
       for ( unsigned int i = 0; i < fd_limit; i++ ) {
         if ( FD_ISSET(i, &monitored_fds) ) {
           struct timeval * t = &timeouts[i];
-          if ( timerisset(t) && timercmp(t, &now, <) ) {
-            fprintf(stderr, "Calling %d handler for timeout.\n", i);
-            (handlers[i])(i, data[i], false, false, false, true);
+          if ( timerisset(t) ) {
+            if ( timercmp(t, &now, <) )
+              timeout = true;
+            else {
+              // Compensate for timer granularity, rather than looping through select() until the
+              // timer runs out. 
+              struct timeval remaining;
+
+              timersub(t, &now, &remaining);
+              if ( remaining.tv_sec == 0 && remaining.tv_usec < 10000 )
+                timeout = true;
+            }
+          }
+          if ( timeout ) {
+            // Save the handler and data before unregister. Call unregister _before_ calling the handler,
+            // which may call register for the same FD.
+            gm_fd_handler_t handler = handlers[i];
+            void * d = data[i];
+
             gm_fd_unregister(i);
+            (handler)(i, d, false, false, false, true);
           }
         }
       }
     }
     else {
       // Select failed.
-      fprintf(stderr, "Select failed with error: %s\n", strerror(errno));
+      gm_printf("Select failed with error: %s\n", strerror(errno));
     }
   }
 }

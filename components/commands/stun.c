@@ -13,12 +13,13 @@ static struct {
     struct arg_end * end;
 } args;
 
+static struct sockaddr_storage sock;
+
 static int run(int argc, char * * argv)
 {
-  static struct sockaddr_storage sock;
   int result;
 
-  printf("\n"); 
+  gm_printf("\n"); 
   int nerrors = arg_parse(argc, argv, (void **) &args);
   if (nerrors) {
     arg_print_errors(stderr, args.end, argv[0]);

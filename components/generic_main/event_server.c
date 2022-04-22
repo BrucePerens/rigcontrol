@@ -32,7 +32,7 @@ struct gm_event {
     struct {
       gm_run_t function;
       void * data;
-    } call;
+    } run;
   } data;
 };
 
@@ -44,39 +44,36 @@ event_handler(int fd, void * data, bool readable, bool writable, bool exception,
   char			buffer[128];
   struct gm_event *	event = (struct gm_event *)buffer;
 
-  fprintf(stderr, "In event handler\n");
-
   int	result = read(fd, buffer, 8);
 
   if ( result != 8 ) {
-    fprintf(stderr, "Event header read returned %d\n", result);
+    gm_printf("Event header read returned %d\n", result);
     return;
   }
 
   if ( event->size > 0 ) {
     if ( event->size > sizeof(buffer) - 8 ) {
-      fprintf(stderr, "size of event data too large: %d\n", event->size);
+      gm_printf("size of event data too large: %d\n", event->size);
       return;
     }
     result = read(fd, &event->data, event->size);
 
     if ( result != event->size ) {
-      fprintf(stderr, "Event data read returned %d, error: %s\n", result, strerror(errno));
+      gm_printf("Event data read returned %d, error: %s\n", result, strerror(errno));
+      return;
     }
 
   }
   switch ( event->operation ) {
   case GM_EVENT_INVALID:
   default:
-    fprintf(stderr, "Invalid event opcode %d\n", result);
+    gm_printf("Invalid event opcode %d\n", result);
     break;
   case GM_EVENT_WAKE_SELECT:
     // If we get here, the select has already awakened, there's no need to do any more.
-    fprintf(stderr, "Woke up the select().\n");
     break;
   case GM_EVENT_RUN:
-    fprintf(stderr, "Calling function.\n");
-    (event->data.call.function)(event->data.call.data);
+    (event->data.run.function)(event->data.run.data);
     break;
   }
 }
@@ -89,21 +86,16 @@ accept_handler(int sock, void * data, bool readable, bool writable, bool excepti
   socklen_t		size;
   int			connection;
 
-  fprintf(stderr, "In accept handler.\n");
   if ( readable ) {
     size = sizeof(client_address);
     if ( (connection = accept(sock, (struct sockaddr *)&client_address, &size)) < 0 ) {
-      fprintf(stderr, "Select event server listen failed: %s\n", strerror(errno));
-      gm_fd_unregister(sock);
-      close(sock);
+      gm_printf("Select event server listen failed: %s\n", strerror(errno));
       return;
     }
     gm_fd_register(connection, event_handler, 0, true, false, true, 0);
   }
   if ( exception ) {
-    fprintf(stderr, "Exception on event socket.\n");
-    gm_fd_unregister(sock);
-    close(sock);
+    gm_printf("Exception on event socket.\n");
   }
 }
 
@@ -116,7 +108,7 @@ gm_event_server(void)
   client = socket(AF_INET, SOCK_STREAM, 0);
 
   if ( server < 0 ) {
-    fprintf(stderr, "Select event server could not create a socket: %s\n", strerror(errno));
+    gm_printf("Select event server could not create a socket: %s\n", strerror(errno));
     return;
   }
   
@@ -125,12 +117,12 @@ gm_event_server(void)
   address.sin_port = 2139; // Private port not expected to be used by other code.
 
   if ( bind(server, (struct sockaddr *)&address, sizeof(address)) != 0 ) {
-    fprintf(stderr, "Select event server bind failed: %s\n", strerror(errno));
+    gm_printf("Select event server bind failed: %s\n", strerror(errno));
     return;
   }
 
   if ( listen(server, 2) != 0 ) {
-    fprintf(stderr, "Select event server listen failed: %s\n", strerror(errno));
+    gm_printf("Select event server listen failed: %s\n", strerror(errno));
     close(server);
     return;
   }
@@ -139,7 +131,7 @@ gm_event_server(void)
 
   // This blocks until the select task is running.
   if ( connect(client, (struct sockaddr *)&address, sizeof(address)) < 0 ) {
-    fprintf(stderr, "Connect failed: %s\n", strerror(errno));
+    gm_printf("Connect failed: %s\n", strerror(errno));
   }
 }
 
@@ -151,20 +143,25 @@ gm_select_wakeup(void)
     event.operation = GM_EVENT_WAKE_SELECT;
     event.size = 0;
     if ( write(client, &event, 8) != 8 )
-      fprintf(stderr, "gm_select_wakeup() write failed: %s\n", strerror(errno));
+      gm_printf("gm_select_wakeup() write failed: %s\n", strerror(errno));
   }
 }
 
 // Run a function in the context of the select task. It must not block.
 void
-gm_fast_run(gm_run_t * function)
+gm_fast_run(gm_run_t function, void * data)
 {
   struct gm_event	event = {};
-  if ( client > 0 ) {
+
+  if ( client >= 0 ) {
     event.operation = GM_EVENT_RUN;
-    event.size = 0;
-    write(client, &event, sizeof(event));
+    event.size = sizeof(event.data.run);
+    event.data.run.function = function;
+    event.data.run.data = data;
     if ( write(client, &event, sizeof(event)) != sizeof(event) )
-      fprintf(stderr, "gm_run() write failed: %s\n", strerror(errno));
+      gm_printf("gm_fast_run() write failed: %s\n", strerror(errno));
+  }
+  else {
+    gm_printf("In gm_fast_run: client FD is < 0\n");
   }
 }

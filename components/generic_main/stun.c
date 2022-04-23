@@ -114,10 +114,13 @@ struct stun_server {
   uint16_t	port;
 };
 
+typedef void (*gm_stun_after_t)(bool success, bool ipv6, struct sockaddr * address);
+
 struct stun_run {
   struct sockaddr *	address;
   unsigned int		tries;
   bool			ipv6;
+  gm_stun_after_t	after;
 };
 
 static void stun_receive(int fd, void * data, bool readable, bool writable, bool exception, bool timeout);
@@ -435,12 +438,16 @@ stun_receive(int fd, void * data, bool readable, bool writable, bool exception, 
     close(fd);
 
     if ( status == 0 ) {
+      if ( run->after )
+        (run->after)(true, run->ipv6, run->address);
       free(run);
       return;
     }
   }
   if ( run->tries >= 5 ) {
     free(run);
+    if ( run->after )
+      (run->after)(false, run->ipv6, run->address);
     return;
   }
 
@@ -449,7 +456,7 @@ stun_receive(int fd, void * data, bool readable, bool writable, bool exception, 
   gm_fast_run(stun_send, run);
 }
 
-int gm_stun(bool ipv6, struct sockaddr * address)
+int gm_stun(bool ipv6, struct sockaddr * address, gm_stun_after_t after)
 {
   struct stun_run * run = malloc(sizeof(struct stun_run));
 
@@ -461,6 +468,7 @@ int gm_stun(bool ipv6, struct sockaddr * address)
   run->ipv6 = ipv6;
   run->address = address;
   run->tries = 0;
+  run->after = after;
 
   gm_fast_run(stun_send, run);
 

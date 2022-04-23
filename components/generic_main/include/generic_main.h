@@ -22,6 +22,7 @@ typedef enum _gm_param_result {
 
 typedef void (*gm_fd_handler_t)(int fd, void * data, bool readable, bool writable, bool exception, bool timeout);
 typedef void (*gm_run_t)(void *);
+typedef void (*gm_stun_after_t)(bool success, bool ipv6, struct sockaddr * address);
 
 typedef struct _gm_port_mapping { 
   struct timeval granted_time;
@@ -114,7 +115,7 @@ extern int			gm_port_control_protocol(gm_port_mapping_t *);
 extern int			gm_printf(const char * format, ...);
 extern int			gm_public_ipv4(char * data, size_t size);
 
-extern int			gm_stun(bool ipv6, struct sockaddr * address);
+extern int			gm_stun(bool ipv6, struct sockaddr * address, gm_stun_after_t after);
 extern void			gm_select_task(void);
 extern void			gm_select_wakeup(void);
 

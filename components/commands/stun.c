@@ -26,7 +26,7 @@ static int run(int argc, char * * argv)
       return 1;
   }
 
-  result = gm_stun(args.ipv6->count > 0, (struct sockaddr *)&sock);
+  result = gm_stun(args.ipv6->count > 0, (struct sockaddr *)&sock, 0);
   if ( result != 0 )
     return 1;
 

@@ -27,6 +27,7 @@
 #include "generic_main.h"
 
 #define NUMBER_OF_FDS	100
+#define NUMBER_OF_TIMER_TASKS	25
 
 static TaskHandle_t select_task_id = NULL;
 
@@ -38,6 +39,15 @@ static gm_fd_handler_t handlers[NUMBER_OF_FDS] = {};
 static void * data[NUMBER_OF_FDS] = {};
 static struct timeval timeouts[NUMBER_OF_FDS] = {};
 static volatile bool	in_select = false;
+
+struct timer_task {
+  struct timeval	when;
+  gm_run_t		function;
+  void *		data;
+};
+
+static int		timer_task_limit;
+struct timer_task	timer_tasks[NUMBER_OF_TIMER_TASKS] = {};
 
 void
 gm_fd_register(int fd, gm_fd_handler_t handler, void * d, bool readable, bool writable, bool exception, uint32_t seconds) {
@@ -115,6 +125,7 @@ select_task(void * param)
     fd_set monitored_fds = {};
     struct timeval now;
     struct timeval min_time = { 365 * 24 * 60 * 60, 0 }; // Absurdly long time.
+    struct timeval when;
     int number_of_set_fds;
 
     in_select = true;
@@ -126,14 +137,12 @@ select_task(void * param)
     gettimeofday(&now, 0);
 
     for ( unsigned int i = 0; i < fd_limit; i++ ) {
-
       if ( FD_ISSET(i, &read_now) || FD_ISSET(i, &write_now) || FD_ISSET(i, &exception_now) ) {
         FD_SET(i, &monitored_fds);
 
         struct timeval * t = &timeouts[i];
   
         if ( timerisset(t) ) {
-          struct timeval when;
 
           if ( timercmp(t, &now, <) ) {
             timerclear(&min_time);
@@ -142,6 +151,23 @@ select_task(void * param)
           else
             timersub(t, &now, &when);
         
+          if ( timercmp(&when, &min_time, <) )
+            min_time = when;
+        }
+      }
+    }
+    for ( unsigned int i = 0; i < timer_task_limit; i++ ) {
+      struct timer_task * t = &timer_tasks[i];
+      if ( t->function ) {
+        if ( timercmp(&t->when, &now, >) ) {
+          (t->function)(t->data);
+          timerclear(&t->when);
+          t->function = 0;
+          t->data = 0;
+        }
+        else {
+          timersub(&now, &t->when, &when);
+
           if ( timercmp(&when, &min_time, <) )
             min_time = when;
         }

@@ -453,7 +453,7 @@ stun_receive(int fd, void * data, bool readable, bool writable, bool exception, 
 
   run->tries++;
 
-  gm_fast_run(stun_send, run);
+  gm_run(stun_send, run, GM_FAST);
 }
 
 int gm_stun(bool ipv6, struct sockaddr * address, gm_stun_after_t after)
@@ -470,7 +470,7 @@ int gm_stun(bool ipv6, struct sockaddr * address, gm_stun_after_t after)
   run->tries = 0;
   run->after = after;
 
-  gm_fast_run(stun_send, run);
+  gm_run(stun_send, run, GM_FAST);
 
   return 0;
 }

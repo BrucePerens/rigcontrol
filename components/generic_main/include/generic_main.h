@@ -5,24 +5,41 @@
 #include <esp_netif.h>
 #include <esp_netif_types.h>
 #include <esp_netif_net_stack.h>
+#include <esp_event.h>
 #include <netinet/in.h>
 #include <../lwip/esp_netif_lwip_internal.h>
 #include <pthread.h>
 #include <sys/socket.h>
 
 #define CONSTRUCTOR static void __attribute__ ((constructor))
+ESP_EVENT_DECLARE_BASE(GM_EVENT);
 
 typedef enum _gm_param_result {
-  PR_ERROR = -2,
-  PR_NOT_IN_PARAMETER_TABLE = -1,
-  PR_NORMAL = 0,
-  PR_SECRET = 1,
-  PR_NOT_SET = 2
+  GM_ERROR = -2,
+  GM_NOT_IN_PARAMETER_TABLE = -1,
+  GM_NORMAL = 0,
+  GM_SECRET = 1,
+  GM_NOT_SET = 2
 } gm_param_result_t;
+
+typedef enum _gm_run_speed {
+  GM_SLOW,
+  GM_MEDIUM,
+  GM_FAST
+} gm_run_speed_t;
+
+typedef enum _gm_event_id {
+  GM_RUN
+} gm_event_id_t;
 
 typedef void (*gm_fd_handler_t)(int fd, void * data, bool readable, bool writable, bool exception, bool timeout);
 typedef void (*gm_run_t)(void *);
 typedef void (*gm_stun_after_t)(bool success, bool ipv6, struct sockaddr * address);
+
+typedef struct _gm_run_data {
+  gm_run_t	procedure;
+  void *	data;
+} gm_run_data_t;
 
 typedef struct _gm_port_mapping { 
   struct timeval granted_time;
@@ -72,6 +89,8 @@ struct generic_main {
   uint8_t		factory_mac_address[6];
   const char *		application_name;
   char			unique_name[64];
+  esp_event_loop_handle_t medium_event_loop;
+  esp_event_loop_handle_t slow_event_loop;
 };
 
 struct _GM_Array;
@@ -101,7 +120,7 @@ extern int			gm_ddns(void);
 
 extern void			gm_event_server(void);
 
-extern void			gm_fast_run(gm_run_t function, void * data);
+extern void			gm_run(gm_run_t function, void * data, gm_run_speed_t speed);
 extern void			gm_fd_register(int fd, gm_fd_handler_t handler, void * data, bool readable, bool writable, bool exception, uint32_t seconds);
 extern void			gm_fd_unregister(int fd);
 

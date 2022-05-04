@@ -22,27 +22,27 @@
 enum gm_event_opcode {
   GM_EVENT_INVALID = 0,		// For catching incorrect initialization.
   GM_EVENT_WAKE_SELECT = 1,	// Wake up the select() in the select task, because the FDs have changed.
-  GM_EVENT_RUN = 2		// Call a function in the context of the select task.
+  GM_EVENT_RUN = 2		// Call a procedure in the context of the select task.
 };
 
-struct gm_event {
+typedef struct gm_event_t {
   uint32_t	operation;
   uint32_t	size;
   union {
     struct {
-      gm_run_t function;
+      gm_run_t procedure;
       void * data;
     } run;
   } data;
-};
+} gm_event_t;
 
 static int	client = -1;
 
 static void
 event_handler(int fd, void * data, bool readable, bool writable, bool exception, bool timeout)
 {
-  char			buffer[128];
-  struct gm_event *	event = (struct gm_event *)buffer;
+  char		buffer[128];
+  gm_event_t *	event = (gm_event_t *)buffer;
 
   int	result = read(fd, buffer, 8);
 
@@ -73,7 +73,7 @@ event_handler(int fd, void * data, bool readable, bool writable, bool exception,
     // If we get here, the select has already awakened, there's no need to do any more.
     break;
   case GM_EVENT_RUN:
-    (event->data.run.function)(event->data.run.data);
+    (event->data.run.procedure)(event->data.run.data);
     break;
   }
 }
@@ -138,30 +138,49 @@ gm_event_server(void)
 void
 gm_select_wakeup(void)
 {
-  struct gm_event	event = {};
-  if ( client > 0 ) {
-    event.operation = GM_EVENT_WAKE_SELECT;
-    event.size = 0;
-    if ( write(client, &event, 8) != 8 )
-      gm_printf("gm_select_wakeup() write failed: %s\n", strerror(errno));
+  gm_event_t	event = {};
+  if ( client < 0 ) {
+    gm_printf("gm_select_wakeup(): called before client was created.\n");
+    abort();
+  }
+  event.operation = GM_EVENT_WAKE_SELECT;
+  event.size = 0;
+  if ( write(client, &event, 8) != 8 ) {
+    gm_printf("gm_select_wakeup() write failed: %s\n", strerror(errno));
+    abort();
   }
 }
 
-// Run a function in the context of the select task. It must not block.
+// Run a procedure in the context of the select task. It must not block.
 void
-gm_fast_run(gm_run_t function, void * data)
+gm_run(gm_run_t procedure, void * data, gm_run_speed_t speed)
 {
-  struct gm_event	event = {};
+  gm_event_t		event = {};
+  gm_run_data_t 	run = {};
 
-  if ( client >= 0 ) {
+  if ( client < 0 ) {
+    gm_printf("In gm_fast_run: client FD is < 0\n");
+    abort();
+  }
+
+  switch ( speed ) {
+  case GM_FAST:
     event.operation = GM_EVENT_RUN;
     event.size = sizeof(event.data.run);
-    event.data.run.function = function;
+    event.data.run.procedure = procedure;
     event.data.run.data = data;
     if ( write(client, &event, sizeof(event)) != sizeof(event) )
-      gm_printf("gm_fast_run() write failed: %s\n", strerror(errno));
-  }
-  else {
-    gm_printf("In gm_fast_run: client FD is < 0\n");
+      gm_printf("gm_run(GM_FAST) write failed: %s\n", strerror(errno));
+    break;
+  case GM_MEDIUM:
+    run.procedure = procedure;
+    run.data = data;
+    ESP_ERROR_CHECK(esp_event_post_to(&GM.medium_event_loop, GM_EVENT, GM_RUN, &run, sizeof(run), 0));
+    break;
+  case GM_SLOW:
+    run.procedure = procedure;
+    run.data = data;
+    ESP_ERROR_CHECK(esp_event_post_to(&GM.medium_event_loop, GM_EVENT, GM_RUN, &run, sizeof(run), 0));
+    break;
   }
 }

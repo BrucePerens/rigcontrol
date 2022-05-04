@@ -20,12 +20,12 @@ print_param(const char * name, const char * value, const char * explanation, gm_
 {
   const char * v = value;
   switch (type) {
-  case PR_NORMAL:
+  case GM_NORMAL:
     break;
-  case PR_NOT_SET:
+  case GM_NOT_SET:
     v = "(not set)";
     break;
-  case PR_SECRET:
+  case GM_SECRET:
     v = "(secret)";
     break;
   default:
@@ -63,9 +63,9 @@ static int param(int argc, char * * argv)
   case 3:
     type = gm_param_set(param_args.name->sval[0], param_args.value->sval[0]);
     switch (type) {
-    case PR_ERROR:
+    case GM_ERROR:
       return -1;
-    case PR_NOT_IN_PARAMETER_TABLE:
+    case GM_NOT_IN_PARAMETER_TABLE:
       gm_printf("Error: not in parameter table: %s\n",  param_args.name->sval[0]);
       return -1;
     default:
@@ -76,12 +76,12 @@ static int param(int argc, char * * argv)
   case 2:
     type = gm_param_get(param_args.name->sval[0], buffer, sizeof(buffer));
     switch (type) {
-    case PR_NORMAL:
+    case GM_NORMAL:
       break;
-    case PR_NOT_SET:
+    case GM_NOT_SET:
       v = "(not set)";
       break;
-    case PR_SECRET:
+    case GM_SECRET:
       v = "(secret)";
       break;
     default:

@@ -164,23 +164,11 @@ Prices change, and new hardware arrives. Appropriate SD cards below the $4 level
 available overseas, although there is much fraud. So, when you find a combination that
 does it all with a simple and cheap BOM, I'm interested.
 
-### Issues
-Hardware flow control is not connected on the PCB between the CPU and the
-serial-to-USB chip. This saves some precious GPIO pins, but causes the
-console to drop characters sometimes.
-This also may be the reason that flashing the device sometimes fails.
-The console is for debugging and maintenance, not everyday use of the
-device, so
-this should not generally present a problem to the user.
+### Issues You May Experience
+If flashing fails and console characters drop, switch to the shortest USB cable you have
+on hand, preferrably one with ferrite beads attached for RFI reduction. I found a foot-long one which improved performance over the 6-foot I had previously been using.
 
-Changing the console
-baud rate is fraught with difficulty. Setting the baud rate of the embedded
-software and tools must be done in a specific order, or the device becomes
-unflashable with the tools using a simple command-line like "idf.py flash".
-It is possible to construct a command-line that works.
-New hardware comes with the baud rate set to 115200, and reconfiguring
-the tool baud rate makes new hardware unflashable with the usual command-line
-as well.
+When plugging in the board doesn't attach the USB serial device to the operating system, I have been able to fix that by power-clearing the USB hub that I have the board plugged in to. Power clearing the board wasn't sufficient, the problem was in the hub.
 
 ### RigControl Access to Outside Web Sites ###
 The point of RigControl is to make control of your radio accessable from the

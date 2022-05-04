@@ -42,7 +42,7 @@ static volatile bool	in_select = false;
 
 struct timer_task {
   struct timeval	when;
-  gm_run_t		function;
+  gm_run_t		procedure;
   void *		data;
 };
 
@@ -158,11 +158,11 @@ select_task(void * param)
     }
     for ( unsigned int i = 0; i < timer_task_limit; i++ ) {
       struct timer_task * t = &timer_tasks[i];
-      if ( t->function ) {
+      if ( t->procedure ) {
         if ( timercmp(&t->when, &now, >) ) {
-          (t->function)(t->data);
+          (t->procedure)(t->data);
           timerclear(&t->when);
-          t->function = 0;
+          t->procedure = 0;
           t->data = 0;
         }
         else {

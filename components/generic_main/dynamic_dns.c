@@ -60,7 +60,7 @@ static int parameter(const char * name,  char * buffer, size_t buffer_size)
         gm_param_result_t result;
 
         result = gm_param_get(p->param_name, buffer, buffer_size);
-        if ( result == PR_NORMAL || result == PR_SECRET )
+        if ( result == GM_NORMAL || result == GM_SECRET )
           return 0;
         else {
           gm_printf("Warning: DDNS parameter %s required and not set.\n", p->param_name);
@@ -103,14 +103,14 @@ int gm_ddns(void)
   result = gm_param_get("ddns_provider", ddns_provider, sizeof(ddns_provider));
   
   switch ( result ) {
-  case PR_NOT_SET:
+  case GM_NOT_SET:
     if (!i_told_you_once) {
       gm_printf("Warning: DDNS provider not set.\n");
       i_told_you_once = true;
     }
     return -1;
-  case PR_NORMAL:
-  case PR_SECRET:
+  case GM_NORMAL:
+  case GM_SECRET:
     break;
   default:
     gm_printf("Error reading ddns_provider parameter.\n");

@@ -168,19 +168,15 @@ When plugging in the board doesn't attach the USB serial device to the operating
 
 ### RigControl Access to Outside Web Sites ###
 The point of RigControl is to make control of your radio accessable from the
-public internet, appropriately password-protected. To do this, RigControl must
-access an outside site to learn its own public address, and to check that its
-address without an outside site, but uses an outside site to check that its
-connectivity is not blocked by a firewall. It will attempt to create a pinhole in
-your firewall using NAT-PMP or PCP so that it is directly accessible on the public
-internet.  It must access an outside site to set
-its hostname in dynamic DNS, so that you can access it remotely. It calls
-github.com, k6bp.com, or hams.com to check if its software is up-to-date and to
-access security bulletins, etc.
-
-RigControl can implement a TURN tunnel to provide outside access to a device on
-a network that the above methods won't work for. Currently https://www.metered.ca/tools/openrelay/
-provides free TURN.
+public internet, appropriately password-protected. So, it does all sorts of things
+with your firewall and outside sites:
+* It will attempt to create a pinhole in your firewall using NAT-PMP or PCP so that it is directly accessible on the public internet.
+* If not, it will use TURN to get around your firewall, as VoIP phones often do.
+* It will use STUN to check its public IP.
+* It will use an outside site to check that it can actually be accessed from the public internet.
+* It will set its hostname in dynamic DNS at an outside site, so that you can access it
+remotely.
+* It calls an outside site to check for firmware updates and security bulletins.
 
 ### TO DO
 * UPnP. It's overcomplicated compared to NAT-PMP and PCP, but some routers may have UPnP and not the other two.

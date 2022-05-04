@@ -5,23 +5,19 @@ controller using an ESP-32 Audio Kit card commonly sold on AliExpress for
 around $14.
 [Search for sales on AliExpress](https://www.aliexpress.com/premium/ESP32%25252dAudio%25252dKit.html).
 
-The software is currently in "Hello World" stage:
-No ham radio control is implemented yet. The utility internet functions are mostly done.
-It can make itself accessible on the public internet, even if the operator is net-naive. It sets its clock and approximate
-location from outside servers.
+RigControl connects to the internet via WiFi, sets itself up with a public web address,
+and provides a web-based interface to control an amateur radio transceiver.
 
 Without any additional hardware, K6BP RigControl
 can connect to any transceiver that implements *CAT* or *CI-V* using 5V or 3.3V
-logic levels or a network connection.
-RS-232 connections require a [MAX-3232-based level shifter + DB9 PCB](https://www.aliexpress.com/wholesale?SearchText=MAX3232+DB9+Module), which costs less than a dollar.
+logic levels. Simple resistor pads may be necessary to adjust the input and output
+audio levels, but construction of them should be within the competence of any ham.
 
-RigControl connects to the internet via WiFi, uses
-dynamic DNS to provide a public web address, and provides a web-based interface
-to a phone, tablet, or computer. The audio inputs and outputs are best connected
-to line-level inputs and outputs on the transceiver, and would require padding
-with resistors if connected to a speaker output or microphone input. There is no
-USB master. Inexpensive expansion boards support connecting antenna switches, rotators,
-and other accessories via relays or serial ports.
+The software is currently in "Hello World" stage: No ham radio control
+is implemented yet. The utility internet functions are mostly done.
+The board can make itself accessible on the public internet, even if
+the operator is net-naive. It sets its clock and approximate location
+from outside servers.
 
 ### Hardware Required
 
@@ -194,5 +190,5 @@ provides free TURN.
 * All of the ham radio functions.
 
 ### Warning
-Before you release production binaries of this application, you must rebuild your toolset to use a 64-bit time_t. Instructions
+Before you release production binaries of this application, rebuild your toolset to use a 64-bit time_t, so that the software doesn't stop working in 2038. Instructions
 are at https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/system/system_time.html#bit-time-t

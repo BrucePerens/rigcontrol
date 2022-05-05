@@ -127,6 +127,7 @@ int gm_port_control_protocol(gm_port_mapping_t * m)
   ssize_t			receive_result;
   struct timeval		timeout = {};
   gm_port_mapping_t * *		p;
+  char				buffer[64];
 
   if ( !m->ipv6 ) {
     send_address_size = sizeof(struct sockaddr_in);
@@ -139,7 +140,8 @@ int gm_port_control_protocol(gm_port_mapping_t * m)
   else {
     send_address_size = sizeof(struct sockaddr_in6);
     struct sockaddr_in6 * a6 = (struct sockaddr_in6 *)&send_address;
-    memcpy(&a6->sin6_addr.s6_addr, GM.sta.ip6.router.sin6_addr.s6_addr, sizeof(a6->sin6_addr.s6_addr));
+    // This doesn't nornally get called until the station has a global address.
+    memcpy(&a6->sin6_addr.s6_addr, GM.sta.ip6.global[0].sin6_addr.s6_addr, sizeof(a6->sin6_addr.s6_addr));
     a6->sin6_family = AF_INET6;
     a6->sin6_port = htons(PCP_PORT);
     a6->sin6_scope_id = esp_netif_get_netif_impl_index(GM.sta.esp_netif);
@@ -156,6 +158,10 @@ int gm_port_control_protocol(gm_port_mapping_t * m)
     memcpy(send_packet.pcp.request.client_address.s6_addr, &a6->sin6_addr.s6_addr, sizeof(a6->sin6_addr.s6_addr));
   }
 
+  memcpy(send_packet.pcp.mp.external_address.s6_addr, m->external_address.s6_addr, sizeof(m->external_address.s6_addr));
+  memset(buffer, '\0', sizeof(buffer));
+  inet_ntop(AF_INET6, &send_packet.pcp.mp.external_address.s6_addr, buffer, sizeof(buffer));
+  gm_printf("Requested address %s\n", buffer);
   send_packet.version = PORT_MAPPING_PROTOCOL;
   send_packet.opcode = PCP_MAP;
   send_packet.pcp.lifetime = htonl(24 * 60 * 60);
@@ -164,7 +170,6 @@ int gm_port_control_protocol(gm_port_mapping_t * m)
   send_packet.pcp.mp.internal_port = htons(m->internal_port);
   send_packet.pcp.mp.external_port = htons(m->external_port);
   send_packet.pcp.lifetime = htonl(m->lifetime);
-  memcpy(send_packet.pcp.mp.external_address.s6_addr, m->external_address.s6_addr, sizeof(m->external_address.s6_addr));
 
   int sock = socket(send_address.ss_family, SOCK_DGRAM, ip_protocol);
 
@@ -229,6 +234,9 @@ int gm_port_control_protocol(gm_port_mapping_t * m)
   m->lifetime = ntohl(receive_packet.pcp.lifetime);
   memcpy(m->external_address.s6_addr, receive_packet.pcp.mp.external_address.s6_addr, sizeof(m->external_address.s6_addr));
 
+  inet_ntop(AF_INET6, m->external_address.s6_addr, buffer, sizeof(buffer));
+  gm_printf("Router public mapping %s:%d\n", buffer, m->external_port);
+
   if ( m->ipv6 )
     p = &GM.sta.ip6.port_mappings;
   else
@@ -240,7 +248,10 @@ int gm_port_control_protocol(gm_port_mapping_t * m)
     }
     p = &((*p)->next);
   }
-  if ( p )
-    *p = m;
+  if ( p ) {
+    gm_port_mapping_t * n = malloc(sizeof(*n));
+    memcpy(n, m, sizeof(*n));
+    *p = n;
+  }
   return 0;
 }

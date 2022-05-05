@@ -65,14 +65,38 @@ void wifi_event_sta_disconnected(void* arg, esp_event_base_t event_base, int32_t
 
 static void after_stun(bool success, bool ipv6, struct sockaddr * address)
 {
+  gm_port_mapping_t mapping = {};
+
   if ( success ) {
     char buffer[64];
 
     if ( ipv6 ) {
-      inet_ntop(AF_INET6, &((struct sockaddr_in6 *)address)->sin6_addr, buffer, sizeof(buffer));
+      struct sockaddr_in6 * addr = (struct sockaddr_in6 *)address;
+      inet_ntop(AF_INET6, addr->sin6_addr.s6_addr, buffer, sizeof(buffer));
+      // FIX: Manage the port mappings, renew existing ones rather than just
+      // allocating a new one
+      esp_fill_random(&mapping.nonce, sizeof(mapping.nonce));
+      mapping.ipv6 = true;
+      memcpy(mapping.external_address.s6_addr, addr->sin6_addr.s6_addr, sizeof(mapping.external_address.s6_addr));
+      mapping.tcp = true;
+      mapping.internal_port = mapping.external_port = 8080;
+      mapping.lifetime = 24 * 60 * 60;
+      gm_port_control_protocol(&mapping);
     }
     else {
-      inet_ntop(AF_INET, &((struct sockaddr_in *)address)->sin_addr, buffer, sizeof(buffer));
+      struct sockaddr_in * addr = (struct sockaddr_in *)address;
+      inet_ntop(AF_INET, &addr->sin_addr.s_addr, buffer, sizeof(buffer));
+      // FIX: Manage the port mappings, renew existing ones rather than just
+      // allocating a new one
+      esp_fill_random(&mapping.nonce, sizeof(mapping.nonce));
+      mapping.external_address.s6_addr[10] = 0xff;
+      mapping.external_address.s6_addr[11] = 0xff;
+      memcpy(&mapping.external_address.s6_addr[12], &addr->sin_addr.s_addr, sizeof(addr->sin_addr.s_addr));
+      mapping.ipv6 = false;
+      mapping.tcp = true;
+      mapping.internal_port = mapping.external_port = 8080;
+      mapping.lifetime = 24 * 60 * 60;
+      gm_port_control_protocol(&mapping);
     }
     gm_printf("Public address %s\n", buffer);
   }
@@ -153,7 +177,6 @@ static void wifi_event_sta_connected_to_ap(void* arg, esp_event_base_t event_bas
 // This handler is called only when the "sta" netif gets an IPv4 address.
 static void ip_event_sta_got_ip4(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data) {
   ip_event_got_ip_t* event = (ip_event_got_ip_t*)event_data;
-  gm_port_mapping_t * mapping;
   char	buffer[64];
 
   // Smartconfig waits on this bit, then prints a message.
@@ -172,19 +195,6 @@ static void ip_event_sta_got_ip4(void* arg, esp_event_base_t event_base, int32_t
   inet_ntop(AF_INET, &event->ip_info.gw.addr, buffer, sizeof(buffer));
   gm_printf("router %s\n", buffer);
   fflush(stderr);
-  // FIX: Manage the port mappings. This just allocates one for testing.
-  if ( GM.sta.ip4.port_mappings == 0 ) {
-    mapping = malloc(sizeof(*mapping));
-    memset(mapping, '\0', sizeof(*mapping));
-    GM.sta.ip4.port_mappings = mapping;
-  }
-  mapping = GM.sta.ip4.port_mappings;
-  esp_fill_random(&mapping->nonce, sizeof(mapping->nonce));
-  mapping->ipv6 = false;
-  mapping->tcp = true;
-  mapping->internal_port = mapping->external_port = 8080;
-  mapping->lifetime = 24 * 60 * 60;
-  gm_port_control_protocol(mapping);
   gm_stun(false, (struct sockaddr *)&GM.sta.ip4.public, after_stun);
   start_webserver();
 }
@@ -193,7 +203,6 @@ static void ip_event_sta_got_ip4(void* arg, esp_event_base_t event_base, int32_t
 static void ip_event_got_ip6(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data) {
   const unsigned int public_address_count = \
    sizeof(GM.sta.ip6.global) / sizeof(*GM.sta.ip6.global);
-  gm_port_mapping_t * mapping;
   char buffer[64];
 
   ip_event_got_ip6_t *	event = (ip_event_got_ip6_t*)event_data;
@@ -231,18 +240,6 @@ static void ip_event_got_ip6(void* arg, esp_event_base_t event_base, int32_t eve
          interface->ip6.global[i].sin6_family = AF_INET6;
          memcpy(interface->ip6.global[i].sin6_addr.s6_addr, event->ip6_info.ip.addr, sizeof(event->ip6_info.ip.addr));
          if (is_station) {
-           if ( interface->ip6.port_mappings == 0 ) {
-             mapping = malloc(sizeof(*mapping));
-             memset(mapping, '\0', sizeof(*mapping));
-             interface->ip6.port_mappings = mapping;
-           }
-           mapping = interface->ip6.port_mappings;
-           esp_fill_random(&mapping->nonce, sizeof(mapping->nonce));
-           mapping->ipv6 = true;
-           mapping->tcp = true;
-           mapping->internal_port = mapping->external_port = 8080;
-           mapping->lifetime = 24 * 60 * 60;
-           gm_port_control_protocol(mapping);
            gm_stun(true, (struct sockaddr *)&interface->ip6.public, after_stun);
          }
          break;

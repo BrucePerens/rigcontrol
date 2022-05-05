@@ -90,7 +90,8 @@ like *rigcontrol._https._tcp.local* .
 
 ### Accessories ###
 It's often possible to reduce the price of these accessories
-through a club buy, since they come in quantities at a lower price than single
+through a club buy, since they come in quantities at a lower price and shipping
+fee than single
 units. Start with AliExpress, but explore Alibaba and Taobao for even larger
 wholesale quantities and better prices. 
 Larger buyers build a relationship with a

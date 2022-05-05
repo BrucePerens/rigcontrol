@@ -206,7 +206,7 @@ int gm_port_control_protocol(gm_port_mapping_t * m)
       return -1;
     }
     if ( receive_packet.result_code != PCP_SUCCESS ) {
-      gm_printf("Received result code: %d.\n", receive_packet.result_code);
+      gm_printf("PCP received result code: %d.\n", receive_packet.result_code);
       return -1;
     }
     if ( receive_packet.opcode != (send_packet.opcode | 0x80) ) {

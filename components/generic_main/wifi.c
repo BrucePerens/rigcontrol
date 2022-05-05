@@ -48,10 +48,7 @@ static const char * const ipv6_address_types[] = {
     "unique-local",
     "IPv4-mapped-IPv6"
 };
-pthread_mutex_t ddns_mutex;
 static TaskHandle_t smart_config_task_id = NULL;
-static TaskHandle_t ipv4_config_task_id = NULL;
-static TaskHandle_t ipv6_config_task_id = NULL;
 static esp_event_handler_instance_t handler_wifi_event_sta_connected_to_ap = NULL;
 static esp_event_handler_instance_t handler_ip_event_sta_got_ip4 = NULL;
 static esp_event_handler_instance_t handler_ip_event_got_ip6 = NULL;
@@ -66,11 +63,27 @@ static void wifi_connect_to_ap(const char * ssid, const char * password);
 static void wifi_event_sta_start(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data);
 void wifi_event_sta_disconnected(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data);
 
+static void after_stun(bool success, bool ipv6, struct sockaddr * address)
+{
+  if ( success ) {
+    char buffer[64];
+
+    if ( ipv6 ) {
+      inet_ntop(AF_INET6, &((struct sockaddr_in6 *)address)->sin6_addr, buffer, sizeof(buffer));
+    }
+    else {
+      inet_ntop(AF_INET, &((struct sockaddr_in *)address)->sin_addr, buffer, sizeof(buffer));
+    }
+    gm_printf("Public address %s\n", buffer);
+  }
+  else {
+    gm_printf("STUN for %s failed.\n", ipv6 ? "IPv6" : "IPv4");
+  }
+}
+
 void
 gm_wifi_start(void)
 {
-  pthread_mutex_init(&ddns_mutex, 0);
-
   // Initialize the TCP/IP stack.
   ESP_ERROR_CHECK(esp_netif_init());
 
@@ -137,39 +150,10 @@ static void wifi_event_sta_connected_to_ap(void* arg, esp_event_base_t event_bas
   dhcp6_enable_stateless(GM.sta.esp_netif->lwip_netif);
 }
 
-// IPv4 configuration that requires a task.
-static void
-ipv4_config_task(void * param)
-{
-  char	buffer[64];
-
-  if ( gm_public_ipv4(buffer, sizeof(buffer)) == 0 ) {
-    GM.sta.ip4.public.sin_family = AF_INET;
-    GM.sta.ip4.public.sin_addr.s_addr = esp_ip4addr_aton(buffer);
-    gm_printf("Public IP address is %s\n", buffer);
-    fflush(stderr);
-    
-    pthread_mutex_lock(&ddns_mutex);
-    gm_ddns();
-    pthread_mutex_unlock(&ddns_mutex);
-  }
-  vTaskDelete(NULL);
-}
-
-// IPv6 configuration that requires a task.
-static void
-ipv6_config_task(void * param)
-{
-  pthread_mutex_lock(&ddns_mutex);
-  gm_ddns();
-  pthread_mutex_unlock(&ddns_mutex);
-
-  vTaskDelete(NULL);
-}
-
 // This handler is called only when the "sta" netif gets an IPv4 address.
 static void ip_event_sta_got_ip4(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data) {
   ip_event_got_ip_t* event = (ip_event_got_ip_t*)event_data;
+  gm_port_mapping_t * mapping;
   char	buffer[64];
 
   // Smartconfig waits on this bit, then prints a message.
@@ -188,8 +172,20 @@ static void ip_event_sta_got_ip4(void* arg, esp_event_base_t event_base, int32_t
   inet_ntop(AF_INET, &event->ip_info.gw.addr, buffer, sizeof(buffer));
   gm_printf("router %s\n", buffer);
   fflush(stderr);
-
-  xTaskCreate(ipv4_config_task, TASK_NAME, 10240, NULL, 3, &ipv4_config_task_id);
+  // FIX: Manage the port mappings. This just allocates one for testing.
+  if ( GM.sta.ip4.port_mappings == 0 ) {
+    mapping = malloc(sizeof(*mapping));
+    memset(mapping, '\0', sizeof(*mapping));
+    GM.sta.ip4.port_mappings = mapping;
+  }
+  mapping = GM.sta.ip4.port_mappings;
+  esp_fill_random(&mapping->nonce, sizeof(mapping->nonce));
+  mapping->ipv6 = false;
+  mapping->tcp = true;
+  mapping->internal_port = mapping->external_port = 8080;
+  mapping->lifetime = 24 * 60 * 60;
+  gm_port_control_protocol(mapping);
+  gm_stun(false, (struct sockaddr *)&GM.sta.ip4.public, after_stun);
   start_webserver();
 }
 
@@ -197,7 +193,8 @@ static void ip_event_sta_got_ip4(void* arg, esp_event_base_t event_base, int32_t
 static void ip_event_got_ip6(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data) {
   const unsigned int public_address_count = \
    sizeof(GM.sta.ip6.global) / sizeof(*GM.sta.ip6.global);
-   char buffer[64];
+  gm_port_mapping_t * mapping;
+  char buffer[64];
 
   ip_event_got_ip6_t *	event = (ip_event_got_ip6_t*)event_data;
   esp_ip6_addr_type_t	ipv6_type = esp_netif_ip6_get_addr_type(&event->ip6_info.ip);
@@ -234,9 +231,19 @@ static void ip_event_got_ip6(void* arg, esp_event_base_t event_base, int32_t eve
          interface->ip6.global[i].sin6_family = AF_INET6;
          memcpy(interface->ip6.global[i].sin6_addr.s6_addr, event->ip6_info.ip.addr, sizeof(event->ip6_info.ip.addr));
          if (is_station) {
-           // FIX: Start the IPv6 configuration task here.
-           // gm_ddns();
-           xTaskCreate(ipv6_config_task, TASK_NAME, 10240, NULL, 3, &ipv6_config_task_id);
+           if ( interface->ip6.port_mappings == 0 ) {
+             mapping = malloc(sizeof(*mapping));
+             memset(mapping, '\0', sizeof(*mapping));
+             interface->ip6.port_mappings = mapping;
+           }
+           mapping = interface->ip6.port_mappings;
+           esp_fill_random(&mapping->nonce, sizeof(mapping->nonce));
+           mapping->ipv6 = true;
+           mapping->tcp = true;
+           mapping->internal_port = mapping->external_port = 8080;
+           mapping->lifetime = 24 * 60 * 60;
+           gm_port_control_protocol(mapping);
+           gm_stun(true, (struct sockaddr *)&interface->ip6.public, after_stun);
          }
          break;
        }

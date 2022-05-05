@@ -25,7 +25,7 @@
 static void initialize(void);
 
 static const char TASK_NAME[] = "main";
-struct generic_main GM = {};
+generic_main_t GM = {};
 
 extern void user_startup();
 

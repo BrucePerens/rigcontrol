@@ -54,10 +54,10 @@ typedef struct _gm_port_mapping {
   struct _gm_port_mapping * next;
 } gm_port_mapping_t;
 
-struct _gm_netif {
+typedef struct _gm_netif {
   esp_netif_t *		esp_netif;
   // lwip_netif is esp_netif->lwip_netif
-  struct {
+  struct gm_netif_ip4 {
     struct sockaddr_in	address;
     struct sockaddr_in	router;
     uint32_t		netmask;
@@ -65,7 +65,7 @@ struct _gm_netif {
     int			nat;	// 1 for NAT, 2 for double-nat.
     gm_port_mapping_t *	port_mappings;
   } ip4;
-  struct {
+  struct gm_netif_ip6 {
     struct sockaddr_in6	link_local;
     struct sockaddr_in6	site_local;
     struct sockaddr_in6	site_unique;
@@ -76,10 +76,9 @@ struct _gm_netif {
     bool pat66; // True if there is prefix-address-translation. Ugh.
     bool nat6;  // True if there is NAT6 that is not PAT66. Double-ugh.
   } ip6;
-};
-typedef struct _gm_netif gm_netif_t;
+} gm_netif_t;
 
-struct generic_main {
+typedef struct _generic_main {
   nvs_handle_t		nvs;
   gm_netif_t		ap;
   gm_netif_t		sta;
@@ -91,7 +90,7 @@ struct generic_main {
   char			unique_name[64];
   esp_event_loop_handle_t medium_event_loop;
   esp_event_loop_handle_t slow_event_loop;
-};
+} generic_main_t;
 
 struct _GM_Array;
 
@@ -100,7 +99,7 @@ typedef void (*gm_param_list_coroutine_t)(const char *, const char *, const char
 typedef void (*gm_web_get_coroutine_t)(const char * data, size_t size);
 typedef int (*gm_pattern_coroutine_t)(const char * name, char * result, size_t result_size);
 
-extern struct generic_main GM;
+generic_main_t GM;
 extern const char gm_nvs_index[];
 
 

@@ -24,7 +24,8 @@
 // static const uint16_t stun_port = 3478;
 
 // Magic number used in all STUN packets.
-static const uint32_t stun_magic = 0x2112A442;
+// Warning: This assumes the CPU is little-endian.
+static const uint32_t stun_magic = 0x42a41221; // 0x2112a442 in network byte order.
 
 // The FINGERPRINT data is XOR-ed with this:
 // static const char fingerprint_xor[] = "STUN";
@@ -149,24 +150,19 @@ static const size_t	ipv6_table_count = sizeof(ipv6_servers) / sizeof(*ipv6_serve
 static void
 decode_mapped_address(struct stun_attribute * a, struct sockaddr * address)
 {
-  gm_printf("Mapped address.\n");
-
   if ( a->value.mapped_address.family == 1 ) {
     struct sockaddr_in * in = (struct sockaddr_in *)address;
     memset(in, '\0', sizeof(*in));
     in->sin_family = AF_INET;
-    in->sin_port = htons(a->value.mapped_address.port);
+    in->sin_port = a->value.mapped_address.port;
     in->sin_addr.s_addr = a->value.mapped_address.ipv4;
   }
   else {
     struct sockaddr_in6 * in6 = (struct sockaddr_in6 *)address;
     memset(in6, '\0', sizeof(*in6));
     in6->sin6_family = AF_INET6;
-    in6->sin6_port = htons(a->value.mapped_address.port);
-    *((uint32_t *)&(in6->sin6_addr.s6_addr[0])) = *((uint32_t *)(a->value.mapped_address.ipv6.s6_addr));
-    *((uint32_t *)&(in6->sin6_addr.s6_addr[4])) = *((uint32_t *)&(a->value.mapped_address.ipv6.s6_addr[4]));
-    *((uint32_t *)&(in6->sin6_addr.s6_addr[8])) = *((uint32_t *)&(a->value.mapped_address.ipv6.s6_addr[8]));
-    *((uint32_t *)&(in6->sin6_addr.s6_addr[12])) = *((uint32_t *)&(a->value.mapped_address.ipv6.s6_addr[12]));
+    in6->sin6_port = a->value.mapped_address.port;
+    memcpy(&in6->sin6_addr.s6_addr, a->value.mapped_address.ipv6.s6_addr, sizeof(in6->sin6_addr.s6_addr));
   }
 }
 
@@ -185,51 +181,46 @@ decode_unknown_attributes(struct stun_attribute * a)
 static void
 decode_xor_mapped_address(struct stun_attribute * a, struct stun_message * message, struct sockaddr * address)
 {
-  uint16_t	magic = htonl(stun_magic);
-
-  gm_printf("XOR-mapped address.\n");
-
   if ( a->value.mapped_address.family == 1 ) {
     fflush(stderr);
     sleep(1);
     struct sockaddr_in * in = (struct sockaddr_in *)address;
     memset(in, '\0', sizeof(*in));
     in->sin_family = AF_INET;
-    in->sin_port = htons(a->value.mapped_address.port) ^ ((magic >> 16) & 0xffff);
-    in->sin_addr.s_addr = a->value.mapped_address.ipv4 ^ magic;
+    in->sin_port = a->value.mapped_address.port ^ ((stun_magic >> 16) & 0xffff);
+    in->sin_addr.s_addr = a->value.mapped_address.ipv4 ^ stun_magic;
   }
   else {
     struct sockaddr_in6 * in6 = (struct sockaddr_in6 *)address;
     memset(in6, '\0', sizeof(*in6));
     in6->sin6_family = AF_INET6;
-    in6->sin6_port = htons(a->value.mapped_address.port);
-    *((uint32_t *)&(in6->sin6_addr.s6_addr[0])) = *((uint32_t *)(a->value.mapped_address.ipv6.s6_addr)) ^ magic;
-    *((uint32_t *)&(in6->sin6_addr.s6_addr[4])) = *((uint32_t *)&(a->value.mapped_address.ipv6.s6_addr[4])) ^ message->transaction_id[0];
-    *((uint32_t *)&(in6->sin6_addr.s6_addr[8])) = *((uint32_t *)&(a->value.mapped_address.ipv6.s6_addr[8])) ^ message->transaction_id[1];
-    *((uint32_t *)&(in6->sin6_addr.s6_addr[12])) = *((uint32_t *)&(a->value.mapped_address.ipv6.s6_addr[12])) ^ message->transaction_id[2];
+    uint32_t *	out = (uint32_t *)&in6->sin6_addr.s6_addr;
+    uint32_t *	in = (uint32_t *)&a->value.mapped_address.ipv6.s6_addr;
+    for ( int i = 0; i < 4; i++ ) {
+      out[i] = in[i] ^ stun_magic;
+    }
   }
 }
 
 static void
 decode_software(struct stun_attribute * a)
 {
-  gm_printf("Software: ");
-  fwrite((char *)&a->value, 1, htons(a->length), stderr);
-  gm_printf("\n");
+  // gm_printf("Software: ");
+  // fwrite((char *)&a->value, 1, ntohs(a->length), stderr);
+  // gm_printf("\n");
 }
 
 static void
 decode_alternate_server(struct stun_attribute * a)
 {
-  gm_printf("Alternate Server: ");
-  fwrite((char *)&a->value, 1, htons(a->length), stderr);
-  gm_printf("\n");
+  // gm_printf("Alternate Server: ");
+  // fwrite((char *)&a->value, 1, ntohs(a->length), stderr);
+  // gm_printf("\n");
 }
 
 static void
 decode_fingerprint(struct stun_attribute * a)
 {
-  gm_printf("Fingerprint\n");
 }
 
 struct addrinfo *
@@ -286,14 +277,13 @@ send_stun_request(bool ipv6)
   if ( (send_address = get_address(server->host, server->port, ipv6)) == 0 )
     return -1;
 
-  gm_printf("STUN to %s:%d\n", server->host, server->port);
   int sock = socket (send_address->ai_family, SOCK_DGRAM, send_address->ai_protocol);
   if ( sock < 0 ) {
     gm_printf("Can't get socket: %s\n", strerror(errno));
     return -1;
   }
 
-  send_packet->magic_cookie = htonl(stun_magic);
+  send_packet->magic_cookie = stun_magic;
   send_packet->type = htons(((message_class & 0x1) << 4) | ((message_class & 0x2) << 8) | (method & 0xf));
   esp_fill_random(send_packet->transaction_id, sizeof(send_packet->transaction_id));
 
@@ -321,15 +311,15 @@ process_received_packet(struct stun_message * receive_packet, struct sockaddr * 
   bool				got_xor_mapped_address = false;
   bool				got_an_address = false;
   struct stun_attribute * attribute = (struct stun_attribute *)receive_packet->attributes;
-  uint16_t attribute_size = htons(receive_packet->length);
+  uint16_t attribute_size = ntohs(receive_packet->length);
   if ( attribute_size < (receive_result - 20) ) {
     gm_printf("STUN packet was truncated.\n");
     return -1;
   }
   
   while ( attribute_size > 0 ) {
-    uint16_t type = htons(attribute->type);
-    uint16_t length = htons(attribute->length);
+    uint16_t type = ntohs(attribute->type);
+    uint16_t length = ntohs(attribute->length);
     if ( length == 0 || length >= 768 ) {
       gm_printf("STUN attribute length %d is invalid.\n", length);
     }

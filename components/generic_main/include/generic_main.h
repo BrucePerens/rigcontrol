@@ -130,6 +130,7 @@ extern gm_param_result_t	gm_param_set(const char * name, const char * value);
 
 extern int			gm_pattern_string(const char * string, gm_pattern_coroutine_t coroutine, char * buffer, size_t buffer_size);
 extern int			gm_port_control_protocol(gm_port_mapping_t *);
+extern void			gm_port_control_protocol_multicast_listener(void);
 extern int			gm_printf(const char * format, ...);
 extern int			gm_public_ipv4(char * data, size_t size);
 

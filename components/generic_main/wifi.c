@@ -197,6 +197,7 @@ static void ip_event_sta_got_ip4(void* arg, esp_event_base_t event_base, int32_t
   fflush(stderr);
   gm_stun(false, (struct sockaddr *)&GM.sta.ip4.public, after_stun);
   start_webserver();
+  gm_port_control_protocol_multicast_listener();
 }
 
 // This handler is called when any netif gets an IPv6 address.

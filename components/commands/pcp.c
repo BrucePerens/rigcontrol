@@ -25,7 +25,7 @@ static int run(int argc, char * * argv)
   esp_fill_random(&m.nonce, sizeof(m.nonce));
   m.ipv6 = args.ipv6->count > 0;
   if ( m.ipv6 ) {
-    memcpy(m.external_address.s6_addr, GM.sta.ip6.global[0].sin6_addr.s6_addr, sizeof(m.external_address.s6_addr));
+    memcpy(m.external_address.s6_addr, GM.sta.ip6.public.sin6_addr.s6_addr, sizeof(m.external_address.s6_addr));
   }
   m.tcp = true;
   m.internal_port = m.external_port = 8080;

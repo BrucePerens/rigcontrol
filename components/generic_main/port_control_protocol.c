@@ -53,8 +53,8 @@ struct nat_pmp_or_pcp {
 };
 const size_t map_packet_size = (size_t)&(((struct nat_pmp_or_pcp *)0)->pcp.mp.remote_peer_port);
 
-const uint8_t pcp_ipv4_broadcast_address[4] = { 221, 0, 0, 4 };
-const uint8_t pcp_ipv6_broadcast_address[8] = { 0xff, 0x02, 0, 0, 0, 0, 0, 0x01 };
+const uint8_t pcp_ipv4_multicast_address[4] = { 221, 0, 0, 4 };
+const uint8_t pcp_ipv6_multicast_address[8] = { 0xff, 0x02, 0, 0, 0, 0, 0, 0x01 };
 
 enum pcp_version {
   NAT_PMP = 0,
@@ -62,7 +62,7 @@ enum pcp_version {
 };
 
 // MAP and PEER are sent from any port on the host to 5351 on the router.
-// ANNOUNCE is broadcast from 5351 on the router to 5350 on a host.
+// ANNOUNCE is multicast from 5351 on the router to 5350 on a host.
 enum pcp_port {
   PCP_PORT = 5351,
   PCP_ANNOUNCE_PORT = 5350
@@ -127,7 +127,7 @@ int gm_port_control_protocol(gm_port_mapping_t * m)
   ssize_t			receive_result;
   struct timeval		timeout = {};
   gm_port_mapping_t * *		p;
-  char				buffer[64];
+  char				buffer[INET6_ADDRSTRLEN + 1];
 
   if ( !m->ipv6 ) {
     send_address_size = sizeof(struct sockaddr_in);
@@ -171,7 +171,7 @@ int gm_port_control_protocol(gm_port_mapping_t * m)
   send_packet.pcp.mp.external_port = htons(m->external_port);
   send_packet.pcp.lifetime = htonl(m->lifetime);
 
-  int sock = socket(send_address.ss_family, SOCK_DGRAM, ip_protocol);
+  int sock = socket(send_address.ss_family, SOCK_DGRAM, IPPROTO_UDP);
 
   timeout.tv_sec = 2;
   timeout.tv_usec = 0;
@@ -195,6 +195,8 @@ int gm_port_control_protocol(gm_port_mapping_t * m)
   }
 
   receive_address_size = sizeof(struct sockaddr_in6);
+
+  // FIX: This needs bind(). The IPv6 version doesn't work without it.
 
   // Receive the reply from the gateway, or not.
   receive_result = recvfrom(
@@ -254,4 +256,55 @@ int gm_port_control_protocol(gm_port_mapping_t * m)
     *p = n;
   }
   return 0;
+}
+
+static void
+ip4_multicast_listener(int fd, void * data, bool readable, bool writable, bool exception, bool timeout)
+{
+  gm_printf("RECEIVED IPv4 BEACON\n");
+}
+
+static void
+ip6_multicast_listener(int fd, void * data, bool readable, bool writable, bool exception, bool timeout)
+{
+  gm_printf("RECEIVED IPv6 BEACON\n");
+}
+
+void
+gm_port_control_protocol_multicast_listener(void)
+{
+  // FIX: Split this into IPv4 and IPv6 functions, and start them when the interfaces
+  // get addresses.
+  int			value = 1;
+  struct ip_mreq	ip4_multi_request = {};
+  struct ipv6_mreq	ip6_multi_request = {};
+  struct sockaddr_in	ip4_address;
+  struct sockaddr_in6	ip6_address;
+  int			ip4_sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP);
+  int			ip6_sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_IPV6);
+
+  inet_pton(AF_INET, "224.0.0.1", &ip4_multi_request.imr_multiaddr);
+  ip4_multi_request.imr_interface.s_addr = GM.sta.ip4.address.sin_addr.s_addr;
+
+  inet_pton(AF_INET6, "ff02::1", &ip6_multi_request.ipv6mr_multiaddr);
+  ip6_multi_request.ipv6mr_interface = GM.sta.esp_netif->lwip_netif->num;
+
+  setsockopt(ip4_sock, SOL_SOCKET, SO_REUSEADDR, &value, sizeof(value));
+  setsockopt(ip6_sock, SOL_SOCKET, SO_REUSEADDR, &value, sizeof(value));
+  setsockopt(ip4_sock, IPPROTO_IP, IP_ADD_MEMBERSHIP, &ip4_multi_request, sizeof(ip4_multi_request));
+  setsockopt(ip6_sock, IPPROTO_IP, IPV6_JOIN_GROUP, &ip6_multi_request, sizeof(ip6_multi_request));
+
+  ip4_address.sin_family = AF_INET;
+  // FIX: Does it work to bind this to the broadcast address?
+  ip4_address.sin_addr.s_addr = INADDR_ANY;
+  ip4_address.sin_port = htons(PCP_ANNOUNCE_PORT);
+
+  ip6_address.sin6_family = AF_INET6;
+  // FIX: Does it work to bind this to the broadcast address?
+  memcpy(&ip6_address.sin6_addr, &in6addr_any, sizeof(ip6_address.sin6_addr));
+  ip6_address.sin6_port = htons(PCP_ANNOUNCE_PORT);
+  bind(ip4_sock, (struct sockaddr *)&ip4_address, sizeof(ip4_address));
+  bind(ip6_sock, (struct sockaddr *)&ip6_address, sizeof(ip6_address));
+  gm_fd_register(ip4_sock, ip4_multicast_listener, 0, true, false, true, 0);
+  gm_fd_register(ip6_sock, ip6_multicast_listener, 0, true, false, true, 0);
 }

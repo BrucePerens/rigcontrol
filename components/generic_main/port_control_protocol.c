@@ -261,13 +261,15 @@ int gm_port_control_protocol(gm_port_mapping_t * m)
 static void
 ip4_multicast_listener(int fd, void * data, bool readable, bool writable, bool exception, bool timeout)
 {
-  gm_printf("RECEIVED IPv4 BEACON\n");
+  if ( readable )
+    gm_printf("RECEIVED IPv4 BEACON\n");
 }
 
 static void
 ip6_multicast_listener(int fd, void * data, bool readable, bool writable, bool exception, bool timeout)
 {
-  gm_printf("RECEIVED IPv6 BEACON\n");
+  if ( readable )
+    gm_printf("RECEIVED IPv6 BEACON\n");
 }
 
 void
@@ -295,12 +297,12 @@ gm_port_control_protocol_multicast_listener(void)
   setsockopt(ip6_sock, IPPROTO_IP, IPV6_JOIN_GROUP, &ip6_multi_request, sizeof(ip6_multi_request));
 
   ip4_address.sin_family = AF_INET;
-  // FIX: Does it work to bind this to the broadcast address?
-  ip4_address.sin_addr.s_addr = INADDR_ANY;
+  ip4_address.sin_addr.s_addr = ip4_multi_request.imr_multiaddr.s_addr;
   ip4_address.sin_port = htons(PCP_ANNOUNCE_PORT);
 
   ip6_address.sin6_family = AF_INET6;
-  // FIX: Does it work to bind this to the broadcast address?
+  // FIX: Does it work to bind this to the multicast address?
+  // not done until I verify that IPv6 multicast receive is working.
   memcpy(&ip6_address.sin6_addr, &in6addr_any, sizeof(ip6_address.sin6_addr));
   ip6_address.sin6_port = htons(PCP_ANNOUNCE_PORT);
   bind(ip4_sock, (struct sockaddr *)&ip4_address, sizeof(ip4_address));

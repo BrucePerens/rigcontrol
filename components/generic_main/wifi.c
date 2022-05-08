@@ -197,7 +197,7 @@ static void ip_event_sta_got_ip4(void* arg, esp_event_base_t event_base, int32_t
   fflush(stderr);
   gm_stun(false, (struct sockaddr *)&GM.sta.ip4.public, after_stun);
   start_webserver();
-  gm_port_control_protocol_multicast_listener();
+  gm_port_control_protocol_multicast_listener_ipv4();
 }
 
 // This handler is called when any netif gets an IPv6 address.
@@ -251,6 +251,7 @@ static void ip_event_got_ip6(void* arg, esp_event_base_t event_base, int32_t eve
   case ESP_IP6_ADDR_IS_LINK_LOCAL:
     interface->ip6.link_local.sin6_family = AF_INET6;
     memcpy(interface->ip6.link_local.sin6_addr.s6_addr, event->ip6_info.ip.addr, sizeof(event->ip6_info.ip.addr));
+    gm_port_control_protocol_multicast_listener_ipv6();
     break;
   case ESP_IP6_ADDR_IS_SITE_LOCAL:
     interface->ip6.site_local.sin6_family = AF_INET6;

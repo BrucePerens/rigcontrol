@@ -1,6 +1,7 @@
 #include <stdint.h>
 #include <sys/types.h>
 #include <lwip/sockets.h>
+#include <arpa/inet.h>
 #include "generic_main.h"
 
 struct nat_pmp_or_pcp {
@@ -52,9 +53,6 @@ struct nat_pmp_or_pcp {
   };
 };
 const size_t map_packet_size = (size_t)&(((struct nat_pmp_or_pcp *)0)->pcp.mp.remote_peer_port);
-
-const uint8_t pcp_ipv4_multicast_address[4] = { 221, 0, 0, 4 };
-const uint8_t pcp_ipv6_multicast_address[8] = { 0xff, 0x02, 0, 0, 0, 0, 0, 0x01 };
 
 enum pcp_version {
   NAT_PMP = 0,
@@ -208,7 +206,7 @@ int gm_port_control_protocol(gm_port_mapping_t * m)
    &receive_address_size);
 
   if ( receive_result >= map_packet_size ) {
-    if ( memcmp(receive_packet.pcp.mp.nonce, send_packet.pcp.mp.nonce, sizeof(receive_packet.pcp.mp.nonce)) != 0 ) {
+    if ( memcmp(receive_packet.pcp.mp.nonce, send_packet.pcp.mp.nonce, sizeof(receive_packet.pcp.mp.nonce)) < 0 ) {
       gm_printf("Received nonce isn't equal to transmitted one.\n");
       return -1;
     }
@@ -273,40 +271,73 @@ ip6_multicast_listener(int fd, void * data, bool readable, bool writable, bool e
 }
 
 void
-gm_port_control_protocol_multicast_listener(void)
+gm_port_control_protocol_multicast_listener_ipv4(void)
 {
-  // FIX: Split this into IPv4 and IPv6 functions, and start them when the interfaces
-  // get addresses.
   int			value = 1;
-  struct ip_mreq	ip4_multi_request = {};
-  struct ipv6_mreq	ip6_multi_request = {};
-  struct sockaddr_in	ip4_address;
-  struct sockaddr_in6	ip6_address;
-  int			ip4_sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP);
-  int			ip6_sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_IPV6);
+  struct ip_mreq	multi_request = {};
+  struct sockaddr_in	address;
+  int			sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
 
-  inet_pton(AF_INET, "224.0.0.1", &ip4_multi_request.imr_multiaddr);
-  ip4_multi_request.imr_interface.s_addr = GM.sta.ip4.address.sin_addr.s_addr;
+  // IPv4 "all hosts" multicast.
+  // inet_pton(AF_INET, "224.0.0.1", &multi_request.imr_multiaddr);
+  inet_pton(AF_INET, "224.0.0.1", &multi_request.imr_multiaddr);
+  multi_request.imr_interface.s_addr = GM.sta.ip4.address.sin_addr.s_addr;
 
-  inet_pton(AF_INET6, "ff02::1", &ip6_multi_request.ipv6mr_multiaddr);
-  ip6_multi_request.ipv6mr_interface = GM.sta.esp_netif->lwip_netif->num;
+  address.sin_family = AF_INET;
+  address.sin_addr.s_addr = multi_request.imr_multiaddr.s_addr;
+  address.sin_port = htons(PCP_ANNOUNCE_PORT);
 
-  setsockopt(ip4_sock, SOL_SOCKET, SO_REUSEADDR, &value, sizeof(value));
-  setsockopt(ip6_sock, SOL_SOCKET, SO_REUSEADDR, &value, sizeof(value));
-  setsockopt(ip4_sock, IPPROTO_IP, IP_ADD_MEMBERSHIP, &ip4_multi_request, sizeof(ip4_multi_request));
-  setsockopt(ip6_sock, IPPROTO_IP, IPV6_JOIN_GROUP, &ip6_multi_request, sizeof(ip6_multi_request));
+  // Reuse addresses, because other software listens for all-hosts multicast.
+  if ( setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &value, sizeof(value)) < 0 ) {
+    gm_printf("Setsockopt SOL_SOCKET failed: %s.\n", strerror(errno));
+    return;
+  }
+  if ( bind(sock, (struct sockaddr *)&address, sizeof(address)) < 0 ) {
+    gm_printf("bind failed.\n");
+    return;
+  }
 
-  ip4_address.sin_family = AF_INET;
-  ip4_address.sin_addr.s_addr = ip4_multi_request.imr_multiaddr.s_addr;
-  ip4_address.sin_port = htons(PCP_ANNOUNCE_PORT);
+  if ( setsockopt(sock, IPPROTO_IP, IP_ADD_MEMBERSHIP, &multi_request, sizeof(multi_request)) < 0 ) {
+    // This fails because the host is already registered to the "all-hosts" multicast
+    // group. Ignore that.
+    if ( errno != EADDRNOTAVAIL ) {
+      gm_printf("Setsockopt IP_ADD_MEMBERSHIP failed: %s.\n", strerror(errno));
+      return;
+    }
+  }
+  gm_fd_register(sock, ip4_multicast_listener, 0, true, false, true, 0);
+}
 
-  ip6_address.sin6_family = AF_INET6;
-  // FIX: Does it work to bind this to the multicast address?
-  // not done until I verify that IPv6 multicast receive is working.
-  memcpy(&ip6_address.sin6_addr, &in6addr_any, sizeof(ip6_address.sin6_addr));
-  ip6_address.sin6_port = htons(PCP_ANNOUNCE_PORT);
-  bind(ip4_sock, (struct sockaddr *)&ip4_address, sizeof(ip4_address));
-  bind(ip6_sock, (struct sockaddr *)&ip6_address, sizeof(ip6_address));
-  gm_fd_register(ip4_sock, ip4_multicast_listener, 0, true, false, true, 0);
-  gm_fd_register(ip6_sock, ip6_multicast_listener, 0, true, false, true, 0);
+void
+gm_port_control_protocol_multicast_listener_ipv6(void)
+{
+  int			value = 1;
+  struct ipv6_mreq	multi_request = {};
+  struct sockaddr_in6	address;
+  int			sock = socket(AF_INET6, SOCK_DGRAM, IPPROTO_UDP);
+
+  // IPv6 "all hosts" multicast.
+  inet_pton(AF_INET6, "ff02::1", &multi_request.ipv6mr_multiaddr);
+  multi_request.ipv6mr_interface = esp_netif_get_netif_impl_index(GM.sta.esp_netif);
+
+  memcpy(&address.sin6_addr, &multi_request.ipv6mr_multiaddr, sizeof(multi_request.ipv6mr_multiaddr));
+  address.sin6_family = AF_INET6;
+  address.sin6_port = htons(PCP_ANNOUNCE_PORT);
+
+  // Reuse addresses, because other software listens for all-hosts multicast.
+  if ( setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &value, sizeof(value)) < 0 ) {
+    gm_printf("Setsockopt SOL_SOCKET failed.\n");
+    return;
+  }
+  if ( bind(sock, (struct sockaddr *)&address, sizeof(address)) < 0 ) {
+    gm_printf("ipv6 bind failed: %s.\n", strerror(errno));
+    return;
+  }
+
+
+  if ( setsockopt(sock, IPPROTO_IPV6, IPV6_JOIN_GROUP, &multi_request, sizeof(multi_request)) < 0 ) {
+    gm_printf("Setsockopt IPV6_JOIN_GROUP failed: %s.\n", strerror(errno));
+    return;
+  }
+  gm_fd_register(sock, ip6_multicast_listener, 0, true, false, true, 0);
 }

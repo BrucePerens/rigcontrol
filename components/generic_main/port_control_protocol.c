@@ -259,15 +259,23 @@ int gm_port_control_protocol(gm_port_mapping_t * m)
 static void
 ip4_multicast_listener(int fd, void * data, bool readable, bool writable, bool exception, bool timeout)
 {
-  if ( readable )
-    gm_printf("RECEIVED IPv4 BEACON\n");
+  if ( readable ) {
+    struct nat_pmp_or_pcp	packet;
+
+    gm_printf("RECEIVED IPv4 MULTICAST\n");
+    recv(fd, &packet, sizeof(packet), MSG_DONTWAIT);
+  }
 }
 
 static void
 ip6_multicast_listener(int fd, void * data, bool readable, bool writable, bool exception, bool timeout)
 {
-  if ( readable )
-    gm_printf("RECEIVED IPv6 BEACON\n");
+  if ( readable ) {
+    struct nat_pmp_or_pcp	packet;
+
+    gm_printf("RECEIVED IPv6 MULTICAST\n");
+    recv(fd, &packet, sizeof(packet), MSG_DONTWAIT);
+  }
 }
 
 void
@@ -308,6 +316,8 @@ gm_port_control_protocol_multicast_listener_ipv4(void)
   gm_fd_register(sock, ip4_multicast_listener, 0, true, false, true, 0);
 }
 
+// At this writing, May 2022, OpenWRT is not configured by default to forward multicasts
+// across its subnets.
 void
 gm_port_control_protocol_multicast_listener_ipv6(void)
 {
@@ -333,7 +343,6 @@ gm_port_control_protocol_multicast_listener_ipv6(void)
     gm_printf("ipv6 bind failed: %s.\n", strerror(errno));
     return;
   }
-
 
   if ( setsockopt(sock, IPPROTO_IPV6, IPV6_JOIN_GROUP, &multi_request, sizeof(multi_request)) < 0 ) {
     gm_printf("Setsockopt IPV6_JOIN_GROUP failed: %s.\n", strerror(errno));

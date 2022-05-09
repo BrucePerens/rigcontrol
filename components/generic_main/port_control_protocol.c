@@ -303,6 +303,22 @@ decode_packet(struct nat_pmp_or_pcp * p, ssize_t message_size, bool multicast, s
    port
   );
 
+  if ( port != PCP_PORT ) {
+    gm_printf("Ignoring message that isn't from the PCP port.\n");
+    return;
+  }
+
+  switch ( address->ss_family ) {
+  case AF_INET:
+    if ( ((struct sockaddr_in *)address)->sin_addr.s_addr != GM.sta.ip4.router.sin_addr.s_addr ) {
+      gm_printf("IPV4 packet not from the router, ignored.\n");
+      return;
+    }
+    break;
+  case AF_INET6:
+    break;
+  }
+
   if ( message_size < map_packet_size ) {
     gm_printf("Receive packet too small: %d\n", message_size);
   }

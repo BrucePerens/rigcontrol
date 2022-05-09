@@ -257,33 +257,101 @@ int gm_port_control_protocol(gm_port_mapping_t * m)
 }
 
 static void
-ip4_multicast_listener(int fd, void * data, bool readable, bool writable, bool exception, bool timeout)
+decode_pcp_announce(struct nat_pmp_or_pcp * p, ssize_t message_size, bool multicast, struct sockaddr_storage * address)
 {
-  if ( readable ) {
-    struct nat_pmp_or_pcp	packet;
+}
 
-    gm_printf("RECEIVED IPv4 MULTICAST\n");
-    recv(fd, &packet, sizeof(packet), MSG_DONTWAIT);
+static void
+decode_pcp_map(struct nat_pmp_or_pcp * p, ssize_t message_size, bool multicast, struct sockaddr_storage * address)
+{
+}
+
+static void
+decode_pcp_peer(struct nat_pmp_or_pcp * p, ssize_t message_size, bool multicast, struct sockaddr_storage * address)
+{
+}
+
+void
+decode_packet(struct nat_pmp_or_pcp * p, ssize_t message_size, bool multicast, struct sockaddr_storage * address)
+{
+  char		buffer[INET_ADDRSTRLEN + 1];
+  void *	a;
+  bool		response;
+  uint16_t	port;
+
+  switch ( address->ss_family ) {
+  case AF_INET:
+    a = &((struct sockaddr_in *)address)->sin_addr;
+    port = ((struct sockaddr_in *)address)->sin_port;
+    break;
+  case AF_INET6:
+    a = &((struct sockaddr_in6 *)address)->sin6_addr;
+    port = ((struct sockaddr_in6 *)address)->sin6_port;
+    break;
+  default:
+    gm_printf("decode_packet(): Address family %d.\n", address->ss_family);
+    return;
+  }
+
+  inet_ntop(address->ss_family, a, buffer, sizeof(buffer));
+  gm_printf(
+   "Received %s %s with opcode %x from %s port %d.\n",
+   multicast ? "multicast" : "unicast",
+   p->opcode & 0x80 ? "response" : "request",
+   p->opcode & 0x7f,
+   buffer,
+   port
+  );
+
+  if ( message_size < map_packet_size ) {
+    gm_printf("Receive packet too small: %d\n", message_size);
+  }
+  response = p->opcode & 0x80;
+  
+  switch ( p->opcode & 0x7f ) {
+  case PCP_ANNOUNCE:
+    decode_pcp_announce(p, message_size, multicast, address);
+    break;
+  case PCP_MAP:
+    if ( !response ) {
+      gm_printf("Client received PCP_MAP request.\n");
+      return;
+    }
+    decode_pcp_map(p, message_size, multicast, address);
+    break;
+  case PCP_PEER:
+    if ( !response ) {
+      gm_printf("Client received PCP_PEER request.\n");
+      return;
+    }
+    decode_pcp_peer(p, message_size, multicast, address);
+    break;
+  default:
+    gm_printf("Unrecognized opcode %x\n", p->opcode);
   }
 }
 
 static void
-ip6_multicast_listener(int fd, void * data, bool readable, bool writable, bool exception, bool timeout)
+incoming_packet(int fd, void * data, bool readable, bool writable, bool exception, bool timeout)
 {
   if ( readable ) {
     struct nat_pmp_or_pcp	packet;
+    struct sockaddr_storage	address;
+    socklen_t			address_size;
+    ssize_t			message_size;
 
-    gm_printf("RECEIVED IPv6 MULTICAST\n");
-    recv(fd, &packet, sizeof(packet), MSG_DONTWAIT);
+    message_size = recvfrom(fd, &packet, sizeof(packet), MSG_DONTWAIT, (struct sockaddr *)&address, &address_size);
+    // Data is set to 1 for multicast, 0 for unicast.
+    decode_packet(&packet, message_size, (int)data != 0, &address);
   }
 }
 
-void
-gm_port_control_protocol_multicast_listener_ipv4(void)
+static void
+start_multicast_listener_ipv4(void)
 {
   int			value = 1;
   struct ip_mreq	multi_request = {};
-  struct sockaddr_in	address;
+  struct sockaddr_in	address = {};
   int			sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
 
   // IPv4 "all hosts" multicast.
@@ -313,17 +381,37 @@ gm_port_control_protocol_multicast_listener_ipv4(void)
       return;
     }
   }
-  gm_fd_register(sock, ip4_multicast_listener, 0, true, false, true, 0);
+  // Data is set to 1 for multicast, 0 for unicast.
+  gm_fd_register(sock, incoming_packet, (void *)1, true, false, true, 0);
+}
+
+static void
+start_unicast_listener_ipv4(void)
+{
+  struct sockaddr_in	address = {};
+  int			sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+
+  address.sin_family = AF_INET;
+  address.sin_addr.s_addr = GM.sta.ip4.address.sin_addr.s_addr;
+  address.sin_port = htons(PCP_PORT);
+
+  if ( bind(sock, (struct sockaddr *)&address, sizeof(address)) < 0 ) {
+    gm_printf("bind failed.\n");
+    return;
+  }
+
+  // Data is set to 1 for multicast, 0 for unicast.
+  gm_fd_register(sock, incoming_packet, (void *)0, true, false, true, 0);
 }
 
 // At this writing, May 2022, OpenWRT is not configured by default to forward multicasts
 // across its subnets.
-void
-gm_port_control_protocol_multicast_listener_ipv6(void)
+static void
+start_multicast_listener_ipv6(void)
 {
   int			value = 1;
   struct ipv6_mreq	multi_request = {};
-  struct sockaddr_in6	address;
+  struct sockaddr_in6	address = {};
   int			sock = socket(AF_INET6, SOCK_DGRAM, IPPROTO_UDP);
 
   // IPv6 "all hosts" multicast.
@@ -348,5 +436,39 @@ gm_port_control_protocol_multicast_listener_ipv6(void)
     gm_printf("Setsockopt IPV6_JOIN_GROUP failed: %s.\n", strerror(errno));
     return;
   }
-  gm_fd_register(sock, ip6_multicast_listener, 0, true, false, true, 0);
+  // Data is set to 1 for multicast, 0 for unicast.
+  gm_fd_register(sock, incoming_packet, (void *)1, true, false, true, 0);
+}
+
+static void
+start_unicast_listener_ipv6(void)
+{
+  struct sockaddr_in6	address = {};
+  int			sock = socket(AF_INET6, SOCK_DGRAM, IPPROTO_UDP);
+
+  address.sin6_family = AF_INET6;
+  memcpy(&address.sin6_addr.s6_addr, &GM.sta.ip6.link_local.sin6_addr.s6_addr, sizeof(address.sin6_addr.s6_addr));
+  address.sin6_port = htons(PCP_PORT);
+
+  if ( bind(sock, (struct sockaddr *)&address, sizeof(address)) < 0 ) {
+    gm_printf("bind failed.\n");
+    return;
+  }
+
+  // Data is set to 1 for multicast, 0 for unicast.
+  gm_fd_register(sock, incoming_packet, (void *)0, true, false, true, 0);
+}
+
+void
+gm_port_control_protocol_start_listener_ipv4(void)
+{
+  start_unicast_listener_ipv4();
+  start_multicast_listener_ipv4();
+}
+
+void
+gm_port_control_protocol_start_listener_ipv6(void)
+{
+  start_unicast_listener_ipv6();
+  start_multicast_listener_ipv6();
 }

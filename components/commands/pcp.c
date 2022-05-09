@@ -15,6 +15,7 @@ static int run(int argc, char * * argv)
 {
   char	buffer[64];
   gm_port_mapping_t m = {};
+  int result;
 
   int nerrors = arg_parse(argc, argv, (void **) &args);
   if (nerrors) {
@@ -22,15 +23,12 @@ static int run(int argc, char * * argv)
       return 1;
   }
   printf("\n"); 
-  esp_fill_random(&m.nonce, sizeof(m.nonce));
-  m.ipv6 = args.ipv6->count > 0;
-  if ( m.ipv6 ) {
-    memcpy(m.external_address.s6_addr, GM.sta.ip6.public.sin6_addr.s6_addr, sizeof(m.external_address.s6_addr));
-  }
-  m.tcp = true;
-  m.internal_port = m.external_port = 8080;
-  m.lifetime = 24 * 60 * 60;
-  if ( gm_port_control_protocol(&m) == 0 ) {
+  if ( args.ipv6->count > 0 )
+    result = gm_port_control_protocol_request_mapping_ipv6();
+  else
+    result = gm_port_control_protocol_request_mapping_ipv4();
+
+  if ( result == 0 ) {
     inet_ntop(AF_INET6, m.external_address.s6_addr, buffer, sizeof(buffer));
     return 0;
   }

@@ -4,7 +4,7 @@
 #include <arpa/inet.h>
 #include "generic_main.h"
 
-struct nat_pmp_or_pcp {
+typedef struct _nat_pmp_or_pcp {
   uint8_t	version;
   uint8_t	opcode; // Also contains the request/response bit.
   uint8_t	reserved;
@@ -51,8 +51,15 @@ struct nat_pmp_or_pcp {
       };
     } pcp;
   };
-};
-const size_t map_packet_size = (size_t)&(((struct nat_pmp_or_pcp *)0)->pcp.mp.remote_peer_port);
+} nat_pmp_or_pcp_t;
+typedef struct _last_request {
+  struct sockaddr_storage	address;
+  nat_pmp_or_pcp_t		packet;
+  struct timeval		time;
+  bool				valid;
+} last_request_t;
+
+const size_t map_packet_size = (size_t)&(((nat_pmp_or_pcp_t *)0)->pcp.mp.remote_peer_port);
 
 enum pcp_version {
   NAT_PMP = 0,
@@ -112,167 +119,156 @@ enum pcp_response_code {
   PCP_EXCESSIVE_REMOTE_PEERS = 13
 };
 
-int gm_port_control_protocol(gm_port_mapping_t * m)
+static last_request_t	last_request_ipv4;
+static last_request_t	last_request_ipv6;
+static int		ipv4_sock = -1;
+static int		ipv6_sock = -1;
+
+static int
+request_mapping_ipv4(gm_port_mapping_t * m)
 {
-  struct nat_pmp_or_pcp		send_packet = {};
-  struct nat_pmp_or_pcp		receive_packet = {};
-  struct sockaddr_storage	send_address = {};
-  struct sockaddr_storage	receive_address = {};
-  int				ip_protocol;
+  last_request_t *		r = &last_request_ipv4;
+  nat_pmp_or_pcp_t *		p = &r->packet;
   socklen_t			send_address_size;
-  socklen_t			receive_address_size;
   ssize_t			send_result;
-  ssize_t			receive_result;
-  struct timeval		timeout = {};
-  gm_port_mapping_t * *		p;
-  char				buffer[INET6_ADDRSTRLEN + 1];
+  struct sockaddr_in * 		a4 = (struct sockaddr_in *)&r->address;
 
-  if ( !m->ipv6 ) {
-    send_address_size = sizeof(struct sockaddr_in);
-    struct sockaddr_in * a4 = (struct sockaddr_in *)&send_address;
-    a4->sin_addr.s_addr = GM.sta.ip4.router.sin_addr.s_addr;
-    a4->sin_family = AF_INET;
-    a4->sin_port = htons(PCP_PORT);
-    ip_protocol = IPPROTO_IP;
-  }
-  else {
-    send_address_size = sizeof(struct sockaddr_in6);
-    struct sockaddr_in6 * a6 = (struct sockaddr_in6 *)&send_address;
-    // This doesn't nornally get called until the station has a global address.
-    memcpy(&a6->sin6_addr.s6_addr, GM.sta.ip6.global[0].sin6_addr.s6_addr, sizeof(a6->sin6_addr.s6_addr));
-    a6->sin6_family = AF_INET6;
-    a6->sin6_port = htons(PCP_PORT);
-    a6->sin6_scope_id = esp_netif_get_netif_impl_index(GM.sta.esp_netif);
-    ip_protocol = IPPROTO_IPV6;
-  }
+  memset(r, '\0', sizeof(last_request_ipv4));
+  r->valid = true;
 
-  if ( !m->ipv6 ) {
-    send_packet.pcp.request.client_address.s6_addr[10] = 0xff;
-    send_packet.pcp.request.client_address.s6_addr[11] = 0xff;
-    memcpy(&send_packet.pcp.request.client_address.s6_addr[12], &GM.sta.ip4.address.sin_addr.s_addr, 4);
-  }
-  else {
-    struct sockaddr_in6 * a6 = (struct sockaddr_in6 *)&send_address;
-    memcpy(send_packet.pcp.request.client_address.s6_addr, &a6->sin6_addr.s6_addr, sizeof(a6->sin6_addr.s6_addr));
-  }
+  send_address_size = sizeof(struct sockaddr_in);
+  a4->sin_addr.s_addr = GM.sta.ip4.router.sin_addr.s_addr;
+  a4->sin_family = AF_INET;
+  a4->sin_port = htons(PCP_PORT);
+  p->pcp.request.client_address.s6_addr[10] = 0xff;
+  p->pcp.request.client_address.s6_addr[11] = 0xff;
+  memcpy(&p->pcp.request.client_address.s6_addr[12], &GM.sta.ip4.address.sin_addr.s_addr, 4);
 
-  memcpy(send_packet.pcp.mp.external_address.s6_addr, m->external_address.s6_addr, sizeof(m->external_address.s6_addr));
-  memset(buffer, '\0', sizeof(buffer));
-  inet_ntop(AF_INET6, &send_packet.pcp.mp.external_address.s6_addr, buffer, sizeof(buffer));
-  gm_printf("Requested address %s\n", buffer);
-  send_packet.version = PORT_MAPPING_PROTOCOL;
-  send_packet.opcode = PCP_MAP;
-  send_packet.pcp.lifetime = htonl(24 * 60 * 60);
-  memcpy(send_packet.pcp.mp.nonce, m->nonce, sizeof(m->nonce));
-  send_packet.pcp.mp.protocol = m->tcp ? PCP_TCP : PCP_UDP;
-  send_packet.pcp.mp.internal_port = htons(m->internal_port);
-  send_packet.pcp.mp.external_port = htons(m->external_port);
-  send_packet.pcp.lifetime = htonl(m->lifetime);
+  // This sets the requested address to the all-zeroes IPV4 address: ::ffff:0.0.0.0 .
+  // if external_address was all zeroes, it would be the all-zeroes IPV6 address.
+  // Some hosts would take that to mean a request for an IPV6-to-IPV4 port mapping.
+  p->pcp.mp.external_address.s6_addr[10] = 0xff;
+  p->pcp.mp.external_address.s6_addr[11] = 0xff;
 
-  int sock = socket(send_address.ss_family, SOCK_DGRAM, IPPROTO_UDP);
-
-  timeout.tv_sec = 2;
-  timeout.tv_usec = 0;
-  setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO,(char*)&timeout, sizeof(timeout));
-
-  // The size of the packet does not include the portion used for the PEER operation.
-  // We have to trim any possible option segments from the packet, or populate them.
+  p->version = PORT_MAPPING_PROTOCOL;
+  p->opcode = PCP_MAP;
+  p->pcp.lifetime = htonl(24 * 60 * 60);
+  memcpy(p->pcp.mp.nonce, m->nonce, sizeof(m->nonce));
+  p->pcp.mp.protocol = m->tcp ? PCP_TCP : PCP_UDP;
+  p->pcp.mp.internal_port = htons(m->internal_port);
+  p->pcp.mp.external_port = htons(m->external_port);
+  p->pcp.lifetime = htonl(m->lifetime);
 
   // Send the packet to the gateway.
   send_result = sendto(
-   sock,
-   &send_packet,
+   ipv4_sock,
+   p,
    map_packet_size,
    0,
-   (const struct sockaddr *)&send_address,
+   (const struct sockaddr *)a4,
    send_address_size);
+  gettimeofday(&r->time, 0);
 
   if ( send_result < map_packet_size ) {
     gm_printf("Send returned %d\n", send_result);
     return -1;
   }
+  return 0;
+}
 
-  receive_address_size = sizeof(struct sockaddr_in6);
+int gm_port_control_protocol_request_mapping_ipv4()
+{
+  gm_port_mapping_t m = {};
 
-  // FIX: This needs bind(). The IPv6 version doesn't work without it.
+  esp_fill_random(&m.nonce, sizeof(m.nonce));
+  m.ipv6 = false;
+  m.tcp = true;
+  m.internal_port = m.external_port = 8080;
+  m.lifetime = 24 * 60 * 60;
+  return request_mapping_ipv4(&m);
+}
 
-  // Receive the reply from the gateway, or not.
-  receive_result = recvfrom(
-   sock,
-   &receive_packet,
-   sizeof(receive_packet),
-   0,
-   (struct sockaddr *)&receive_address,
-   &receive_address_size);
-
-  if ( receive_result >= map_packet_size ) {
-    if ( memcmp(receive_packet.pcp.mp.nonce, send_packet.pcp.mp.nonce, sizeof(receive_packet.pcp.mp.nonce)) < 0 ) {
-      gm_printf("Received nonce isn't equal to transmitted one.\n");
-      return -1;
-    }
-    if ( receive_packet.result_code != PCP_SUCCESS ) {
-      gm_printf("PCP received result code: %d.\n", receive_packet.result_code);
-      return -1;
-    }
-    if ( receive_packet.opcode != (send_packet.opcode | 0x80) ) {
-      gm_printf("Received opcode: %x.\n", receive_packet.opcode);
-      return -1;
-    }
-  }
-  else {
-    gm_printf("Received result too small.\n");
-    return -1;
-  }
-
-  gettimeofday(&m->granted_time, 0);
-  memcpy(m->nonce, receive_packet.pcp.mp.nonce, sizeof(m->nonce));
-  m->epoch = receive_packet.pcp.response.epoch;
-  m->ipv6 = ip_protocol == IPPROTO_IPV6;
-  m->tcp = receive_packet.pcp.mp.protocol == PCP_TCP;
-  m->internal_port = ntohs(receive_packet.pcp.mp.internal_port);
-  m->external_port = ntohs(receive_packet.pcp.mp.external_port);
-  m->lifetime = ntohl(receive_packet.pcp.lifetime);
-  memcpy(m->external_address.s6_addr, receive_packet.pcp.mp.external_address.s6_addr, sizeof(m->external_address.s6_addr));
-
-  inet_ntop(AF_INET6, m->external_address.s6_addr, buffer, sizeof(buffer));
-  gm_printf("Router public mapping %s:%d\n", buffer, m->external_port);
-
-  if ( m->ipv6 )
-    p = &GM.sta.ip6.port_mappings;
-  else
-    p = &GM.sta.ip4.port_mappings;
-  while ( *p != 0 ) {
-    if ( *p == m ) {
-      p = 0;
-      break;
-    }
-    p = &((*p)->next);
-  }
-  if ( p ) {
-    gm_port_mapping_t * n = malloc(sizeof(*n));
-    memcpy(n, m, sizeof(*n));
-    *p = n;
-  }
+int gm_port_control_protocol_request_mapping_ipv6(void)
+{
   return 0;
 }
 
 static void
-decode_pcp_announce(struct nat_pmp_or_pcp * p, ssize_t message_size, bool multicast, struct sockaddr_storage * address)
+decode_pcp_announce(nat_pmp_or_pcp_t * p, ssize_t message_size, bool multicast, struct sockaddr_storage * address)
 {
+  gm_printf("PCP Announce\n");
 }
 
 static void
-decode_pcp_map(struct nat_pmp_or_pcp * p, ssize_t message_size, bool multicast, struct sockaddr_storage * address)
+decode_pcp_map(nat_pmp_or_pcp_t * p, ssize_t message_size, bool multicast, struct sockaddr_storage * address)
 {
+  last_request_t *	last;
+  gm_port_mapping_t	m = {};
+  gm_port_mapping_t * *	mp;
+  char			buffer[INET_ADDRSTRLEN + 1];
+
+  switch ( address->ss_family ) {
+  case AF_INET:
+    last = &last_request_ipv4;
+    break;
+  case AF_INET6:
+    last = &last_request_ipv6;
+    break;
+  default:
+    return;
+  }
+
+  if ( memcmp(p->pcp.mp.nonce, last->packet.pcp.mp.nonce, sizeof(p->pcp.mp.nonce)) < 0 ) {
+    gm_printf("Received nonce isn't equal to transmitted one.\n");
+    return;
+  }
+  if ( p->result_code != PCP_SUCCESS ) {
+    gm_printf("PCP received result code: %d.\n", p->result_code);
+    return;
+  }
+  if ( p->opcode != (last->packet.opcode | 0x80) ) {
+    gm_printf("Received opcode: %x.\n", p->opcode);
+    return;
+  }
+
+  memset(&m, '\0', sizeof(m));
+  gettimeofday(&m.granted_time, 0);
+  memcpy(m.nonce, p->pcp.mp.nonce, sizeof(m.nonce));
+  m.epoch = p->pcp.response.epoch;
+  m.ipv6 = address->ss_family == AF_INET6;
+  m.tcp = p->pcp.mp.protocol == PCP_TCP;
+  m.internal_port = ntohs(p->pcp.mp.internal_port);
+  m.external_port = ntohs(p->pcp.mp.external_port);
+  m.lifetime = ntohl(p->pcp.lifetime);
+  memcpy(m.external_address.s6_addr, p->pcp.mp.external_address.s6_addr, sizeof(m.external_address.s6_addr));
+
+  memset(buffer, '\0', sizeof(buffer));
+  if ( address->ss_family == AF_INET6 )
+    inet_ntop(AF_INET6, p->pcp.mp.external_address.s6_addr, buffer, sizeof(buffer));
+  else
+    inet_ntop(AF_INET, &p->pcp.mp.external_address.s6_addr[12], buffer, sizeof(buffer));
+  gm_printf("Router public mapping %s:%d\n", buffer, m.external_port);
+  if ( m.ipv6 )
+    mp = &GM.sta.ip6.port_mappings;
+  else
+    mp = &GM.sta.ip4.port_mappings;
+  while ( *mp != 0 )
+    mp = &((*mp)->next);
+  if ( mp ) {
+    gm_port_mapping_t * n = malloc(sizeof(*n));
+    memcpy(n, &m, sizeof(*n));
+    *mp = n;
+  }
 }
 
 static void
-decode_pcp_peer(struct nat_pmp_or_pcp * p, ssize_t message_size, bool multicast, struct sockaddr_storage * address)
+decode_pcp_peer(nat_pmp_or_pcp_t * p, ssize_t message_size, bool multicast, struct sockaddr_storage * address)
 {
+  gm_printf("PCP Peer\n");
 }
 
 void
-decode_packet(struct nat_pmp_or_pcp * p, ssize_t message_size, bool multicast, struct sockaddr_storage * address)
+decode_packet(nat_pmp_or_pcp_t * p, ssize_t message_size, bool multicast, struct sockaddr_storage * address)
 {
   char		buffer[INET_ADDRSTRLEN + 1];
   void *	a;
@@ -282,11 +278,11 @@ decode_packet(struct nat_pmp_or_pcp * p, ssize_t message_size, bool multicast, s
   switch ( address->ss_family ) {
   case AF_INET:
     a = &((struct sockaddr_in *)address)->sin_addr;
-    port = ((struct sockaddr_in *)address)->sin_port;
+    port = htons(((struct sockaddr_in *)address)->sin_port);
     break;
   case AF_INET6:
     a = &((struct sockaddr_in6 *)address)->sin6_addr;
-    port = ((struct sockaddr_in6 *)address)->sin6_port;
+    port = htons(((struct sockaddr_in6 *)address)->sin6_port);
     break;
   default:
     gm_printf("decode_packet(): Address family %d.\n", address->ss_family);
@@ -322,6 +318,7 @@ decode_packet(struct nat_pmp_or_pcp * p, ssize_t message_size, bool multicast, s
   if ( message_size < map_packet_size ) {
     gm_printf("Receive packet too small: %d\n", message_size);
   }
+
   response = p->opcode & 0x80;
   
   switch ( p->opcode & 0x7f ) {
@@ -329,18 +326,23 @@ decode_packet(struct nat_pmp_or_pcp * p, ssize_t message_size, bool multicast, s
     decode_pcp_announce(p, message_size, multicast, address);
     break;
   case PCP_MAP:
-    if ( !response ) {
-      gm_printf("Client received PCP_MAP request.\n");
-      return;
-    }
-    decode_pcp_map(p, message_size, multicast, address);
-    break;
   case PCP_PEER:
     if ( !response ) {
-      gm_printf("Client received PCP_PEER request.\n");
+      gm_printf("Client received request.\n");
       return;
     }
-    decode_pcp_peer(p, message_size, multicast, address);
+    if ( multicast ) {
+      gm_printf("Client received multicast request.\n");
+      return;
+    }
+    switch ( p->opcode & 0x7f ) {
+    case PCP_MAP:
+      decode_pcp_map(p, message_size, multicast, address);
+      break;
+    case PCP_PEER:
+      decode_pcp_peer(p, message_size, multicast, address);
+      break;
+    }
     break;
   default:
     gm_printf("Unrecognized opcode %x\n", p->opcode);
@@ -351,7 +353,7 @@ static void
 incoming_packet(int fd, void * data, bool readable, bool writable, bool exception, bool timeout)
 {
   if ( readable ) {
-    struct nat_pmp_or_pcp	packet;
+    nat_pmp_or_pcp_t		packet;
     struct sockaddr_storage	address;
     socklen_t			address_size;
     ssize_t			message_size;
@@ -371,7 +373,6 @@ start_multicast_listener_ipv4(void)
   int			sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
 
   // IPv4 "all hosts" multicast.
-  // inet_pton(AF_INET, "224.0.0.1", &multi_request.imr_multiaddr);
   inet_pton(AF_INET, "224.0.0.1", &multi_request.imr_multiaddr);
   multi_request.imr_interface.s_addr = GM.sta.ip4.address.sin_addr.s_addr;
 
@@ -405,19 +406,19 @@ static void
 start_unicast_listener_ipv4(void)
 {
   struct sockaddr_in	address = {};
-  int			sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
 
   address.sin_family = AF_INET;
   address.sin_addr.s_addr = GM.sta.ip4.address.sin_addr.s_addr;
   address.sin_port = htons(PCP_PORT);
 
-  if ( bind(sock, (struct sockaddr *)&address, sizeof(address)) < 0 ) {
+  ipv4_sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+  if ( bind(ipv4_sock, (struct sockaddr *)&address, sizeof(address)) < 0 ) {
     gm_printf("bind failed.\n");
     return;
   }
 
   // Data is set to 1 for multicast, 0 for unicast.
-  gm_fd_register(sock, incoming_packet, (void *)0, true, false, true, 0);
+  gm_fd_register(ipv4_sock, incoming_packet, (void *)0, true, false, true, 0);
 }
 
 // At this writing, May 2022, OpenWRT is not configured by default to forward multicasts
@@ -460,19 +461,19 @@ static void
 start_unicast_listener_ipv6(void)
 {
   struct sockaddr_in6	address = {};
-  int			sock = socket(AF_INET6, SOCK_DGRAM, IPPROTO_UDP);
 
   address.sin6_family = AF_INET6;
   memcpy(&address.sin6_addr.s6_addr, &GM.sta.ip6.link_local.sin6_addr.s6_addr, sizeof(address.sin6_addr.s6_addr));
   address.sin6_port = htons(PCP_PORT);
 
-  if ( bind(sock, (struct sockaddr *)&address, sizeof(address)) < 0 ) {
+  ipv6_sock = socket(AF_INET6, SOCK_DGRAM, IPPROTO_UDP);
+  if ( bind(ipv6_sock, (struct sockaddr *)&address, sizeof(address)) < 0 ) {
     gm_printf("bind failed.\n");
     return;
   }
 
   // Data is set to 1 for multicast, 0 for unicast.
-  gm_fd_register(sock, incoming_packet, (void *)0, true, false, true, 0);
+  gm_fd_register(ipv6_sock, incoming_packet, (void *)0, true, false, true, 0);
 }
 
 void

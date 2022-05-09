@@ -27,7 +27,7 @@
 // struct netif * from an esp_netif_t.
 #include <../lwip/esp_netif_lwip_internal.h>
 #include <lwip/dhcp6.h>
-#include <lwip/inet.h>
+#include <arpa/inet.h>
 #include <lwip/sockets.h>
 #include <pthread.h>
 #include "generic_main.h"
@@ -65,40 +65,15 @@ void wifi_event_sta_disconnected(void* arg, esp_event_base_t event_base, int32_t
 
 static void after_stun(bool success, bool ipv6, struct sockaddr * address)
 {
-  gm_port_mapping_t mapping = {};
+  char	buffer[INET6_ADDRSTRLEN + 1];
 
   if ( success ) {
-    char buffer[64];
-
-    if ( ipv6 ) {
-      struct sockaddr_in6 * addr = (struct sockaddr_in6 *)address;
-      inet_ntop(AF_INET6, addr->sin6_addr.s6_addr, buffer, sizeof(buffer));
-      // FIX: Manage the port mappings, renew existing ones rather than just
-      // allocating a new one
-      esp_fill_random(&mapping.nonce, sizeof(mapping.nonce));
-      mapping.ipv6 = true;
-      memcpy(mapping.external_address.s6_addr, addr->sin6_addr.s6_addr, sizeof(mapping.external_address.s6_addr));
-      mapping.tcp = true;
-      mapping.internal_port = mapping.external_port = 8080;
-      mapping.lifetime = 24 * 60 * 60;
-      gm_port_control_protocol(&mapping);
-    }
-    else {
-      struct sockaddr_in * addr = (struct sockaddr_in *)address;
-      inet_ntop(AF_INET, &addr->sin_addr.s_addr, buffer, sizeof(buffer));
-      // FIX: Manage the port mappings, renew existing ones rather than just
-      // allocating a new one
-      esp_fill_random(&mapping.nonce, sizeof(mapping.nonce));
-      mapping.external_address.s6_addr[10] = 0xff;
-      mapping.external_address.s6_addr[11] = 0xff;
-      memcpy(&mapping.external_address.s6_addr[12], &addr->sin_addr.s_addr, sizeof(addr->sin_addr.s_addr));
-      mapping.ipv6 = false;
-      mapping.tcp = true;
-      mapping.internal_port = mapping.external_port = 8080;
-      mapping.lifetime = 24 * 60 * 60;
-      gm_port_control_protocol(&mapping);
-    }
-    gm_printf("Public address %s\n", buffer);
+    if ( ipv6 )
+      inet_ntop(AF_INET6, &((struct sockaddr_in6 *)address)->sin6_addr, buffer, sizeof(buffer));
+    else
+      inet_ntop(AF_INET, &((struct sockaddr_in *)address)->sin_addr, buffer, sizeof(buffer));
+   
+    gm_printf("Public address %s.\n", buffer);
   }
   else {
     gm_printf("STUN for %s failed.\n", ipv6 ? "IPv6" : "IPv4");
@@ -177,7 +152,7 @@ static void wifi_event_sta_connected_to_ap(void* arg, esp_event_base_t event_bas
 // This handler is called only when the "sta" netif gets an IPv4 address.
 static void ip_event_sta_got_ip4(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data) {
   ip_event_got_ip_t* event = (ip_event_got_ip_t*)event_data;
-  char	buffer[64];
+  char	buffer[INET6_ADDRSTRLEN + 1];
 
   // Smartconfig waits on this bit, then prints a message.
   xEventGroupSetBits(my_events, CONNECTED_BIT);
@@ -196,15 +171,16 @@ static void ip_event_sta_got_ip4(void* arg, esp_event_base_t event_base, int32_t
   gm_printf("router %s\n", buffer);
   fflush(stderr);
   gm_stun(false, (struct sockaddr *)&GM.sta.ip4.public, after_stun);
-  start_webserver();
   gm_port_control_protocol_start_listener_ipv4();
+  gm_port_control_protocol_request_mapping_ipv4();
+  start_webserver();
 }
 
 // This handler is called when any netif gets an IPv6 address.
 static void ip_event_got_ip6(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data) {
   const unsigned int public_address_count = \
    sizeof(GM.sta.ip6.global) / sizeof(*GM.sta.ip6.global);
-  char buffer[64];
+  char buffer[INET6_ADDRSTRLEN + 1];
 
   ip_event_got_ip6_t *	event = (ip_event_got_ip6_t*)event_data;
   esp_ip6_addr_type_t	ipv6_type = esp_netif_ip6_get_addr_type(&event->ip6_info.ip);
@@ -240,9 +216,6 @@ static void ip_event_got_ip6(void* arg, esp_event_base_t event_base, int32_t eve
        if (gm_all_zeroes(&interface->ip6.global[i].sin6_addr.s6_addr, sizeof(&interface->ip6.global[0].sin6_addr.s6_addr))) {
          interface->ip6.global[i].sin6_family = AF_INET6;
          memcpy(interface->ip6.global[i].sin6_addr.s6_addr, event->ip6_info.ip.addr, sizeof(event->ip6_info.ip.addr));
-         if (is_station) {
-           gm_stun(true, (struct sockaddr *)&interface->ip6.public, after_stun);
-         }
          break;
        }
     }
@@ -251,7 +224,13 @@ static void ip_event_got_ip6(void* arg, esp_event_base_t event_base, int32_t eve
   case ESP_IP6_ADDR_IS_LINK_LOCAL:
     interface->ip6.link_local.sin6_family = AF_INET6;
     memcpy(interface->ip6.link_local.sin6_addr.s6_addr, event->ip6_info.ip.addr, sizeof(event->ip6_info.ip.addr));
-    gm_port_control_protocol_start_listener_ipv6();
+    if (is_station) {
+      // FIX: We may never get a link-local address on some systems.
+      // Cope with it if we don't.
+      gm_port_control_protocol_start_listener_ipv6();
+      gm_port_control_protocol_request_mapping_ipv6();
+      gm_stun(true, (struct sockaddr *)&interface->ip6.public, after_stun);
+    }
     break;
   case ESP_IP6_ADDR_IS_SITE_LOCAL:
     interface->ip6.site_local.sin6_family = AF_INET6;

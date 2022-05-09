@@ -123,6 +123,8 @@ extern void			gm_run(gm_run_t function, void * data, gm_run_speed_t speed);
 extern void			gm_fd_register(int fd, gm_fd_handler_t handler, void * data, bool readable, bool writable, bool exception, uint32_t seconds);
 extern void			gm_fd_unregister(int fd);
 
+extern void			gm_icmpv6_start_listener_ipv6(void);
+
 extern gm_param_result_t	gm_param_erase(const char * name);
 extern gm_param_result_t	gm_param_get(const char * name, char * buffer, size_t size);
 extern void			gm_param_list(gm_param_list_coroutine_t coroutine);

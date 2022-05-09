@@ -230,6 +230,7 @@ static void ip_event_got_ip6(void* arg, esp_event_base_t event_base, int32_t eve
       gm_port_control_protocol_start_listener_ipv6();
       gm_port_control_protocol_request_mapping_ipv6();
       gm_stun(true, (struct sockaddr *)&interface->ip6.public, after_stun);
+      gm_icmpv6_start_listener_ipv6();
     }
     break;
   case ESP_IP6_ADDR_IS_SITE_LOCAL:

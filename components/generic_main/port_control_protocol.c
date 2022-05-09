@@ -60,6 +60,7 @@ typedef struct _last_request {
 } last_request_t;
 
 const size_t map_packet_size = (size_t)&(((nat_pmp_or_pcp_t *)0)->pcp.mp.remote_peer_port);
+const size_t announce_packet_size = (size_t)&(((nat_pmp_or_pcp_t *)0)->pcp.mp);
 
 enum pcp_version {
   NAT_PMP = 0,
@@ -202,6 +203,8 @@ decode_pcp_announce(nat_pmp_or_pcp_t * p, ssize_t message_size, bool multicast, 
 static void
 decode_pcp_map(nat_pmp_or_pcp_t * p, ssize_t message_size, bool multicast, struct sockaddr_storage * address)
 {
+  // FIX: Manage re-authorization of existing mappings. Reject responses that are too
+  // long after the request.
   last_request_t *	last;
   gm_port_mapping_t	m = {};
   gm_port_mapping_t * *	mp;
@@ -275,6 +278,8 @@ decode_packet(nat_pmp_or_pcp_t * p, ssize_t message_size, bool multicast, struct
   bool		response;
   uint16_t	port;
 
+  // FIX: This assumes all messages are PCP, it should handle NAT-PMP correctly.
+
   switch ( address->ss_family ) {
   case AF_INET:
     a = &((struct sockaddr_in *)address)->sin_addr;
@@ -315,9 +320,6 @@ decode_packet(nat_pmp_or_pcp_t * p, ssize_t message_size, bool multicast, struct
     break;
   }
 
-  if ( message_size < map_packet_size ) {
-    gm_printf("Receive packet too small: %d\n", message_size);
-  }
 
   response = p->opcode & 0x80;
   
@@ -337,9 +339,17 @@ decode_packet(nat_pmp_or_pcp_t * p, ssize_t message_size, bool multicast, struct
     }
     switch ( p->opcode & 0x7f ) {
     case PCP_MAP:
+      if ( message_size < map_packet_size ) {
+        gm_printf("Receive packet too small for MAP: %d\n", message_size);
+        return;
+      }
       decode_pcp_map(p, message_size, multicast, address);
       break;
     case PCP_PEER:
+      if ( message_size < sizeof(nat_pmp_or_pcp_t) ) {
+        gm_printf("Receive packet too small for PEER: %d\n", message_size);
+        return;
+      }
       decode_pcp_peer(p, message_size, multicast, address);
       break;
     }
@@ -367,6 +377,7 @@ incoming_packet(int fd, void * data, bool readable, bool writable, bool exceptio
 static void
 start_multicast_listener_ipv4(void)
 {
+  // FIX: Time-out responses and retry, eventually abandon trying.
   int			value = 1;
   struct ip_mreq	multi_request = {};
   struct sockaddr_in	address = {};

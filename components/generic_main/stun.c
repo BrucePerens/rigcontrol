@@ -298,7 +298,7 @@ send_stun_request(bool ipv6)
   freeaddrinfo(send_address);
 
   if ( send_result < (send_packet->length + 20) ) {
-    gm_printf("Send error.\n");
+    gm_printf("Send error: %d %s.\n", send_result, strerror(errno));
     close(sock);
     return -1;
   }

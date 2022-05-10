@@ -25,8 +25,9 @@ If not, the software uses PCP (Port Control Protocol, a modern successor to UPnP
 to attempt to make the board publicly accessible through the user's router.
 If this doesn't work, it uses TURN to bypass the firewall.
 Finally, it registers an address with a dynamic DNS service. While these facilities were
-available out-of-the-box on more expensive Linux systems, it had to be coded for the
-embedded ESP-32 platform. You can see this code in the
+available out-of-the-box on more expensive Linux systems, they had to be coded for the
+embedded ESP-32 platform, and were coded for small size and event-driven I/O for high
+performance and low memory use. You can see this code in the
 [Generic Main](https://github.com/BrucePerens/rigcontrol/tree/main/components/generic_main)
 component. This is usable for use in other Open Source ESP32 applications that are
 themselves under the AGPL3 license.

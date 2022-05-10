@@ -18,16 +18,21 @@ audio levels, but construction of them should be within the competence of any ha
 The software is currently in "Hello World" stage: No ham radio control
 is implemented yet.
 Most of the work done so far is concerned with setting up the system with an
-address on the public internet. The system can do this even when operated by a net-naive
+address on the public internet.
 user.
-Of course, it's easiest if the user has forwarded the proper ports on their router.
-If not, the software uses PCP (Port Control Protocol, a modern successor to UPnP)
-to attempt to make the board publicly accessible through the user's router.
-If this doesn't work, it uses TURN to bypass the firewall.
-Finally, it registers an address with a dynamic DNS service. While these facilities were
-available out-of-the-box on more expensive Linux systems, they had to be coded for the
-embedded ESP-32 platform, and were coded for small size and event-driven I/O for high
-performance and low memory use. You can see this code in the
+Of course, it's easiest if the user has forwarded the proper ports on their router, but
+the software can set up a public internet address even when operated by a net-naive
+user.
+
+The facility to set up a public internet address required new embedded protocol
+handlers for ICMPv6, STUN, PCP, REST, Dynamic DNS, a new embedded event-driven I/O
+facility, and a new facility for submitting jobs to run in existing FreeRTOS threads.
+It will now require a TURN implementation that is not yet started.
+On a Linux system, these facilities would
+have been available out-of-the-box, but on the ESP-32 running FreeRTOS and LwIP, new
+implementations had to be coded for small size and efficiency.
+
+You can see this code in the
 [Generic Main](https://github.com/BrucePerens/rigcontrol/tree/main/components/generic_main)
 component. This is usable in other Open Source ESP32 applications *only,* and those must
 be under a license that is compatible with AGPL3, and the entire application must comply

@@ -13,11 +13,25 @@ typedef struct _icmpv6_message {
   uint16_t	checksum;
 } icmpv6_message_t;
 
+enum icmpv6_message_types {
+  ICMPV6_ROUTER_ADVERTISEMENT = 134,
+};
+
+static void
+decode_router_advertisement(icmpv6_message_t * m, ssize_t message_size, bool multicast, struct sockaddr_storage * address)
+{
+  gm_printf("Received IPv6 router advertisement.\n");
+}
+
 static void
 decode_packet(void * data, ssize_t message_size, bool multicast, struct sockaddr_storage * address)
 {
   icmpv6_message_t * m = (icmpv6_message_t *)data;
-  gm_printf("ICMPv6 message type: %d, code: %d.\n", m->type, m->code);
+
+  switch ( m->type ) {
+  case ICMPV6_ROUTER_ADVERTISEMENT:
+    decode_router_advertisement(m, message_size, multicast, address);
+  }
 }
 
 static void

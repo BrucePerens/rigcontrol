@@ -14,10 +14,12 @@ logic levels. Simple resistor pads may be necessary to adjust the input and outp
 audio levels, but construction of them should be within the competence of any ham.
 
 The software is currently in "Hello World" stage: No ham radio control
-is implemented yet. The utility internet functions are mostly done.
-The board can make itself accessible on the public internet, even if
-the operator is net-naive. It sets its clock and approximate location
-from outside servers.
+is implemented yet.
+Most of the work done so far is concerned with setting up the system with an
+address on the public internet, without the help of the user; setting the time, and other
+generic functions. This in the
+[Generic Main](https://github.com/BrucePerens/rigcontrol/tree/main/components/generic_main)
+component, and is usable for other ESP32 applications under the AGPL3 license.
 
 ### Hardware Required
 

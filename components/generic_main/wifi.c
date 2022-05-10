@@ -144,6 +144,10 @@ void wifi_event_sta_disconnected(void* arg, esp_event_base_t event_base, int32_t
 }
 
 static void wifi_event_sta_connected_to_ap(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data) {
+  
+  // Start the ICMPv6 listener as early as possible, so that we get the router
+  // advertisement that is solicited when the IPV6 interfaces are configured.
+  gm_icmpv6_start_listener_ipv6();
   ESP_ERROR_CHECK_WITHOUT_ABORT(esp_netif_create_ip6_linklocal(GM.sta.esp_netif));
   dhcp6_enable_stateful(GM.sta.esp_netif->lwip_netif);
   dhcp6_enable_stateless(GM.sta.esp_netif->lwip_netif);
@@ -230,7 +234,6 @@ static void ip_event_got_ip6(void* arg, esp_event_base_t event_base, int32_t eve
       gm_port_control_protocol_start_listener_ipv6();
       gm_port_control_protocol_request_mapping_ipv6();
       gm_stun(true, (struct sockaddr *)&interface->ip6.public, after_stun);
-      gm_icmpv6_start_listener_ipv6();
     }
     break;
   case ESP_IP6_ADDR_IS_SITE_LOCAL:

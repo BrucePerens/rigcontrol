@@ -143,11 +143,28 @@ void wifi_event_sta_disconnected(void* arg, esp_event_base_t event_base, int32_t
   xEventGroupClearBits(my_events, CONNECTED_BIT);
 }
 
+static void
+ipv6_router_advertisement_handler(struct sockaddr_in6 * address, uint16_t router_lifetime)
+{
+  if ( !gm_all_zeroes(GM.sta.ip6.router.sin6_addr.s6_addr, sizeof(GM.sta.ip6.router.sin6_addr.s6_addr))
+   && memcmp(GM.sta.ip6.router.sin6_addr.s6_addr, address->sin6_addr.s6_addr, sizeof(address->sin6_addr.s6_addr)) != 0 ) {
+    static bool first_time = true;
+    if ( first_time ) {
+      gm_printf("Received a router advertisement from more than one IPv6 router. Ignoring all but the first.\n");
+      first_time = false;
+    }
+    return;
+  }
+  memcpy(GM.sta.ip6.router.sin6_addr.s6_addr, address->sin6_addr.s6_addr, sizeof(address->sin6_addr.s6_addr));
+  GM.sta.ip6.router.sin6_family = AF_INET6;
+  GM.sta.ip6.router.sin6_port = 0;
+}
+
 static void wifi_event_sta_connected_to_ap(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data) {
   
   // Start the ICMPv6 listener as early as possible, so that we get the router
   // advertisement that is solicited when the IPV6 interfaces are configured.
-  gm_icmpv6_start_listener_ipv6();
+  gm_icmpv6_start_listener_ipv6(ipv6_router_advertisement_handler);
   ESP_ERROR_CHECK_WITHOUT_ABORT(esp_netif_create_ip6_linklocal(GM.sta.esp_netif));
   dhcp6_enable_stateful(GM.sta.esp_netif->lwip_netif);
   dhcp6_enable_stateless(GM.sta.esp_netif->lwip_netif);

@@ -10,6 +10,7 @@
 #include <../lwip/esp_netif_lwip_internal.h>
 #include <pthread.h>
 #include <sys/socket.h>
+#include <netinet/in.h>
 
 #define CONSTRUCTOR static void __attribute__ ((constructor))
 ESP_EVENT_DECLARE_BASE(GM_EVENT);
@@ -35,6 +36,7 @@ typedef enum _gm_event_id {
 typedef void (*gm_fd_handler_t)(int fd, void * data, bool readable, bool writable, bool exception, bool timeout);
 typedef void (*gm_run_t)(void *);
 typedef void (*gm_stun_after_t)(bool success, bool ipv6, struct sockaddr * address);
+typedef void (*gm_ipv6_router_advertisement_after_t)(struct sockaddr_in6 * address, uint16_t lifetime);
 
 typedef struct _gm_run_data {
   gm_run_t	procedure;
@@ -123,7 +125,7 @@ extern void			gm_run(gm_run_t function, void * data, gm_run_speed_t speed);
 extern void			gm_fd_register(int fd, gm_fd_handler_t handler, void * data, bool readable, bool writable, bool exception, uint32_t seconds);
 extern void			gm_fd_unregister(int fd);
 
-extern void			gm_icmpv6_start_listener_ipv6(void);
+extern void			gm_icmpv6_start_listener_ipv6(gm_ipv6_router_advertisement_after_t after);
 
 extern gm_param_result_t	gm_param_erase(const char * name);
 extern gm_param_result_t	gm_param_get(const char * name, char * buffer, size_t size);

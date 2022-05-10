@@ -29,9 +29,10 @@ available out-of-the-box on more expensive Linux systems, they had to be coded f
 embedded ESP-32 platform, and were coded for small size and event-driven I/O for high
 performance and low memory use. You can see this code in the
 [Generic Main](https://github.com/BrucePerens/rigcontrol/tree/main/components/generic_main)
-component. This is usable for use in other Open Source ESP32 applications that are
-themselves under the AGPL3 license.
-It is not available for use with proprietary code at this time.
+component. This is usable in other Open Source ESP32 applications *only,* and those must
+be under a license that is compatible with AGPL3, and the entire application must comply
+with the source-code distribution terms of the AGPL3.
+It is not available for use with proprietary software at this time.
 
 ### Hardware Required
 
@@ -43,8 +44,10 @@ The design of this appears to originate with AI-Thinker [(site)](https://docs.ai
 derived from a design by Espressif called the LyraT
 [(site)](https://www.espressif.com/en/products/devkits/esp32-lyrat).
 The boards available on AliExpress.com are either the AI-Thinker product or
-follow it closely. The LyraT board has a different pinout.
-
+follow it closely. The LyraT board is also available, but has several differences
+from the ESP32-Audio-Kit: a different pinout, different audio ICs that may require
+driver changes, and power and speaker connectors that are half the size of those on the
+ESP32-Audio-Kit.
 
 * [Board schematic.](website/esp32-audio-kit_v2.2_sch.pdf)
 * [Module specification.](website/esp32-a1s_v2.3_specification.pdf)

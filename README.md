@@ -17,9 +17,11 @@ The software is currently in "Hello World" stage: No ham radio control
 is implemented yet.
 Most of the work done so far is concerned with setting up the system with an
 address on the public internet, without the help of the user; setting the time, and other
-generic functions. This in the
+generic functions. You can see the code in the
 [Generic Main](https://github.com/BrucePerens/rigcontrol/tree/main/components/generic_main)
-component, and is usable for other ESP32 applications under the AGPL3 license.
+component. This is usable for use in other Open Source ESP32 applications that are
+themselves under the AGPL3 license.
+It is not available for use with proprietary code at this time.
 
 ### Hardware Required
 

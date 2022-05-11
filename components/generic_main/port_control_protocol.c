@@ -171,7 +171,7 @@ request_mapping_ipv4(gm_port_mapping_t * m)
   gettimeofday(&r->time, 0);
 
   if ( send_result < map_packet_size ) {
-    gm_printf("Send returned %d\n", send_result);
+    GM_FAIL("Send returned %d\n", send_result);
     return -1;
   }
   return 0;
@@ -230,7 +230,7 @@ int request_mapping_ipv6(gm_port_mapping_t * m)
   gettimeofday(&r->time, 0);
 
   if ( send_result < map_packet_size ) {
-    gm_printf("Send returned %d\n", send_result);
+    GM_FAIL("Send returned %d\n", send_result);
     return -1;
   }
   return 0;
@@ -241,6 +241,7 @@ gm_port_control_protocol_request_mapping_ipv6()
 {
   gm_port_mapping_t m = {};
 
+  gm_printf("Request IPv6 port mapping.\n");
   esp_fill_random(&m.nonce, sizeof(m.nonce));
   m.ipv6 = true;
   m.tcp = true;
@@ -252,7 +253,7 @@ gm_port_control_protocol_request_mapping_ipv6()
 static void
 decode_pcp_announce(nat_pmp_or_pcp_t * p, ssize_t message_size, bool multicast, struct sockaddr_storage * address)
 {
-  gm_printf("PCP Announce\n");
+  gm_printf("Received PCP Announce\n");
 }
 
 static void
@@ -277,15 +278,15 @@ decode_pcp_map(nat_pmp_or_pcp_t * p, ssize_t message_size, bool multicast, struc
   }
 
   if ( memcmp(p->pcp.mp.nonce, last->packet.pcp.mp.nonce, sizeof(p->pcp.mp.nonce)) < 0 ) {
-    gm_printf("Received nonce isn't equal to transmitted one.\n");
+    GM_FAIL("Received nonce isn't equal to transmitted one.\n");
     return;
   }
   if ( p->result_code != PCP_SUCCESS ) {
-    gm_printf("PCP received result code: %d.\n", p->result_code);
+    GM_FAIL("PCP received result code: %d.\n", p->result_code);
     return;
   }
   if ( p->opcode != (last->packet.opcode | 0x80) ) {
-    gm_printf("Received opcode: %x.\n", p->opcode);
+    GM_FAIL("Received opcode: %x.\n", p->opcode);
     return;
   }
 
@@ -322,14 +323,12 @@ decode_pcp_map(nat_pmp_or_pcp_t * p, ssize_t message_size, bool multicast, struc
 static void
 decode_pcp_peer(nat_pmp_or_pcp_t * p, ssize_t message_size, bool multicast, struct sockaddr_storage * address)
 {
-  gm_printf("PCP Peer\n");
+  gm_printf("Received PCP Peer\n");
 }
 
 void
 decode_packet(nat_pmp_or_pcp_t * p, ssize_t message_size, bool multicast, struct sockaddr_storage * address)
 {
-  char		buffer[INET_ADDRSTRLEN + 1];
-  void *	a;
   bool		response;
   uint16_t	port;
 
@@ -337,37 +336,25 @@ decode_packet(nat_pmp_or_pcp_t * p, ssize_t message_size, bool multicast, struct
 
   switch ( address->ss_family ) {
   case AF_INET:
-    a = &((struct sockaddr_in *)address)->sin_addr;
     port = htons(((struct sockaddr_in *)address)->sin_port);
     break;
   case AF_INET6:
-    a = &((struct sockaddr_in6 *)address)->sin6_addr;
     port = htons(((struct sockaddr_in6 *)address)->sin6_port);
     break;
   default:
-    gm_printf("decode_packet(): Address family %d.\n", address->ss_family);
+    GM_FAIL("decode_packet(): Address family %d.\n", address->ss_family);
     return;
   }
 
-  inet_ntop(address->ss_family, a, buffer, sizeof(buffer));
-  gm_printf(
-   "Received %s %s with opcode %x from %s port %d.\n",
-   multicast ? "multicast" : "unicast",
-   p->opcode & 0x80 ? "response" : "request",
-   p->opcode & 0x7f,
-   buffer,
-   port
-  );
-
   if ( port != PCP_PORT ) {
-    gm_printf("Ignoring message that isn't from the PCP port.\n");
+    GM_FAIL("Ignoring message that isn't from the PCP port.\n");
     return;
   }
 
   switch ( address->ss_family ) {
   case AF_INET:
     if ( ((struct sockaddr_in *)address)->sin_addr.s_addr != GM.sta.ip4.router.sin_addr.s_addr ) {
-      gm_printf("IPV4 packet not from the router, ignored.\n");
+      GM_FAIL("IPV4 packet not from the router, ignored.\n");
       return;
     }
     break;
@@ -385,24 +372,24 @@ decode_packet(nat_pmp_or_pcp_t * p, ssize_t message_size, bool multicast, struct
   case PCP_MAP:
   case PCP_PEER:
     if ( !response ) {
-      gm_printf("Client received request.\n");
+      GM_FAIL("Client received request.\n");
       return;
     }
     if ( multicast ) {
-      gm_printf("Client received multicast request.\n");
+      GM_FAIL("Client received multicast request.\n");
       return;
     }
     switch ( p->opcode & 0x7f ) {
     case PCP_MAP:
       if ( message_size < map_packet_size ) {
-        gm_printf("Receive packet too small for MAP: %d\n", message_size);
+        GM_FAIL("Receive packet too small for MAP: %d\n", message_size);
         return;
       }
       decode_pcp_map(p, message_size, multicast, address);
       break;
     case PCP_PEER:
       if ( message_size < sizeof(nat_pmp_or_pcp_t) ) {
-        gm_printf("Receive packet too small for PEER: %d\n", message_size);
+        GM_FAIL("Receive packet too small for PEER: %d\n", message_size);
         return;
       }
       decode_pcp_peer(p, message_size, multicast, address);
@@ -410,7 +397,7 @@ decode_packet(nat_pmp_or_pcp_t * p, ssize_t message_size, bool multicast, struct
     }
     break;
   default:
-    gm_printf("Unrecognized opcode %x\n", p->opcode);
+    GM_FAIL("Unrecognized opcode %x\n", p->opcode);
   }
 }
 
@@ -448,11 +435,11 @@ start_multicast_listener_ipv4(void)
 
   // Reuse addresses, because other software listens for all-hosts multicast.
   if ( setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &value, sizeof(value)) < 0 ) {
-    gm_printf("Setsockopt SOL_SOCKET failed: %s.\n", strerror(errno));
+    GM_FAIL("Setsockopt SOL_SOCKET failed: %s.\n", strerror(errno));
     return;
   }
   if ( bind(sock, (struct sockaddr *)&address, sizeof(address)) < 0 ) {
-    gm_printf("bind failed.\n");
+    GM_FAIL("bind failed.\n");
     return;
   }
 
@@ -460,7 +447,7 @@ start_multicast_listener_ipv4(void)
     // This fails because the host is already registered to the "all-hosts" multicast
     // group. Ignore that.
     if ( errno != EADDRNOTAVAIL ) {
-      gm_printf("Setsockopt IP_ADD_MEMBERSHIP failed: %s.\n", strerror(errno));
+      GM_FAIL("Setsockopt IP_ADD_MEMBERSHIP failed: %s.\n", strerror(errno));
       return;
     }
   }
@@ -479,7 +466,7 @@ start_unicast_listener_ipv4(void)
 
   ipv4_sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
   if ( bind(ipv4_sock, (struct sockaddr *)&address, sizeof(address)) < 0 ) {
-    gm_printf("bind failed.\n");
+    GM_FAIL("bind failed.\n");
     return;
   }
 
@@ -507,16 +494,16 @@ start_multicast_listener_ipv6(void)
 
   // Reuse addresses, because other software listens for all-hosts multicast.
   if ( setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &value, sizeof(value)) < 0 ) {
-    gm_printf("Setsockopt SOL_SOCKET failed.\n");
+    GM_FAIL("Setsockopt SOL_SOCKET failed.\n");
     return;
   }
   if ( bind(sock, (struct sockaddr *)&address, sizeof(address)) < 0 ) {
-    gm_printf("ipv6 bind failed: %s.\n", strerror(errno));
+    GM_FAIL("bind failed");
     return;
   }
 
   if ( setsockopt(sock, IPPROTO_IPV6, IPV6_JOIN_GROUP, &multi_request, sizeof(multi_request)) < 0 ) {
-    gm_printf("Setsockopt IPV6_JOIN_GROUP failed: %s.\n", strerror(errno));
+    GM_FAIL("Setsockopt IPV6_JOIN_GROUP failed: %s.\n", strerror(errno));
     return;
   }
   // Data is set to 1 for multicast, 0 for unicast.
@@ -534,7 +521,7 @@ start_unicast_listener_ipv6(void)
 
   ipv6_sock = socket(AF_INET6, SOCK_DGRAM, IPPROTO_UDP);
   if ( bind(ipv6_sock, (struct sockaddr *)&address, sizeof(address)) < 0 ) {
-    gm_printf("bind failed.\n");
+    GM_FAIL("bind failed.\n");
     return;
   }
 

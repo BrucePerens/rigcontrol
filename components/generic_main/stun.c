@@ -169,13 +169,13 @@ decode_mapped_address(struct stun_attribute * a, struct sockaddr * address)
 static void
 decode_error_code(struct stun_attribute * a)
 {
-  gm_printf("Error code.\n");
+  GM_FAIL("STUN Error code.\n");
 }
 
 static void
 decode_unknown_attributes(struct stun_attribute * a)
 {
-  gm_printf("Unknown attribute.\n");
+  GM_FAIL("STUN Unknown attribute.\n");
 }
 
 static void
@@ -244,7 +244,7 @@ get_address(const char * host, uint16_t port, bool ipv6)
   int gai_result =  getaddrinfo(host, port_string, &hints, &send_address);
 
   if ( gai_result != 0 ) {
-    gm_printf("%s: getaddrinfo() error %d\n", host, gai_result);
+    GM_FAIL("%s: getaddrinfo() error %d\n", host, gai_result);
     return 0;
   }
   return send_address;
@@ -279,7 +279,7 @@ send_stun_request(bool ipv6)
 
   int sock = socket (send_address->ai_family, SOCK_DGRAM, send_address->ai_protocol);
   if ( sock < 0 ) {
-    gm_printf("Can't get socket: %s\n", strerror(errno));
+    GM_FAIL("Can't get socket: %s\n", strerror(errno));
     return -1;
   }
 
@@ -298,7 +298,7 @@ send_stun_request(bool ipv6)
   freeaddrinfo(send_address);
 
   if ( send_result < (send_packet->length + 20) ) {
-    gm_printf("Send error: %d %s.\n", send_result, strerror(errno));
+    GM_FAIL("Send error: %d %s.\n", send_result, strerror(errno));
     close(sock);
     return -1;
   }
@@ -313,7 +313,7 @@ process_received_packet(struct stun_message * receive_packet, struct sockaddr * 
   struct stun_attribute * attribute = (struct stun_attribute *)receive_packet->attributes;
   uint16_t attribute_size = ntohs(receive_packet->length);
   if ( attribute_size < (receive_result - 20) ) {
-    gm_printf("STUN packet was truncated.\n");
+    GM_FAIL("STUN packet was truncated.\n");
     return -1;
   }
   
@@ -321,7 +321,7 @@ process_received_packet(struct stun_message * receive_packet, struct sockaddr * 
     uint16_t type = ntohs(attribute->type);
     uint16_t length = ntohs(attribute->length);
     if ( length == 0 || length >= 768 ) {
-      gm_printf("STUN attribute length %d is invalid.\n", length);
+      GM_FAIL("STUN attribute length %d is invalid.\n", length);
     }
     switch ( type ) {
     case MAPPED_ADDRESS:
@@ -362,7 +362,7 @@ process_received_packet(struct stun_message * receive_packet, struct sockaddr * 
       increment += (4 - odd);
 
     if ( increment > attribute_size ) {
-      gm_printf("Attribute size mismatch.\n");
+      GM_FAIL("Attribute size mismatch.\n");
       return -1;
     }
     attribute = (struct stun_attribute *)((uint8_t *)attribute + increment);
@@ -371,7 +371,7 @@ process_received_packet(struct stun_message * receive_packet, struct sockaddr * 
   if ( got_an_address )
     return 0;
   else {
-    gm_printf("STUN message didn't include an address.\n");
+    GM_FAIL("STUN message didn't include an address.\n");
     return -1;
   }
 }
@@ -451,7 +451,7 @@ int gm_stun(bool ipv6, struct sockaddr * address, gm_stun_after_t after)
   struct stun_run * run = malloc(sizeof(struct stun_run));
 
   if ( run == 0 ) {
-    gm_printf("gm_stun: malloc failed.\n");
+    GM_FAIL("malloc failed");
     return -1;
   }
     

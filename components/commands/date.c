@@ -27,7 +27,7 @@ static void timezone_set(void)
   if (err) {
     unsetenv("TZ");
     if (err != ESP_ERR_NVS_NOT_FOUND)
-      gm_printf("Error getting timezone: %s\n", esp_err_to_name(err));
+      GM_FAIL("Error getting timezone: %s\n", esp_err_to_name(err));
   }
   else {
     setenv("TZ", buffer, 1);

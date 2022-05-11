@@ -47,19 +47,19 @@ event_handler(int fd, void * data, bool readable, bool writable, bool exception,
   int	result = read(fd, buffer, 8);
 
   if ( result != 8 ) {
-    gm_printf("Event header read returned %d\n", result);
+    GM_FAIL("Event header read returned %d\n", result);
     return;
   }
 
   if ( event->size > 0 ) {
     if ( event->size > sizeof(buffer) - 8 ) {
-      gm_printf("size of event data too large: %d\n", event->size);
+      GM_FAIL("size of event data too large: %d\n", event->size);
       return;
     }
     result = read(fd, &event->data, event->size);
 
     if ( result != event->size ) {
-      gm_printf("Event data read returned %d, error: %s\n", result, strerror(errno));
+      GM_FAIL("Event data read returned %d, error: %s\n", result, strerror(errno));
       return;
     }
 
@@ -67,7 +67,7 @@ event_handler(int fd, void * data, bool readable, bool writable, bool exception,
   switch ( event->operation ) {
   case GM_EVENT_INVALID:
   default:
-    gm_printf("Invalid event opcode %d\n", result);
+    GM_FAIL("Invalid event opcode %d\n", result);
     break;
   case GM_EVENT_WAKE_SELECT:
     // If we get here, the select has already awakened, there's no need to do any more.
@@ -89,13 +89,13 @@ accept_handler(int sock, void * data, bool readable, bool writable, bool excepti
   if ( readable ) {
     size = sizeof(client_address);
     if ( (connection = accept(sock, (struct sockaddr *)&client_address, &size)) < 0 ) {
-      gm_printf("Select event server listen failed: %s\n", strerror(errno));
+      GM_FAIL("Select event server listen failed: %s\n", strerror(errno));
       return;
     }
     gm_fd_register(connection, event_handler, 0, true, false, true, 0);
   }
   if ( exception ) {
-    gm_printf("Exception on event socket.\n");
+    GM_FAIL("Exception on event socket.\n");
   }
 }
 
@@ -108,7 +108,7 @@ gm_event_server(void)
   client = socket(AF_INET, SOCK_STREAM, 0);
 
   if ( server < 0 ) {
-    gm_printf("Select event server could not create a socket: %s\n", strerror(errno));
+    GM_FAIL("Select event server could not create a socket: %s\n", strerror(errno));
     return;
   }
   
@@ -117,12 +117,12 @@ gm_event_server(void)
   address.sin_port = 2139; // Private port not expected to be used by other code.
 
   if ( bind(server, (struct sockaddr *)&address, sizeof(address)) != 0 ) {
-    gm_printf("Select event server bind failed: %s\n", strerror(errno));
+    GM_FAIL("Select event server bind failed: %s\n", strerror(errno));
     return;
   }
 
   if ( listen(server, 2) != 0 ) {
-    gm_printf("Select event server listen failed: %s\n", strerror(errno));
+    GM_FAIL("Select event server listen failed: %s\n", strerror(errno));
     close(server);
     return;
   }
@@ -131,7 +131,7 @@ gm_event_server(void)
 
   // This blocks until the select task is running.
   if ( connect(client, (struct sockaddr *)&address, sizeof(address)) < 0 ) {
-    gm_printf("Connect failed: %s\n", strerror(errno));
+    GM_FAIL("Connect failed: %s\n", strerror(errno));
   }
 }
 
@@ -140,13 +140,13 @@ gm_select_wakeup(void)
 {
   gm_event_t	event = {};
   if ( client < 0 ) {
-    gm_printf("gm_select_wakeup(): called before client was created.\n");
+    GM_FAIL("gm_select_wakeup(): called before client was created.\n");
     abort();
   }
   event.operation = GM_EVENT_WAKE_SELECT;
   event.size = 0;
   if ( write(client, &event, 8) != 8 ) {
-    gm_printf("gm_select_wakeup() write failed: %s\n", strerror(errno));
+    GM_FAIL("gm_select_wakeup() write failed: %s\n", strerror(errno));
     abort();
   }
 }
@@ -159,7 +159,7 @@ gm_run(gm_run_t procedure, void * data, gm_run_speed_t speed)
   gm_run_data_t 	run = {};
 
   if ( client < 0 ) {
-    gm_printf("In gm_fast_run: client FD is < 0\n");
+    GM_FAIL("In gm_fast_run: client FD is < 0\n");
     abort();
   }
 
@@ -170,7 +170,7 @@ gm_run(gm_run_t procedure, void * data, gm_run_speed_t speed)
     event.data.run.procedure = procedure;
     event.data.run.data = data;
     if ( write(client, &event, sizeof(event)) != sizeof(event) )
-      gm_printf("gm_run(GM_FAST) write failed: %s\n", strerror(errno));
+      GM_FAIL("gm_run(GM_FAST) write failed: %s\n", strerror(errno));
     break;
   case GM_MEDIUM:
     run.procedure = procedure;

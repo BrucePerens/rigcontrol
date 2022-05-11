@@ -8,18 +8,18 @@ INCLUDE_DIRS
 PRIV_REQUIRES
   commands
 REQUIRES
+  bootloader_support
   console
   driver
+  esp_http_server
+  esp_hw_support
+  esp_netif
   esp_timer
+  esp_wifi
   freertos
   hal
   lwip
-  nvs_flash
-  esp_wifi
-  wpa_supplicant
-  esp_http_server
   main
-  bootloader_support
-  esp_hw_support
-  esp_netif
+  nvs_flash
+  wpa_supplicant
 )

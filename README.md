@@ -24,8 +24,8 @@ Of course, it's easiest if the user has forwarded the proper ports on their rout
 the software can set up a public internet address even when operated by a net-naive
 user.
 
-The facility to set up a public internet address required new embedded protocol
-handlers for ICMPv6, STUN, PCP, REST, Dynamic DNS, a new embedded event-driven I/O
+The systems facilities required new embedded protocol
+handlers for SSNTP, ICMPv6, STUN, PCP, REST, Dynamic DNS, a new embedded event-driven I/O
 facility, and a new facility for submitting jobs to run in existing FreeRTOS threads.
 It will now require a TURN implementation that is not yet started.
 On a Linux system, these facilities would

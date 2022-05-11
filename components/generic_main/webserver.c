@@ -22,7 +22,7 @@ static void time_was_synchronized(struct timeval * t)
   // The first time the clock is adjusted, it's changed immediately from the epoch
   // to the current time. This sets the SNTP code so that the second and subsequent
   // times, it is adjusted smoothly.
-  if (GM.time_last_synchronized == -1) {
+  if (GM.time_last_synchronized == 0) {
     gm_printf("Time was synchronized.\n");
     fflush(stderr);
     sntp_set_sync_mode(SNTP_SYNC_MODE_SMOOTH);
@@ -66,7 +66,7 @@ void stop_webserver()
 {
   if (server) {
     sntp_stop();
-    GM.time_last_synchronized = -1;
+    GM.time_last_synchronized = 0;
     httpd_stop(server);
     server = NULL;
   }

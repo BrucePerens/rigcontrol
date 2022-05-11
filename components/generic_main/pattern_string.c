@@ -20,13 +20,13 @@ int gm_pattern_string(const char * string, gm_pattern_coroutine_t coroutine, cha
       if (end) {
         var++;
         if (var == end) {
-          gm_printf("Replacement string name missing.\n");
+          GM_FAIL("Replacement string name missing.\n");
           return -1;
         }
         else {
           const char * next_open = index(var, '{');
           if (next_open && next_open < end) {
-            gm_printf("Missing '}' character in replacement string: %s\n", var - 1);
+            GM_FAIL("Missing '}' character in replacement string: %s\n", var - 1);
             return -1;
           }
 
@@ -34,7 +34,7 @@ int gm_pattern_string(const char * string, gm_pattern_coroutine_t coroutine, cha
 	  // Copy the input string before the replacement pattern to the output.
           size_t leading_size = var - start - 1;
           if (leading_size > buffer_size - 1) {
-            gm_printf("Out of space for replacement string.\n");
+            GM_FAIL("Out of space for replacement string.\n");
             return -1;
           }
           memcpy(out, start, leading_size);
@@ -46,7 +46,7 @@ int gm_pattern_string(const char * string, gm_pattern_coroutine_t coroutine, cha
           // it is overwritten.
           size_t name_size = end - var;
           if (name_size > buffer_size - 1) {
-            gm_printf("Replacement name too large, out of space in output string, or missing '}': %s\n", var - 1);
+            GM_FAIL("Replacement name too large, out of space in output string, or missing '}': %s\n", var - 1);
             return -1;
           }
           memcpy(out, var, name_size);
@@ -62,13 +62,13 @@ int gm_pattern_string(const char * string, gm_pattern_coroutine_t coroutine, cha
             start = end + 1;
           }
           else {
-            gm_printf("No replacement for: %s, %d\n", out, status);
+            GM_FAIL("No replacement for: %s, %d\n", out, status);
             return -1;
           }
         }
       }
       else {
-        gm_printf("Missing '}' character in replacement string: %s\n", var);
+        GM_FAIL("Missing '}' character in replacement string: %s\n", var);
         return -1;
       }
     }
@@ -76,7 +76,7 @@ int gm_pattern_string(const char * string, gm_pattern_coroutine_t coroutine, cha
       size_t final_length = strlen(start);
 
       if (final_length > buffer_size - 1) {
-        gm_printf("Out of space for replacement string.\n");
+        GM_FAIL("Out of space for replacement string.\n");
         *buffer = '\0';
         return -1;
       }

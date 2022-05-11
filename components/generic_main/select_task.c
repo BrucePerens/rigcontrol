@@ -253,7 +253,7 @@ select_task(void * param)
     }
     else {
       // Select failed.
-      gm_printf("Select failed with error: %s\n", strerror(errno));
+      GM_FAIL("Select failed");
     }
   }
 }

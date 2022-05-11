@@ -61,7 +61,7 @@ incoming_packet(int fd, void * data, bool readable, bool writable, bool exceptio
 
     message_size = recvfrom(fd, &packet, sizeof(packet), MSG_DONTWAIT, (struct sockaddr *)&address, &address_size);
     if ( address.ss_family != AF_INET6 ) {
-      gm_printf("Incoming packet wasn't IPv6.\n");
+      GM_FAIL("Incoming packet wasn't IPv6.\n");
       return;
     }
     decode_packet(&packet, message_size, data, (struct sockaddr_in6 *)&address);
@@ -73,10 +73,8 @@ gm_icmpv6_start_listener_ipv6 (gm_ipv6_router_advertisement_after_t after)
 {
   icmpv6_socket = socket(AF_INET6, SOCK_RAW, IPPROTO_ICMPV6);
   if ( icmpv6_socket < 0 ) {
-    gm_printf("Socket creation failed: %s.\n", strerror(errno));
+    GM_FAIL("Socket creation failed: %s.\n", strerror(errno));
   }
-
-  gm_printf("Start ICMPv6 listener.\n");
 
   gm_fd_register(icmpv6_socket, incoming_packet, after, after, false, true, 0);
 }

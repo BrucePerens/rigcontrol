@@ -29,7 +29,7 @@ print_param(const char * name, const char * value, const char * explanation, gm_
     v = "(secret)";
     break;
   default:
-    gm_printf("Error: type %d.\n", type);
+    GM_FAIL("type %d", type);
     return;
   }
   gm_printf("%-8s\t%-8s\t%s\n", name, v, explanation);
@@ -85,7 +85,7 @@ static int param(int argc, char * * argv)
       v = "(secret)";
       break;
     default:
-      gm_printf("Error: type %d.\n", type);
+      GM_FAIL("type %d", type);
       return -1;
     }
     gm_printf("\n\n%s \t%s\n", param_args.name->sval[0], v);

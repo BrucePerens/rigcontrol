@@ -177,7 +177,8 @@ request_mapping_ipv4(gm_port_mapping_t * m)
   return 0;
 }
 
-int gm_port_control_protocol_request_mapping_ipv4()
+int
+gm_port_control_protocol_request_mapping_ipv4()
 {
   gm_port_mapping_t m = {};
 
@@ -189,9 +190,63 @@ int gm_port_control_protocol_request_mapping_ipv4()
   return request_mapping_ipv4(&m);
 }
 
-int gm_port_control_protocol_request_mapping_ipv6(void)
+int request_mapping_ipv6(gm_port_mapping_t * m)
 {
+  last_request_t *		r = &last_request_ipv6;
+  nat_pmp_or_pcp_t *		p = &r->packet;
+  socklen_t			send_address_size;
+  ssize_t			send_result;
+  struct sockaddr_in6 * 	a6 = (struct sockaddr_in6 *)&r->address;
+
+  memset(r, '\0', sizeof(last_request_ipv6));
+  r->valid = true;
+
+  send_address_size = sizeof(struct sockaddr_in6);
+  memcpy(a6->sin6_addr.s6_addr, GM.sta.ip6.router.sin6_addr.s6_addr, sizeof(a6->sin6_addr.s6_addr));
+  a6->sin6_family = AF_INET;
+  a6->sin6_port = htons(PCP_PORT);
+  p->pcp.request.client_address.s6_addr[10] = 0xff;
+  p->pcp.request.client_address.s6_addr[11] = 0xff;
+  // FIX: What if there is no link-local address?
+  memcpy(&p->pcp.request.client_address.s6_addr, &GM.sta.ip6.link_local.sin6_addr.s6_addr, sizeof(p->pcp.request.client_address.s6_addr));
+
+  p->version = PORT_MAPPING_PROTOCOL;
+  p->opcode = PCP_MAP;
+  p->pcp.lifetime = htonl(24 * 60 * 60);
+  memcpy(p->pcp.mp.nonce, m->nonce, sizeof(m->nonce));
+  p->pcp.mp.protocol = m->tcp ? PCP_TCP : PCP_UDP;
+  p->pcp.mp.internal_port = htons(m->internal_port);
+  p->pcp.mp.external_port = htons(m->external_port);
+  p->pcp.lifetime = htonl(m->lifetime);
+
+  // Send the packet to the gateway.
+  send_result = sendto(
+   ipv6_sock,
+   p,
+   map_packet_size,
+   0,
+   (const struct sockaddr *)a6,
+   send_address_size);
+  gettimeofday(&r->time, 0);
+
+  if ( send_result < map_packet_size ) {
+    gm_printf("Send returned %d\n", send_result);
+    return -1;
+  }
   return 0;
+}
+
+int
+gm_port_control_protocol_request_mapping_ipv6()
+{
+  gm_port_mapping_t m = {};
+
+  esp_fill_random(&m.nonce, sizeof(m.nonce));
+  m.ipv6 = true;
+  m.tcp = true;
+  m.internal_port = m.external_port = 8080;
+  m.lifetime = 24 * 60 * 60;
+  return request_mapping_ipv6(&m);
 }
 
 static void

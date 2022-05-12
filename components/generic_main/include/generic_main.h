@@ -15,7 +15,9 @@
 
 #define CONSTRUCTOR static void __attribute__ ((constructor))
 
-#define GM_FAIL(args...) (gm_printf("\nError in function: %s at: %s:%d, errno: %s\n", __PRETTY_FUNCTION__, __FILE__, __LINE__, strerror(errno)), gm_printf(args), gm_printf("\n"), esp_backtrace_print(100))
+// #define GM_FAIL(args...) (gm_printf("\nError in function: %s at: %s:%d, errno: %s\n", __PRETTY_FUNCTION__, __FILE__, __LINE__, strerror(errno)), gm_printf(args), gm_printf("\n"), esp_backtrace_print(100))
+extern void gm_fail(const char *, const char *, int, const char *, ...);
+#define GM_FAIL(args...) gm_fail(__PRETTY_FUNCTION__, __FILE__, __LINE__, args)
 
 ESP_EVENT_DECLARE_BASE(GM_EVENT);
 

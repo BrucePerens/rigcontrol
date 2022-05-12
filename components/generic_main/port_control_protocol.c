@@ -197,19 +197,21 @@ int request_mapping_ipv6(gm_port_mapping_t * m)
   socklen_t			send_address_size;
   ssize_t			send_result;
   struct sockaddr_in6 * 	a6 = (struct sockaddr_in6 *)&r->address;
+  char				buffer[INET6_ADDRSTRLEN + 1];
 
   memset(r, '\0', sizeof(last_request_ipv6));
   r->valid = true;
 
   send_address_size = sizeof(struct sockaddr_in6);
   memcpy(a6->sin6_addr.s6_addr, GM.sta.ip6.router.sin6_addr.s6_addr, sizeof(a6->sin6_addr.s6_addr));
-  a6->sin6_family = AF_INET;
+  a6->sin6_family = AF_INET6;
   a6->sin6_port = htons(PCP_PORT);
-  p->pcp.request.client_address.s6_addr[10] = 0xff;
-  p->pcp.request.client_address.s6_addr[11] = 0xff;
   // FIX: What if there is no link-local address?
   memcpy(&p->pcp.request.client_address.s6_addr, &GM.sta.ip6.link_local.sin6_addr.s6_addr, sizeof(p->pcp.request.client_address.s6_addr));
 
+  memset(buffer, '\0', sizeof(buffer));
+  inet_ntop(a6->sin6_family, &a6->sin6_addr, buffer, sizeof(buffer));
+  gm_printf("Request IPv6 port mapping of router %s\n", buffer);
   p->version = PORT_MAPPING_PROTOCOL;
   p->opcode = PCP_MAP;
   p->pcp.lifetime = htonl(24 * 60 * 60);
@@ -241,7 +243,6 @@ gm_port_control_protocol_request_mapping_ipv6()
 {
   gm_port_mapping_t m = {};
 
-  gm_printf("Request IPv6 port mapping.\n");
   esp_fill_random(&m.nonce, sizeof(m.nonce));
   m.ipv6 = true;
   m.tcp = true;
@@ -264,7 +265,7 @@ decode_pcp_map(nat_pmp_or_pcp_t * p, ssize_t message_size, bool multicast, struc
   last_request_t *	last;
   gm_port_mapping_t	m = {};
   gm_port_mapping_t * *	mp;
-  char			buffer[INET_ADDRSTRLEN + 1];
+  char			buffer[INET6_ADDRSTRLEN + 1];
 
   switch ( address->ss_family ) {
   case AF_INET:
@@ -306,7 +307,7 @@ decode_pcp_map(nat_pmp_or_pcp_t * p, ssize_t message_size, bool multicast, struc
     inet_ntop(AF_INET6, p->pcp.mp.external_address.s6_addr, buffer, sizeof(buffer));
   else
     inet_ntop(AF_INET, &p->pcp.mp.external_address.s6_addr[12], buffer, sizeof(buffer));
-  gm_printf("Router public mapping %s:%d\n", buffer, m.external_port);
+  gm_printf("Router public mapping address: %s port: %d\n", buffer, m.external_port);
   if ( m.ipv6 )
     mp = &GM.sta.ip6.port_mappings;
   else
@@ -407,10 +408,34 @@ incoming_packet(int fd, void * data, bool readable, bool writable, bool exceptio
   if ( readable ) {
     nat_pmp_or_pcp_t		packet;
     struct sockaddr_storage	address;
-    socklen_t			address_size;
+    socklen_t			address_size = sizeof(address);
     ssize_t			message_size;
+    int				port;
+    char			buffer[INET6_ADDRSTRLEN + 1];
 
     message_size = recvfrom(fd, &packet, sizeof(packet), MSG_DONTWAIT, (struct sockaddr *)&address, &address_size);
+ 
+    if ( message_size <= 0 ) {
+      GM_FAIL("recvfrom returned %d", message_size);
+      return;
+    }
+    memset(buffer, '\0', sizeof(buffer));
+    if ( address.ss_family == AF_INET ) {
+      inet_ntop(AF_INET, &((struct sockaddr_in *)&address)->sin_addr.s_addr, buffer, sizeof(buffer));
+      port = htons(((struct sockaddr_in *)&address)->sin_port);
+    }
+    else {
+      inet_ntop(AF_INET6, &((struct sockaddr_in6 *)&address)->sin6_addr, buffer, sizeof(buffer));
+      port = htons(((struct sockaddr_in6 *)&address)->sin6_port);
+    }
+
+    gm_printf("PCP received %s packet of size %d from %s port %d.\n",
+     data != 0 ? "multicast" : "unicast",
+     message_size,
+     buffer,
+     port);
+
+
     // Data is set to 1 for multicast, 0 for unicast.
     decode_packet(&packet, message_size, (int)data != 0, &address);
   }

@@ -411,6 +411,7 @@ stun_send(void * data)
   struct stun_run * run = (struct stun_run *)data;
   int	sock;
 
+  // FIX: Handle address unreachable.
   if ( (sock = send_stun_request(run->ipv6)) < 0 )
     return;
 

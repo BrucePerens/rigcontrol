@@ -40,14 +40,6 @@ enum EventBits {
 };
 
 static const char TASK_NAME[] = "wifi";
-static const char * const ipv6_address_types[] = {
-    "unknown",
-    "global",
-    "link-local",
-    "site-local",
-    "unique-local",
-    "IPv4-mapped-IPv6"
-};
 static TaskHandle_t smart_config_task_id = NULL;
 static esp_event_handler_instance_t handler_wifi_event_sta_connected_to_ap = NULL;
 static esp_event_handler_instance_t handler_ip_event_sta_got_ip4 = NULL;
@@ -68,8 +60,9 @@ static void after_stun(bool success, bool ipv6, struct sockaddr * address)
   char	buffer[INET6_ADDRSTRLEN + 1];
 
   if ( success ) {
-    if ( ipv6 )
+    if ( ipv6 ) {
       inet_ntop(AF_INET6, &((struct sockaddr_in6 *)address)->sin6_addr, buffer, sizeof(buffer));
+    }
     else
       inet_ntop(AF_INET, &((struct sockaddr_in *)address)->sin_addr, buffer, sizeof(buffer));
    
@@ -213,7 +206,7 @@ static void ip_event_got_ip6(void* arg, esp_event_base_t event_base, int32_t eve
   gm_printf("Got IPv6: interface %s, address, type %s\n",
   netif_name,
   buffer,
-  ipv6_address_types[ipv6_type]);
+  gm_ipv6_address_types[ipv6_type]);
   fflush(stderr);
 
   if (strcmp(netif_name, "sta") == 0) {
@@ -240,7 +233,6 @@ static void ip_event_got_ip6(void* arg, esp_event_base_t event_base, int32_t eve
          break;
        }
     }
-    fflush(stderr);
     break;
   case ESP_IP6_ADDR_IS_LINK_LOCAL:
     interface->ip6.link_local.sin6_family = AF_INET6;

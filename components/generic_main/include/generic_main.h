@@ -107,9 +107,9 @@ typedef void (*gm_param_list_coroutine_t)(const char *, const char *, const char
 typedef void (*gm_web_get_coroutine_t)(const char * data, size_t size);
 typedef int (*gm_pattern_coroutine_t)(const char * name, char * result, size_t result_size);
 
-generic_main_t GM;
-extern const char gm_nvs_index[];
-
+generic_main_t			GM;
+extern const char *		const gm_ipv6_address_types[6];
+extern const char		gm_nvs_index[];
 
 extern bool			gm_all_zeroes(const void *, size_t);
 extern const void *		gm_array_add(GM_Array * array, const void * data);

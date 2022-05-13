@@ -61,7 +61,14 @@ incoming_packet(int fd, void * data, bool readable, bool writable, bool exceptio
 
     message_size = recvfrom(fd, &packet, sizeof(packet), MSG_DONTWAIT, (struct sockaddr *)&address, &address_size);
     if ( address.ss_family != AF_INET6 ) {
-      GM_FAIL("Incoming packet wasn't IPv6.\n");
+      char	buffer[INET6_ADDRSTRLEN];
+      void *	a = ((struct sockaddr_in6 *)&address)->sin6_addr.s6_addr;
+
+      if ( address.ss_family == AF_INET )
+        a = &((struct sockaddr_in *)&address)->sin_addr.s_addr;
+
+      inet_ntop(address.ss_family, a, buffer, sizeof(buffer));
+      GM_FAIL("Packet sender wasn't an IPv6 address %.\n");
       return;
     }
     decode_packet(&packet, message_size, data, (struct sockaddr_in6 *)&address);

@@ -217,6 +217,7 @@ int request_mapping_ipv6(gm_port_mapping_t * m)
   p->pcp.lifetime = htonl(24 * 60 * 60);
   memcpy(p->pcp.mp.nonce, m->nonce, sizeof(m->nonce));
   p->pcp.mp.protocol = m->tcp ? PCP_TCP : PCP_UDP;
+  // memcpy(p->pcp.mp.external_address.s6_addr, GM.sta.ip6.public.sin6_addr.s6_addr, sizeof(p->pcp.mp.external_address.s6_addr));
   p->pcp.mp.internal_port = htons(m->internal_port);
   p->pcp.mp.external_port = htons(m->external_port);
   p->pcp.lifetime = htonl(m->lifetime);
@@ -265,6 +266,8 @@ decode_pcp_map(nat_pmp_or_pcp_t * p, ssize_t message_size, bool multicast, struc
   last_request_t *	last;
   gm_port_mapping_t	m = {};
   gm_port_mapping_t * *	mp;
+  esp_ip6_addr_t	esp_addr;
+  esp_ip6_addr_type_t	ipv6_type;
   char			buffer[INET6_ADDRSTRLEN + 1];
 
   switch ( address->ss_family ) {
@@ -273,6 +276,18 @@ decode_pcp_map(nat_pmp_or_pcp_t * p, ssize_t message_size, bool multicast, struc
     break;
   case AF_INET6:
     last = &last_request_ipv6;
+
+    // esp-idf has its own IPv6 address structure.
+    memset(&esp_addr, '\0', sizeof(esp_addr));
+    memcpy(esp_addr.addr, p->pcp.mp.external_address.s6_addr, sizeof(esp_addr.addr));
+
+    // Get the address type (global, link-local, etc.) for the IPv6 address.
+    ipv6_type = esp_netif_ip6_get_addr_type(&esp_addr);
+
+    if ( ipv6_type != ESP_IP6_ADDR_IS_GLOBAL ) {
+      gm_printf("Warning: The router responded to a PCP map request with a useless mapping to an IPv6 %s address, instead of a global address. This is probably a MiniUPnPd bug.\n", gm_ipv6_address_types[ipv6_type]);
+      return;
+    }
     break;
   default:
     return;

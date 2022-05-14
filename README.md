@@ -97,7 +97,8 @@ Build the project and flash it to the board, then run monitor tool to view seria
 idf.py -p PORT flash monitor
 ```
 
-Run the ESPTouch app to set the WiFi parameters of the board.
+Run the ESPTouch app to set the WiFi parameters of the board, *or* use the console
+commands `param ssid `*value* and `param wifi_password`*value*.
 
 Open your web browser to the IP address printed by ESPTouch or the serial
 monitor, in the form http://*address*/

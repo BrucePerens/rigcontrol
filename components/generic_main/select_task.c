@@ -1,11 +1,13 @@
 // WARNING:
-// The default toolchain for ESP-IDF has the 2038 problem. They give instructions on how to rebuild the toolchain to use a
-// 64-bit time_t at https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/system/system_time.html#bit-time-t
+// The default toolchain for ESP-IDF has the 2038 problem. They give
+// instructions on how to rebuild the toolchain to use a 64-bit time_t at
+// https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/system/system_time.html#bit-time-t
 // You should NOT release production binaries with 16-bit time.
 //
-// Provide a task that does select() on file descriptors that have been registered with it, and calls handlers when there are
-// events upon those file descriptors. This allows us to do event-driven I/O without depending upon the yet-immature ESP-IDF
-// ASIO port.
+// Provide a task that does select() on file descriptors that have been
+// registered with it, and calls handlers when there are events upon those
+// file descriptors. This allows us to do event-driven I/O without depending
+// upon the yet-immature ESP-IDF ASIO port.
 //
 #include <stdlib.h>
 #include <stdio.h>

@@ -6,18 +6,19 @@
 #include <sys/un.h>
 #include "generic_main.h"
 
-// These are events that are delivered via gm_fd_register(), which is the interface to
-// a select() loop.
-//
-// gm_select_task() depends on this to wake up the select() when there is a new file descriptor to monitor.
-// Having this also allows us to use one task to handle events, instead of one for select-based events
-// and one for FreeRTOS event registration system events. We still have the high priority FreeRTOS system
-// event loop, but we don't have to make a low-priority FreeRTOS user event loop.
-//
-// This is greater overhead than it should be, because the FreeRTOS-lwIP combination doesn't provide
-// pipes or Unix-domain sockets, and FreeRTOS queues, the FreeRTOS equivalent of pipes, don't have a
-// file descriptor to use with select(). I can write a pipe driver using the ESP Virtual Filesystem,
-// but haven't done so yet.
+// These are events that are delivered via gm_fd_register(), which is the
+// interface to a select() loop. gm_select_task() depends on this to
+// wake up the select() when there is a new file descriptor to monitor.
+// Having this also allows us to use the select loop task to handle jobs
+// (essentially, run coroutines).
+// 
+// Waking up the select() for something other than I/O is greater overhead
+// than it should be, because the FreeRTOS-lwIP combination doesn't provide
+// pipes or Unix-domain sockets, and FreeRTOS queues, the FreeRTOS equivalent
+// of pipes, don't have a file descriptor to use with select(). So presently
+// this implements a server on the loopback interface to listen for
+// communication. I could write a pipe driver using the ESP Virtual Filesystem,
+// but I haven't done so yet.
 
 enum gm_event_opcode {
   GM_EVENT_INVALID = 0,		// For catching incorrect initialization.
@@ -180,7 +181,7 @@ gm_run(gm_run_t procedure, void * data, gm_run_speed_t speed)
   case GM_SLOW:
     run.procedure = procedure;
     run.data = data;
-    ESP_ERROR_CHECK(esp_event_post_to(&GM.medium_event_loop, GM_EVENT, GM_RUN, &run, sizeof(run), 0));
+    ESP_ERROR_CHECK(esp_event_post_to(&GM.slow_event_loop, GM_EVENT, GM_RUN, &run, sizeof(run), 0));
     break;
   }
 }

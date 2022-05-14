@@ -63,7 +63,7 @@ static int parameter(const char * name,  char * buffer, size_t buffer_size)
         if ( result == GM_NORMAL || result == GM_SECRET )
           return 0;
         else {
-          gm_printf("Warning: Dynamic DNS parameter %s is required, and is not set.\n", p->param_name);
+          GM_WARN_ONCE("Warning: Dynamic DNS parameter %s is required, and is not set.\n", p->param_name);
           return -1;
         }
       }
@@ -105,7 +105,7 @@ int gm_ddns(void)
   switch ( result ) {
   case GM_NOT_SET:
     if (!i_told_you_once) {
-      gm_printf("Warning: Dynamic DNS provider not set.\n");
+      GM_WARN_ONCE("Warning: Dynamic DNS provider not set.\n");
       i_told_you_once = true;
     }
     return -1;
@@ -113,7 +113,7 @@ int gm_ddns(void)
   case GM_SECRET:
     break;
   default:
-    gm_printf("Error reading ddns_provider parameter.\n");
+    GM_WARN_ONCE("Error reading ddns_provider parameter.\n");
     return -1;
   }
 
@@ -128,6 +128,6 @@ int gm_ddns(void)
     }
     p++;
   }
-  gm_printf("Dynamic DNS provider %s is not implemented.\n", ddns_provider);
+  GM_WARN_ONCE("Dynamic DNS provider %s is not implemented.\n", ddns_provider);
   return -1;
 }

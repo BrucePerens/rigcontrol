@@ -266,5 +266,5 @@ gm_select_task(void)
   // The event server wakes up select() when a file descriptor is registered or unregistered.
   // It will set up an FD to wait upon for accept() before the first select() is called.
   gm_event_server();
-  xTaskCreate(select_task, "select", 10240, NULL, 3, &select_task_id);
+  xTaskCreate(select_task, "generic main: select loop", 10240, NULL, 3, &select_task_id);
 }

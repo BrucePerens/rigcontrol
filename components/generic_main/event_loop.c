@@ -35,8 +35,8 @@ gm_start_user_event_loops(void)
   esp_event_handler_instance_t	slow_run_handler;
   esp_event_handler_instance_t	medium_run_handler;
 
-  create_user_event_loop(&GM.medium_event_loop, "medium-speed user event loop", 0);
+  create_user_event_loop(&GM.medium_event_loop, "generic main: medium-speed job runner", 0);
   esp_event_handler_instance_register_with(&GM.medium_event_loop, GM_EVENT, GM_RUN, handle_run_event, 0, &medium_run_handler);
-  create_user_event_loop(&GM.slow_event_loop, "slow user event loop", 1);
+  create_user_event_loop(&GM.slow_event_loop, "generic main: slow job runner", 1);
   esp_event_handler_instance_register_with(&GM.slow_event_loop, GM_EVENT, GM_RUN, handle_run_event, 0, &slow_run_handler);
 }

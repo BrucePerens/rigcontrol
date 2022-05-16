@@ -40,7 +40,7 @@ You can see this code in the
 component. This is usable in other Open Source ESP32 applications *only,* and those must
 be under a license that is compatible with AGPL3, and the entire application must comply
 with the source-code distribution terms of the AGPL3.
-It is not available for use with proprietary software at this time.
+Use in proprietary software would require a commercial license from the author.
 
 ### Hardware Required
 

@@ -1,5 +1,8 @@
 # K6BP RigControl
 
+Support this and other Open Source and Open Hardware projects for Amateur Radio by
+[Joining HamOpen.org](https://HamOpen.org/)
+
 This is the K6BP RigControl software, an Amateur Radio transceiver
 controller using an ESP-32 Audio Kit card commonly sold on AliExpress for
 around $14.

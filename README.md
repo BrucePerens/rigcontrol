@@ -1,6 +1,10 @@
 # K6BP RigControl
 
-Support this and other Open Source and Open Hardware projects for Amateur Radio by
+* There's a discussion group
+  [here](https://github.com/BrucePerens/rigcontrol/discussions/). Please speak up,
+  *there are no stupid questions.* I'll be making my progress reports and answering
+  questions there.
+* Support this and other Open Source and Open Hardware projects for Amateur Radio by
 [Joining HamOpen.org](https://HamOpen.org/)
 
 This is the K6BP RigControl software, an Amateur Radio transceiver
@@ -79,6 +83,18 @@ implemented in software.
 
 ### Software Required
 
+Install *git* if you haven't yet done so, using the instructions
+[here](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git).
+
+You might need to learn some command-line basics for your system if you don't have them.
+Open a command-line processor. Use the command line to change the current directory to
+the folder where you'd like to keep your work on this project.
+Use *git* to create a folder called *rigcontrol* in there, containing a copy of the source code:
+``` shell
+  git clone https://github.com/BrucePerens/rigcontrol.git
+```
+Change to the newly created *rigcontrol* folder. That's where you'll work on the software.
+
 Download the ESPTouch App from the app store:
 [Android](https://play.google.com/store/apps/details?id=com.khoazero123.iot_esptouch_demo), [iOS](https://apps.apple.com/us/app/espressif-esptouch/id1071176700)
 
@@ -86,11 +102,16 @@ Install the esp-idf, using the instructions from
 https://docs.espressif.com/projects/esp-idf/en/latest/esp32/get-started/index.html
 ### Build and Flash
 
-On Linux, using *bash,* run the esp-idf environment script. Assuming that
+On Linux, using *bash*, run the `esp-idf/export.sh` environment script to set variables
+in your command-line environment. Assuming that
 `esp-idf` is installed in the parent directory:
-```
+```shell
 source ../esp-idf/export.sh
 ```
+The `source` command is important here. That runs the script in the current command-line shell, so it
+sets its variables. Just running the script without that doesn't do anything, quietly, and then
+when you go to run `idf.py`, the shell won't be able to find it.
+
 On Windows, see the installation instructions on how to run a PowerShell or
 command prompt environment.
 
@@ -99,6 +120,8 @@ Build the project and flash it to the board, then run monitor tool to view seria
 ```
 idf.py -p PORT flash monitor
 ```
+
+The `flash` command includes the `build` command, but feel free to run that separately.
 
 Run the ESPTouch app to set the WiFi parameters of the board, *or* use the console
 commands `param ssid `*value* and `param wifi_password`*value*.
@@ -113,6 +136,17 @@ On some browsers, just typing *rigcontrol.lan/* will work.
 Multicast DNS will be impmented, which will make the web interface available
 on the local network as something
 like *rigcontrol._https._tcp.local* .
+
+Every time you'd like to catch up to changes in software, use this command:
+```shell
+git pull
+```
+to update your copy of the source code. Then, go through the build and monitor
+process above, except use `app-flash` instead of `flash`. That is faster than
+`flash` because it only flashes the
+application, which would have changed; rather than the boot loader, partition table,
+etc.
+
 
 ### Accessories ###
 It's often possible to reduce the price of these accessories

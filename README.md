@@ -86,6 +86,12 @@ implemented in software.
 Install *git* if you haven't yet done so, using the instructions
 [here](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git).
 
+Download the ESPTouch App from the app store:
+[Android](https://play.google.com/store/apps/details?id=com.khoazero123.iot_esptouch_demo), [iOS](https://apps.apple.com/us/app/espressif-esptouch/id1071176700)
+
+Install the esp-idf, using the instructions from
+https://docs.espressif.com/projects/esp-idf/en/latest/esp32/get-started/index.html
+
 You might need to learn some command-line basics for your system if you don't have them.
 Open a command-line processor. Use the command line to change the current directory to
 the folder where you'd like to keep your work on this project.
@@ -95,11 +101,6 @@ Use *git* to create a folder called *rigcontrol* in there, containing a copy of 
 ```
 Change to the newly created *rigcontrol* folder. That's where you'll work on the software.
 
-Download the ESPTouch App from the app store:
-[Android](https://play.google.com/store/apps/details?id=com.khoazero123.iot_esptouch_demo), [iOS](https://apps.apple.com/us/app/espressif-esptouch/id1071176700)
-
-Install the esp-idf, using the instructions from
-https://docs.espressif.com/projects/esp-idf/en/latest/esp32/get-started/index.html
 ### Build and Flash
 
 On Linux, using *bash*, run the `esp-idf/export.sh` environment script to set variables

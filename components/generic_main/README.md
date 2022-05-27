@@ -4,7 +4,7 @@ This is a generic "main" program for the ESP-32 using the esp-idf toolkit. It
 implements new embedded protocol
 handlers for SSNTP, ICMPv6, STUN, PCP, REST, Dynamic DNS, a new embedded event-driven I/O
 facility, and a new facility for submitting jobs to run in existing FreeRTOS threads.
-This facility can support many ESP-32 applications, and remove the requirement for the 
+This facility can support many ESP-32 applications, and removes the requirement for the 
 developer to write a great deal of systems code before getting to their application.
 
 On a Linux system, these facilities would have been available out-of-the-box, but on

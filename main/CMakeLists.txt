@@ -8,6 +8,7 @@ INCLUDE_DIRS
 REQUIRES
   commands
   console
+  crofs
   driver
   esp_http_server
   esp_timer

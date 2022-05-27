@@ -49,6 +49,7 @@ void start_webserver(void)
   sntp_init();
 
   httpd_config_t config = HTTPD_DEFAULT_CONFIG();
+  config.uri_match_fn = httpd_uri_match_wildcard;
   config.lru_purge_enable = true;
 
   // Start the httpd server

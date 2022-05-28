@@ -140,6 +140,11 @@ select_task(void * param)
 
     for ( unsigned int i = 0; i < fd_limit; i++ ) {
       if ( FD_ISSET(i, &read_now) || FD_ISSET(i, &write_now) || FD_ISSET(i, &exception_now) ) {
+       
+        if ( lseek(i, 0, SEEK_CUR) < 0 && errno == EBADF ) {
+          gm_printf("select_task(): fd %d isn't an open file descriptor.\n");
+          continue;
+        }
         FD_SET(i, &monitored_fds);
 
         struct timeval * t = &timeouts[i];

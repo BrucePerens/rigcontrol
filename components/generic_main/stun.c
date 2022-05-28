@@ -381,7 +381,7 @@ int receive_stun_response(int sock, struct sockaddr * address)
   uint32_t receive_buffer[256] = {};
   struct stun_message *	const	receive_packet = (struct stun_message *)receive_buffer; 
   ssize_t			receive_result;
-  struct timeval		timeout = { 3, 0 }; // 2 seconds, no microseconds.
+  struct timeval		timeout = { 3, 0 };
   int result;
 
   setsockopt (sock, SOL_SOCKET, SO_RCVTIMEO, (char *) &timeout,
@@ -423,22 +423,26 @@ stun_receive(int fd, void * data, bool readable, bool writable, bool exception, 
 {
   struct stun_run * run = (struct stun_run *)data;
 
+
   if ( readable ) {
     int status = receive_stun_response(fd, run->address);
-    gm_fd_unregister(fd);
-    close(fd);
 
     if ( status == 0 ) {
+      gm_fd_unregister(fd);
+      close(fd);
       if ( run->after )
         (run->after)(true, run->ipv6, run->address);
       free(run);
       return;
     }
   }
+  if ( timeout ) {
+    close(fd);
+  }
   if ( run->tries >= 5 ) {
-    free(run);
     if ( run->after )
       (run->after)(false, run->ipv6, run->address);
+    free(run);
     return;
   }
 

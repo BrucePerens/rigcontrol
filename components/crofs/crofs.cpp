@@ -86,6 +86,7 @@ int CroFS::init(const crofs_config_t *config)
         return -1;
     }
 
+    fprintf(stderr, "Registered filesystem to %s\n", cfg.base_path);
     registered = true;
 #endif
 
@@ -206,6 +207,8 @@ const uint8_t *CroFS::locate(const uint8_t *name, crofs_entry_t *entry)
     const uint8_t *p = name;
     int level = 1;
 
+    fprintf(stderr, "In locate().\n");
+    fflush(stderr);
     name = NULL;
     while (addr > fs_end)
     {
@@ -240,6 +243,8 @@ const uint8_t *CroFS::locate(const uint8_t *name, crofs_entry_t *entry)
                     while (addr > fs_end)
                     {
                         next = get_entry(addr, entry);
+                        fprintf(stderr, "Check against %s\n", (const char *)entry->name);
+                        fflush(stderr);
                         if (entry->level == level &&
                             entry->nsize == nsize &&
                             strncmp((const char *) entry->name, (const char *) name, nsize) == 0)
@@ -500,6 +505,8 @@ int CroFS::open_p(void *ctx, const char *path, int flags, int mode)
 {
     CroFS *that = (CroFS *) ctx;
 
+    fprintf(stderr, "Crofs open.\n");
+    fflush(stderr);
     if ((flags & O_ACCMODE) != O_RDONLY)
     {
         errno = EROFS;

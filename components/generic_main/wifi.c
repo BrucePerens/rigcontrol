@@ -69,7 +69,7 @@ static void after_stun(bool success, bool ipv6, struct sockaddr * address)
     gm_printf("Public address %s.\n", buffer);
   }
   else {
-    GM_FAIL("STUN for %s failed.\n", ipv6 ? "IPv6" : "IPv4");
+    gm_printf("STUN for %s failed.\n", ipv6 ? "IPv6" : "IPv4");
   }
 }
 

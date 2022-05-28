@@ -1,16 +1,43 @@
 #include <string.h>
 #include <stdlib.h>
 #include <esp_http_server.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 #include "generic_main.h"
 
 static esp_err_t http_root_handler(httpd_req_t *req)
 {
-  gm_printf("HTTP Request for %s\n", req->uri);
+  char	buf[1024];
+  int	fd;
+  int	size;
+  const char * uri = req->uri;
 
-  static const char * page = "<html><body>K6BP RigControl</body></html>";
-  httpd_resp_send(req, page, HTTPD_RESP_USE_STRLEN);
+  if ( strcmp(uri, "/") == 0 )
+    uri = "index.html";
+  else
+    uri++;
 
-  return ESP_OK;
+  sprintf(buf, "/crofs/%s", uri);
+  uri = buf;
+  if ((fd = open (uri, O_RDONLY)) < 0)
+  {
+    gm_printf("HTTP request for %s not found.\n", uri);
+    httpd_resp_send_404(req);
+    return ESP_OK;
+  }
+
+  while ((size = read(fd, buf, sizeof(buf))) > 0 ) {
+    httpd_resp_send_chunk(req, buf, size);
+  } 
+  httpd_resp_send_chunk(req, buf, 0);
+
+  close(fd);
+
+  if ( size < 0 )
+    return ESP_FAIL;
+  else
+    return ESP_OK;
 }
 
 void user_web_handlers(httpd_handle_t server)

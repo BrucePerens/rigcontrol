@@ -14,7 +14,7 @@ mount_crofs()
     .fs_addr = crofs_image_start,
     .fs_size = crofs_image_length,
     // FIX: Use a menuconfig parameter here.
-    .base_path = "/filesystem",
+    .base_path = "/crofs",
     .open_files = 4
   };
   CroFS crofs;

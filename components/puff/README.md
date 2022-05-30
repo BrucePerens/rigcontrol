@@ -1,20 +1,22 @@
-= Puff -- A Simple Inflate
+# Puff: A Simple Inflate
 3 Mar 2003
+
 Mark Adler
+
 madler@alumni.caltech.edu
 
-== Source
+## Source
 This was extracted from the author's version, at
 https://github.com/madler/zlib/tree/master/contrib/puff
 and altered to make it an esp-idf component.
 
-== What this is
+## What this is
 
 puff.c provides the routine puff() to decompress the deflate data format.  It
 does so more slowly than zlib, but the code is about one-fifth the size of the
 inflate code in zlib, and written to be very easy to read.
 
-== Why I wrote this
+## Why I wrote this
 
 puff.c was written to document the deflate format unambiguously, by virtue of
 being working C code.  It is meant to supplement RFC 1951, which formally
@@ -27,7 +29,7 @@ specification.
 puff.c may also be useful in applications where code size or memory usage is a
 very limited resource, and speed is not as important.
 
-== How to use it
+## How to use it
 
 Well, most likely you should just be reading puff.c and using zlib for actual
 applications, but if you must ...

@@ -1,8 +1,8 @@
 # K6BP RigControl
 
-* *If all of the instructions below are too complicated for you, keep watching this space.
+* _If all of the instructions below are too complicated for you, keep watching this space.
   I'm working on a web-based installer that is much simpler, based on the one
-  [here](https://esphome.github.io/esp-web-tools/).*
+  [here](https://esphome.github.io/esp-web-tools/)._
 * There's a discussion group
   [here](https://github.com/BrucePerens/rigcontrol/discussions/). Please speak up,
   *there are no stupid questions.* I'll be making my progress reports and answering

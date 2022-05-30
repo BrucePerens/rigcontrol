@@ -83,6 +83,13 @@ implemented in software.
 
 ### Software Required
 
+Your system must have a native C compiler which can be run using the command `cc`,
+and must have the zlib compression library installed so that `cc -lz` finds it.
+These are used to build a native generator for the compressed filesystem.
+On Debian, the zlib compression library is in the `zlib1g-dev`
+package. Other Linux systems should be similar. On Windows, follow the instructions
+[here](https://github.com/horta/zlib.install). Source code is [here](http://zlib.net).
+
 Install *git* if you haven't yet done so, using the instructions
 [here](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git).
 

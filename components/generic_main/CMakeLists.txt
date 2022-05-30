@@ -26,7 +26,9 @@ REQUIRES
 
 add_custom_command(
   OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/fs_gen
-  COMMAND cc ${CMAKE_CURRENT_SOURCE_DIR}/filesystem_generator/fs_gen.c -lz -o ${CMAKE_CURRENT_BINARY_DIR}/fs_gen
+  COMMAND cc -I ${CMAKE_CURRENT_SOURCE_DIR}/include ${CMAKE_CURRENT_SOURCE_DIR}/filesystem_generator/fs_gen.c -lz -o ${CMAKE_CURRENT_BINARY_DIR}/fs_gen
+  MAIN_DEPENDENCY ${CMAKE_CURRENT_SOURCE_DIR}/filesystem_generator/fs_gen.c
+  DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/include/compressed_fs.h
 )
 add_custom_target(fs-gen DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/fs_gen)
 add_dependencies(${COMPONENT_LIB} fs-gen)

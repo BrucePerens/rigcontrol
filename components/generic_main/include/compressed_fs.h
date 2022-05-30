@@ -1,3 +1,4 @@
+#include <stdint.h>
 struct compressed_fs_header {
   uint32_t	number_of_files;
 };

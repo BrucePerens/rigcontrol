@@ -3,13 +3,10 @@
 #include <esp_log.h>
 #include "generic_main.h"
 
-extern void mount_crofs();
-
 void user_startup(void)
 {
   // This will be the default WiFi access point name, with the factory MAC address
   // appended to it. Keep it short.
   GM.application_name = "rigcontrol";
   gm_printf("\n*** K6BP RigControl ***\n");
-  mount_crofs();
 }

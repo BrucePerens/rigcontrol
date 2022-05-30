@@ -129,14 +129,6 @@ CONFIG_PARTITION_TABLE_MD5=y
 # end of Partition Table
 
 #
-# CroFS Configuration
-#
-CONFIG_CROFS_SRC="filesystem"
-CONFIG_CROFS_LEVEL=10
-CONFIG_CROFS_EMBED=y
-# end of CroFS Configuration
-
-#
 # Compiler options
 #
 # CONFIG_COMPILER_OPTIMIZATION_DEFAULT is not set

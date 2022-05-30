@@ -8,35 +8,35 @@
 
 static esp_err_t http_root_handler(httpd_req_t *req)
 {
-  char	buf[1024];
-  int	fd;
-  int	size;
-  const char * uri = req->uri;
-
-  if ( strcmp(uri, "/") == 0 )
-    uri = "index.html";
-  else
-    uri++;
-
-  sprintf(buf, "/crofs/%s", uri);
-  uri = buf;
-  if ((fd = open (uri, O_RDONLY)) < 0)
-  {
-    gm_printf("HTTP request for %s not found.\n", uri);
-    httpd_resp_send_404(req);
-    return ESP_OK;
-  }
-
-  while ((size = read(fd, buf, sizeof(buf))) > 0 ) {
-    httpd_resp_send_chunk(req, buf, size);
-  } 
-  httpd_resp_send_chunk(req, buf, 0);
-
-  close(fd);
-
-  if ( size < 0 )
-    return ESP_FAIL;
-  else
+//  char	buf[1024];
+//  int	fd;
+//  int	size;
+//  const char * uri = req->uri;
+//
+//  if ( strcmp(uri, "/") == 0 )
+//    uri = "index.html";
+//  else
+//    uri++;
+//
+//  sprintf(buf, "/crofs/%s", uri);
+//  uri = buf;
+//  if ((fd = open (uri, O_RDONLY)) < 0)
+//  {
+//    gm_printf("HTTP request for %s not found.\n", uri);
+//    httpd_resp_send_404(req);
+//    return ESP_OK;
+//  }
+//
+//  while ((size = read(fd, buf, sizeof(buf))) > 0 ) {
+//    httpd_resp_send_chunk(req, buf, size);
+//  } 
+//  httpd_resp_send_chunk(req, buf, 0);
+//
+//  close(fd);
+//
+//  if ( size < 0 )
+//    return ESP_FAIL;
+//  else
     return ESP_OK;
 }
 

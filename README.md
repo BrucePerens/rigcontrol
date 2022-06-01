@@ -1,8 +1,13 @@
 # K6BP RigControl
 
-* **If all of the instructions below are too complicated for you, keep watching this space.
-  I'm working on a web-based installer that is much simpler, based on the one
-  [here](https://esphome.github.io/esp-web-tools/).**
+## Easy Firmware Install
+  Click [this](https://perens.com/static/Rigcontrol/) and follow the instructions.
+  This will work better than the instructions below for people who aren't experienced
+  programmers.
+
+  This doesn't yet set your WiFi parameters, watch this page and I'll update to a
+  firmware version with that working.
+
 * There's a discussion group
   [here](https://github.com/BrucePerens/rigcontrol/discussions/). Please speak up,
   *there are no stupid questions.* I'll be making my progress reports and answering

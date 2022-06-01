@@ -8,6 +8,8 @@
   This doesn't yet set your WiFi parameters, watch this page and I'll update to a
   firmware version with that working.
 
+## Introduction
+
 * There's a discussion group
   [here](https://github.com/BrucePerens/rigcontrol/discussions/). Please speak up,
   *there are no stupid questions.* I'll be making my progress reports and answering

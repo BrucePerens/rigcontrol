@@ -20,6 +20,7 @@
 #include <unistd.h>
 #include <stdint.h>
 #include <errno.h>
+#include <stdbool.h>
 
 const char	name[] = "Improv WiFi ";
 const uint8_t	magic[] = "IMPROV";
@@ -49,9 +50,45 @@ typedef enum improv_state {
 typedef enum improv_error_state {
   NoError = 0,
   Invalid_RPC_Packet = 1,	// The command was malformed.
+  Unknown_RPC_Command = 2,
   UnableToConnect = 3,		// The requested WiFi connection failed.
   UnknownError = 0xff
 } improv_error_state_t;
+
+static improv_state_t	improv_state = Ready;
+static bool		improv_received_a_valid_packet = false;
+
+static void
+improv_send(int fd, const uint8_t * data, improv_type_t type, unsigned int length)
+{
+  uint8_t buffer[256 + 11];
+  unsigned int	checksum;
+
+  memcpy(buffer, magic, sizeof(magic));
+  buffer[6] = ImprovVersion;
+  buffer[7] = (type & 0xff);
+  buffer[8] = (length & 0xff);
+  memcpy(&buffer[9], data, length);
+
+  for ( unsigned int i = 0; i < 9 + length; i++ )
+    checksum += buffer[i];
+
+  buffer[9 + length] = (checksum & 0xff);
+}
+
+static void
+improv_send_current_state(int fd)
+{
+  const uint8_t	state = (improv_state & 0xff);
+  improv_send(fd, &state, CurrentState, 1);
+}
+
+static void
+improv_send_error(int fd, improv_error_state_t error)
+{
+  const uint8_t	error_byte = (error & 0xff);
+  improv_send(fd, &error_byte, ErrorState, 1);
+}
 
 static improv_error_state_t
 improv_read (int fd, uint8_t * data, improv_type_t * r_type, uint8_t * r_length)
@@ -77,6 +114,7 @@ improv_read (int fd, uint8_t * data, improv_type_t * r_type, uint8_t * r_length)
 
     internal_checksum += c;
 
+    // Keep throwing away data until I see "IMPROV".
     if ( index < sizeof(magic) ) {
       if ( c != magic[index] ) {
         index = 0;
@@ -89,6 +127,8 @@ improv_read (int fd, uint8_t * data, improv_type_t * r_type, uint8_t * r_length)
       version = c;
       if ( version != 1 ) {
         fprintf(stderr, "%sversion %d not implemented.\n", name, (int)c);
+        improv_send_error(fd, Invalid_RPC_Packet);
+        return Invalid_RPC_Packet;
       }
       break;
     case 7:
@@ -113,22 +153,48 @@ improv_read (int fd, uint8_t * data, improv_type_t * r_type, uint8_t * r_length)
  
   if ( checksum != (internal_checksum & 0xff) ) {
     fprintf(stderr, "%schecksum doesn't match.\n", name);
-    return Invalid_RPC_Packet;
+    improv_send_error(fd, Invalid_RPC_Packet);
   }
 
   *r_type = (improv_type_t)type;
   *r_length = length;
+  improv_received_a_valid_packet = true;
   return NoError;
 }
 
-static void
-improv_send_wifi_settings(int fd, const uint8_t * data, uint8_t length)
+static unsigned int
+improv_decode_string(const uint8_t * data, uint8_t * s)
 {
+  uint8_t	length = *data++;
+  memcpy(s, data, length);
+  s[length] = '\0';
+  return (unsigned int)length;
+}
+
+static int
+improv_encode_string(uint8_t * data, const char * s)
+{
+  int	length = strlen(s);
+
+  *data++ = (length & 0xff);
+
+  memcpy(data, s, length);
+
+  return length + 1;
 }
 
 static void
-improv_send_current_state(int fd)
+improv_set_wifi(int fd, const uint8_t * data, uint8_t length)
 {
+  uint8_t	ssid[257]; 
+  uint8_t	password[257]; 
+  uint8_t	ssid_length;
+  uint8_t	password_length;
+
+  ssid_length = improv_decode_string(&data[11], ssid);
+  password_length = improv_decode_string(&data[ssid_length + 12], password);
+  improv_state = Provisioning;
+  improv_send_current_state(fd);
 }
 
 static void
@@ -154,7 +220,7 @@ improv_process(int fd, const uint8_t * data, improv_type_t type, uint8_t length)
 
     switch ( command ) {
     case SendWiFiSettings:
-      improv_send_wifi_settings(fd, &data[2], command_length);
+      improv_set_wifi(fd, &data[2], command_length);
       break;
     case RequestCurrentState:
       improv_send_current_state(fd);
@@ -167,26 +233,16 @@ improv_process(int fd, const uint8_t * data, improv_type_t type, uint8_t length)
       break;
     default:
       fprintf(stderr, "%sBad command %d.\n", name, type);
+      improv_send_error(fd, Invalid_RPC_Packet);
       return Invalid_RPC_Packet;
     }
     break;
 
   default:
     fprintf(stderr, "%sBad type %d.\n", name, type);
-    return Invalid_RPC_Packet;
+    improv_send_error(fd, Unknown_RPC_Command);
+    return Unknown_RPC_Command;
   }
 
   return NoError;
-}
-
-static int
-improv_copy_string(uint8_t * data, const char * s)
-{
-  int	length = strlen(s);
-
-  *data++ = (length & 0xff);
-
-  memcpy(data, s, length);
-
-  return length + 1;
 }

@@ -21,6 +21,9 @@
 #include <stdint.h>
 #include <errno.h>
 #include <stdbool.h>
+#include <esp_event.h>
+#include <esp_wifi.h>
+#include "generic_main.h"
 
 const char	name[] = "Improv WiFi ";
 const uint8_t	magic[] = "IMPROV";
@@ -57,6 +60,8 @@ typedef enum improv_error_state {
 
 static improv_state_t	improv_state = Ready;
 static bool		improv_received_a_valid_packet = false;
+static esp_event_handler_instance_t handler_wifi_event_sta_connected_to_ap = NULL;
+static esp_event_handler_instance_t handler_wifi_event_sta_disconnected = NULL;
 
 static void
 improv_send(int fd, const uint8_t * data, improv_type_t type, unsigned int length)
@@ -81,6 +86,22 @@ improv_send_current_state(int fd)
 {
   const uint8_t	state = (improv_state & 0xff);
   improv_send(fd, &state, CurrentState, 1);
+}
+
+static void wifi_event_sta_connected_to_ap(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data) {
+  int fd = (int)event_data;
+  
+  ESP_ERROR_CHECK(esp_event_handler_instance_unregister(
+   WIFI_EVENT,
+   WIFI_EVENT_STA_CONNECTED,
+   &handler_wifi_event_sta_connected_to_ap));
+
+  improv_state = Provisioned;
+  improv_send_current_state(fd);
+}
+
+static void wifi_event_sta_disconnected(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data) {
+  improv_state = Ready;
 }
 
 static void
@@ -172,7 +193,7 @@ improv_decode_string(const uint8_t * data, uint8_t * s)
 }
 
 static int
-improv_encode_string(uint8_t * data, const char * s)
+improv_encode_string(const char * s, uint8_t * data)
 {
   int	length = strlen(s);
 
@@ -189,12 +210,28 @@ improv_set_wifi(int fd, const uint8_t * data, uint8_t length)
   uint8_t	ssid[257]; 
   uint8_t	password[257]; 
   uint8_t	ssid_length;
-  uint8_t	password_length;
 
   ssid_length = improv_decode_string(&data[11], ssid);
-  password_length = improv_decode_string(&data[ssid_length + 12], password);
+  improv_decode_string(&data[ssid_length + 12], password);
   improv_state = Provisioning;
   improv_send_current_state(fd);
+
+  ESP_ERROR_CHECK(esp_event_handler_instance_register(
+   WIFI_EVENT,
+   WIFI_EVENT_STA_CONNECTED,
+   &wifi_event_sta_connected_to_ap,
+   (void *)fd,
+   &handler_wifi_event_sta_connected_to_ap));
+
+
+  gm_param_set("ssid", (const char *)ssid);
+  gm_param_set("wifi_password", (const char *)password);
+
+  ESP_ERROR_CHECK(esp_event_handler_register(
+   WIFI_EVENT,
+   WIFI_EVENT_STA_DISCONNECTED,
+   &wifi_event_sta_disconnected,
+   NULL));
 }
 
 static void
@@ -205,6 +242,33 @@ improv_send_device_information(int fd)
 static void
 improv_send_scanned_wifi_networks(int fd)
 {
+  uint8_t		data[256];
+  wifi_ap_record_t *	ap_records;
+  uint16_t		number_of_access_points;
+  char			rssi[5];
+
+  ESP_ERROR_CHECK(esp_wifi_scan_get_ap_num(&number_of_access_points));
+
+  ap_records = malloc(sizeof(*ap_records) * number_of_access_points);
+  ESP_ERROR_CHECK(esp_wifi_scan_get_ap_records(&number_of_access_points, ap_records));
+
+  for ( unsigned int i = 0; i < number_of_access_points; i++ ) {
+    unsigned int	offset = 0;
+
+    data[0] = (RequestScannedWiFiNetworks & 0xff);
+    offset = 2;
+    offset += improv_encode_string((const char *)ap_records[i].ssid, &data[offset]);
+    snprintf(rssi, sizeof(rssi), "%d", ap_records[i].rssi);
+    offset += improv_encode_string(rssi, &data[offset]);
+    const char * auth_required = ap_records[i].authmode != WIFI_AUTH_OPEN ? "YES" : "NO";
+    offset += improv_encode_string(auth_required, &data[offset]);
+    data[1] = offset;
+    improv_send(fd, data, RPC_Result, offset + 2);
+  }
+  free(ap_records);
+  data[0] = (RequestScannedWiFiNetworks & 0xff);
+  data[1] = 0;
+  improv_send(fd, data, RPC_Result, 2);
 }
 
 static improv_error_state_t
@@ -245,4 +309,20 @@ improv_process(int fd, const uint8_t * data, improv_type_t type, uint8_t length)
   }
 
   return NoError;
+}
+
+void
+gm_improv(int fd)
+{
+  // Start the WiFi scan as soon as possible, so that the data is ready when the user
+  // wishes to configure WiFi.
+  wifi_scan_config_t	config = {};
+
+  config.scan_type = WIFI_SCAN_TYPE_ACTIVE;
+  // WiFi scan times are in milliseconds per channel.
+  config.scan_time.active.min = 120;
+  config.scan_time.active.max = 120;
+  config.scan_time.passive = 120;
+
+  ESP_ERROR_CHECK(esp_wifi_scan_start(&config, false));
 }

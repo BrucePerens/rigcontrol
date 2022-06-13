@@ -21,6 +21,8 @@
 #include <stdint.h>
 #include <errno.h>
 #include <stdbool.h>
+#include <setjmp.h>
+#include <signal.h>
 #include <esp_event.h>
 #include <esp_wifi.h>
 #include "generic_main.h"
@@ -60,6 +62,7 @@ typedef enum improv_error_state {
 
 static improv_state_t	improv_state = Ready;
 static bool		improv_received_a_valid_packet = false;
+static jmp_buf		jump;
 static esp_event_handler_instance_t handler_wifi_event_sta_connected_to_ap = NULL;
 static esp_event_handler_instance_t handler_wifi_event_sta_disconnected = NULL;
 
@@ -118,10 +121,10 @@ improv_read (int fd, uint8_t * data, improv_type_t * r_type, uint8_t * r_length)
   int			status;
   uint8_t		c;
   uint8_t		version;
-  uint8_t		type;
-  uint8_t		length;
+  uint8_t		type = 0;
+  uint8_t		length = 0;
   uint8_t		checksum;
-  unsigned int		internal_checksum;
+  unsigned int		internal_checksum = 0;
 
   *r_type = 0;
   *r_length = 0;
@@ -231,7 +234,7 @@ improv_set_wifi(int fd, const uint8_t * data, uint8_t length)
    WIFI_EVENT,
    WIFI_EVENT_STA_DISCONNECTED,
    &wifi_event_sta_disconnected,
-   NULL));
+   &handler_wifi_event_sta_disconnected));
 }
 
 static void
@@ -311,12 +314,22 @@ improv_process(int fd, const uint8_t * data, improv_type_t type, uint8_t length)
   return NoError;
 }
 
+static void
+timed_out(int sig)
+{
+  longjmp(jump, 1);
+}
+
 void
 gm_improv(int fd)
 {
   // Start the WiFi scan as soon as possible, so that the data is ready when the user
   // wishes to configure WiFi.
+  uint8_t		data[256];
   wifi_scan_config_t	config = {};
+  improv_error_state_t	error;
+  improv_type_t		type;
+  uint8_t		length;
 
   config.scan_type = WIFI_SCAN_TYPE_ACTIVE;
   // WiFi scan times are in milliseconds per channel.
@@ -325,4 +338,28 @@ gm_improv(int fd)
   config.scan_time.passive = 120;
 
   ESP_ERROR_CHECK(esp_wifi_scan_start(&config, false));
+
+  if ( !setjmp(jump) ) {
+    signal(SIGALRM, timed_out);
+    alarm(5);
+    error = improv_read(fd, data, &type, &length);
+    alarm(0);
+    signal(SIGALRM, SIG_DFL);
+
+    if ( error == NoError ) {
+      // If we get here, Improv started within the timeout. So keep it running on the
+      // console rather than the REPL.
+      improv_process(fd, data, type, length);
+      for ( ; ; ) {
+        error = improv_read(fd, data, &type, &length);
+        if ( error == NoError ) {
+          improv_process(fd, data, type, length);
+        }
+      }
+    }
+  }
+  else {
+    // Timed out without receiving an Improv packet.
+    // Return so that the REPL can take over the console.
+  }
 }

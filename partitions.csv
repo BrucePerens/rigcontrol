@@ -1,6 +1,11 @@
 # ESP-IDF Partition Table
 # Name,   Type, SubType, Offset,  Size, Flags
 
+# The second-stage Bootloader is at 0x1000. There is also one in ROM, so you can recover
+# from breaking this one by holding down BOOT and momentary RESET.
+
+# The Partition table is at 0x8000.
+
 # Non-volatile storage
 nvs,      data, nvs,     0x9000,  0x6000,
 

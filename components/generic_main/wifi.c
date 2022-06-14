@@ -76,9 +76,6 @@ static void after_stun(bool success, bool ipv6, struct sockaddr * address)
 void
 gm_wifi_start(void)
 {
-  // Initialize the TCP/IP stack.
-  ESP_ERROR_CHECK(esp_netif_init());
-
   // Empty configuration for starting WiFi.
   wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
 

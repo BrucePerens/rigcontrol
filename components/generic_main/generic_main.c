@@ -27,11 +27,9 @@ static void initialize(void);
 static const char TASK_NAME[] = "main";
 generic_main_t GM = {};
 
-extern void user_startup();
-
 void app_main(void)
 {
-  user_startup();
+  gm_user_initialize_early();
   initialize();
 }
 
@@ -41,8 +39,11 @@ static void initialize(void)
   // This can't be used for non-tasks.
   pthread_mutex_init(&GM.console_print_mutex, 0);
 
+  // Initialize the TCP/IP stack. gm_select_task uses sockets.
   esp_netif_init();
-  gm_select_task();
+
+  // The global event loop is required for all event handling to work.
+  ESP_ERROR_CHECK(esp_event_loop_create_default());
 
   // Connect the non-volatile-storage FLASH partition. Initialize it if
   // necessary.
@@ -53,17 +54,6 @@ static void initialize(void)
     ESP_ERROR_CHECK(nvs_flash_init());
   }
   ESP_ERROR_CHECK(nvs_open(gm_nvs_index, NVS_READWRITE, &GM.nvs));
-
-  // Configure the console command system.
-  esp_console_repl_config_t repl_config = ESP_CONSOLE_REPL_CONFIG_DEFAULT();
-  repl_config.task_stack_size = 20 * 1024;
-  repl_config.prompt = ">";
-  esp_console_dev_uart_config_t uart_config = ESP_CONSOLE_DEV_UART_CONFIG_DEFAULT();
-  ESP_ERROR_CHECK(esp_console_new_repl_uart(&uart_config, &repl_config, &GM.repl));
-  gm_command_add_registered_to_console();
-  ESP_ERROR_CHECK(esp_console_start_repl(GM.repl));
-  // The global event loop is required for all event handling to work.
-  ESP_ERROR_CHECK(esp_event_loop_create_default());
 
   // Get the factory-set MAC address, which is a permanent unique number programmed
   // into e-fuse bits of this CPU, and thus is useful for identifying the device.
@@ -85,6 +75,19 @@ static void initialize(void)
 
   gm_printf("Device name: %s\n", GM.unique_name);
 
+  gm_select_task();
+
   // Start WiFi, if it's already configured.
   gm_wifi_start();
+
+  esp_console_dev_uart_config_t uart_config = ESP_CONSOLE_DEV_UART_CONFIG_DEFAULT();
+
+  // Configure the console command system.
+  esp_console_repl_config_t repl_config = ESP_CONSOLE_REPL_CONFIG_DEFAULT();
+  repl_config.task_stack_size = 20 * 1024;
+  repl_config.prompt = ">";
+  ESP_ERROR_CHECK(esp_console_new_repl_uart(&uart_config, &repl_config, &GM.repl));
+  gm_command_add_registered_to_console();
+  gm_user_initialize_late();
+  ESP_ERROR_CHECK(esp_console_start_repl(GM.repl));
 }

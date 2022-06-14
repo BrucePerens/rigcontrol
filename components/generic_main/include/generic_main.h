@@ -107,7 +107,8 @@ typedef void (*gm_param_list_coroutine_t)(const char *, const char *, const char
 typedef void (*gm_web_get_coroutine_t)(const char * data, size_t size);
 typedef int (*gm_pattern_coroutine_t)(const char * name, char * result, size_t result_size);
 
-generic_main_t			GM;
+extern generic_main_t		GM;
+extern const char		gm_build_version[];
 extern const char *		const gm_ipv6_address_types[6];
 extern const char		gm_nvs_index[];
 
@@ -152,6 +153,9 @@ extern void			gm_select_wakeup(void);
 
 extern void			gm_timer_to_human(int64_t, char *, size_t);
 
+extern void			gm_user_initialize_early();
+extern void			gm_user_initialize_late();
+
 extern int			gm_vprintf(const char * format, va_list args);
 
 extern int			gm_web_get(const char *url, char *data, size_t size);
@@ -159,3 +163,4 @@ extern int			gm_web_get_with_coroutine(const char *url, gm_web_get_coroutine_t c
 
 extern void			gm_wifi_start(void);
 extern void			gm_wifi_restart(void);
+

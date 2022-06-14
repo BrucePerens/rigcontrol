@@ -5,11 +5,13 @@
 //
 // Copyright 2022 Algorithmic LLC, Licensed under AGPL 3. - Bruce Perens
 //
+// Improv is an Open Protocol, not a "standard" as they say on their web site,
+// because there wasn't any formal standards process.
 // The Improv protocol isn't directly compatible with running the REPL (console command
 // processor) on the same serial connection. It really could be, if the magic number
-// was "IMPROV " with a space, the data was something like JSON, and the packet ended
-// with a carriage-return character. I suggese that if there's ever a later version.
-// I kludge around the incompatibility with the REPL by waiting
+// was "IMPROV " with a space, the data was some text representation like JSON, and the
+// packet ended with a carriage-return character. I suggest that if there's ever a later
+// version. I kludge around the incompatibility with the REPL by waiting
 // for the Improv protocol for a few seconds, and then falling through to the REPL
 // if I don't see any Improv packets.
 //
@@ -70,7 +72,7 @@ static void
 improv_send(int fd, const uint8_t * data, improv_type_t type, unsigned int length)
 {
   uint8_t buffer[256 + 11];
-  unsigned int	checksum;
+  unsigned int	checksum = 0;
 
   memcpy(buffer, magic, sizeof(magic));
   buffer[6] = ImprovVersion;
@@ -82,6 +84,17 @@ improv_send(int fd, const uint8_t * data, improv_type_t type, unsigned int lengt
     checksum += buffer[i];
 
   buffer[9 + length] = (checksum & 0xff);
+  // gm_printf("Write: ");
+  for ( int i = 0; i < length; i++ ) {
+    // uint8_t c = buffer[i];
+
+    // if ( c > ' ' && c <= '~' )
+      // gm_printf("%c ", c);
+    // else
+      // gm_printf("0x%x ", (int)c);
+  }
+  // gm_printf("\n");
+  write(fd, buffer, length + 10);
 }
 
 static void
@@ -130,9 +143,15 @@ improv_read (int fd, uint8_t * data, improv_type_t * r_type, uint8_t * r_length)
   *r_length = 0;
 
   for ( ; ; ) {
-    if ( (status = read(fd, &c, 1)) != 1 ) {
-      if ( status < 0 )
-        fprintf(stderr, "%sread failure: %s\n", name, strerror(errno));
+    if ( (status = read(fd, &c, 1)) == 1 ) {
+      // if ( c > ' ' && c <= '~' )
+        // gm_printf("%s read %c\n", c);
+      // else
+        // gm_printf("%s read 0x%x\n", (int)c);
+    }
+      
+    else {
+      // gm_printf("%sread failure: %s\n", name, strerror(errno));
       return Invalid_RPC_Packet;
     }
 
@@ -150,7 +169,7 @@ improv_read (int fd, uint8_t * data, improv_type_t * r_type, uint8_t * r_length)
     case 6:
       version = c;
       if ( version != 1 ) {
-        fprintf(stderr, "%sversion %d not implemented.\n", name, (int)c);
+        // gm_printf("%sversion %d not implemented.\n", name, (int)c);
         improv_send_error(fd, Invalid_RPC_Packet);
         return Invalid_RPC_Packet;
       }
@@ -176,7 +195,7 @@ improv_read (int fd, uint8_t * data, improv_type_t * r_type, uint8_t * r_length)
   }
  
   if ( checksum != (internal_checksum & 0xff) ) {
-    fprintf(stderr, "%schecksum doesn't match.\n", name);
+    // gm_printf("%schecksum doesn't match.\n", name);
     improv_send_error(fd, Invalid_RPC_Packet);
   }
 
@@ -240,6 +259,15 @@ improv_set_wifi(int fd, const uint8_t * data, uint8_t length)
 static void
 improv_send_device_information(int fd)
 {
+  unsigned int	offset;
+  uint8_t	data[256];
+  data[0] = (RequestDeviceInformation & 0xff);
+  offset = 2;
+  offset += improv_encode_string("K6BP Rigcontrol", &data[offset]);
+  offset += improv_encode_string(gm_build_version, &data[offset]);
+  offset += improv_encode_string("ESP32 Audio Kit", &data[offset]);
+  data[1] = offset - 2;
+  improv_send(fd, data, RPC_Result, offset);
 }
 
 static void
@@ -265,8 +293,8 @@ improv_send_scanned_wifi_networks(int fd)
     offset += improv_encode_string(rssi, &data[offset]);
     const char * auth_required = ap_records[i].authmode != WIFI_AUTH_OPEN ? "YES" : "NO";
     offset += improv_encode_string(auth_required, &data[offset]);
-    data[1] = offset;
-    improv_send(fd, data, RPC_Result, offset + 2);
+    data[1] = offset - 2;
+    improv_send(fd, data, RPC_Result, offset);
   }
   free(ap_records);
   data[0] = (RequestScannedWiFiNetworks & 0xff);
@@ -299,14 +327,14 @@ improv_process(int fd, const uint8_t * data, improv_type_t type, uint8_t length)
       improv_send_scanned_wifi_networks(fd);
       break;
     default:
-      fprintf(stderr, "%sBad command %d.\n", name, type);
+      // gm_printf("%sBad command %d.\n", name, type);
       improv_send_error(fd, Invalid_RPC_Packet);
       return Invalid_RPC_Packet;
     }
     break;
 
   default:
-    fprintf(stderr, "%sBad type %d.\n", name, type);
+    // gm_printf("%sBad type %d.\n", name, type);
     improv_send_error(fd, Unknown_RPC_Command);
     return Unknown_RPC_Command;
   }
@@ -321,7 +349,7 @@ timed_out(int sig)
 }
 
 void
-gm_improv(int fd)
+gm_improv_wifi(int fd)
 {
   // Start the WiFi scan as soon as possible, so that the data is ready when the user
   // wishes to configure WiFi.
@@ -339,6 +367,7 @@ gm_improv(int fd)
 
   ESP_ERROR_CHECK(esp_wifi_scan_start(&config, false));
 
+  gm_printf("Waiting for the Web Updater.\n");
   if ( !setjmp(jump) ) {
     signal(SIGALRM, timed_out);
     alarm(5);
@@ -359,6 +388,7 @@ gm_improv(int fd)
     }
   }
   else {
+    gm_printf("Not connected to the Web updater.\nStarting the command processor.\n");
     // Timed out without receiving an Improv packet.
     // Return so that the REPL can take over the console.
   }

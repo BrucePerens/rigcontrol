@@ -264,7 +264,7 @@ improv_send_device_information(int fd)
   data[0] = (RequestDeviceInformation & 0xff);
   offset = 2;
   offset += improv_encode_string("K6BP Rigcontrol", &data[offset]);
-  offset += improv_encode_string(gm_build_version, &data[offset]);
+  offset += improv_encode_string(GM.build_version, &data[offset]);
   offset += improv_encode_string("ESP32 Audio Kit", &data[offset]);
   data[1] = offset - 2;
   improv_send(fd, data, RPC_Result, offset);

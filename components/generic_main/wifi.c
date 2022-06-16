@@ -203,7 +203,7 @@ static void ip_event_got_ip6(void* arg, esp_event_base_t event_base, int32_t eve
   gm_printf("Got IPv6: interface %s, address, type %s\n",
   netif_name,
   buffer,
-  gm_ipv6_address_types[ipv6_type]);
+  GM.ipv6_address_types[ipv6_type]);
   fflush(stderr);
 
   if (strcmp(netif_name, "sta") == 0) {

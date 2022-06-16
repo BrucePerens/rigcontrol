@@ -9,6 +9,7 @@
 //
 #include <string.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include <freertos/FreeRTOS.h>
 #include "esp_wifi.h"
 #include "esp_event.h"
@@ -25,10 +26,10 @@
 static void initialize(void);
 
 static const char TASK_NAME[] = "main";
-generic_main_t GM = {};
 
 void app_main(void)
 {
+  GM.log_file_pointer = stderr;
   gm_user_initialize_early();
   initialize();
 }
@@ -53,7 +54,7 @@ static void initialize(void)
     ESP_ERROR_CHECK(nvs_flash_erase());
     ESP_ERROR_CHECK(nvs_flash_init());
   }
-  ESP_ERROR_CHECK(nvs_open(gm_nvs_index, NVS_READWRITE, &GM.nvs));
+  ESP_ERROR_CHECK(nvs_open(GM.nvs_index, NVS_READWRITE, &GM.nvs));
 
   // Get the factory-set MAC address, which is a permanent unique number programmed
   // into e-fuse bits of this CPU, and thus is useful for identifying the device.
@@ -88,6 +89,7 @@ static void initialize(void)
   repl_config.prompt = ">";
   ESP_ERROR_CHECK(esp_console_new_repl_uart(&uart_config, &repl_config, &GM.repl));
   gm_command_add_registered_to_console();
+  gm_log_server();
   gm_user_initialize_late();
   ESP_ERROR_CHECK(esp_console_start_repl(GM.repl));
 }

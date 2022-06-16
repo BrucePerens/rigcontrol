@@ -285,7 +285,7 @@ decode_pcp_map(nat_pmp_or_pcp_t * p, ssize_t message_size, bool multicast, struc
     ipv6_type = esp_netif_ip6_get_addr_type(&esp_addr);
 
     if ( ipv6_type != ESP_IP6_ADDR_IS_GLOBAL ) {
-      GM_WARN_ONCE("Warning: The router responded to a PCP map request with a useless mapping to an IPv6 %s address, instead of a global address. This is probably a MiniUPnPd bug.\n", gm_ipv6_address_types[ipv6_type]);
+      GM_WARN_ONCE("Warning: The router responded to a PCP map request with a useless mapping to an IPv6 %s address, instead of a global address. This is probably a MiniUPnPd bug.\n", GM.ipv6_address_types[ipv6_type]);
       return;
     }
     break;

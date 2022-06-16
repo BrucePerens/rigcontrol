@@ -98,6 +98,11 @@ typedef struct _generic_main {
   char			unique_name[64];
   esp_event_loop_handle_t medium_event_loop;
   esp_event_loop_handle_t slow_event_loop;
+  const char * const	build_version;
+  const char * const	nvs_index;
+  const char * const	ipv6_address_types[6];
+  int			log_fd;
+  FILE *		log_file_pointer;
 } generic_main_t;
 
 struct _GM_Array;
@@ -108,9 +113,6 @@ typedef void (*gm_web_get_coroutine_t)(const char * data, size_t size);
 typedef int (*gm_pattern_coroutine_t)(const char * name, char * result, size_t result_size);
 
 extern generic_main_t		GM;
-extern const char		gm_build_version[];
-extern const char *		const gm_ipv6_address_types[6];
-extern const char		gm_nvs_index[];
 
 extern bool			gm_all_zeroes(const void *, size_t);
 extern const void *		gm_array_add(GM_Array * array, const void * data);
@@ -133,6 +135,8 @@ extern void			gm_fd_register(int fd, gm_fd_handler_t handler, void * data, bool 
 extern void			gm_fd_unregister(int fd);
 
 extern void			gm_icmpv6_start_listener_ipv6(gm_ipv6_router_advertisement_after_t after);
+
+extern void			gm_log_server(void);
 
 extern gm_param_result_t	gm_param_erase(const char * name);
 extern gm_param_result_t	gm_param_get(const char * name, char * buffer, size_t size);

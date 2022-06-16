@@ -185,7 +185,7 @@ static void ip_event_sta_got_ip4(void* arg, esp_event_base_t event_base, int32_t
   gm_port_control_protocol_start_listener_ipv4();
   gm_port_control_protocol_request_mapping_ipv4();
   start_webserver();
-  gm_log_server();
+  gm_log_server_start();
 }
 
 // This handler is called when any netif gets an IPv6 address.
@@ -393,6 +393,7 @@ void gm_wifi_restart(void)
 {
   stop_smart_config_task(true);
   stop_webserver();
+  gm_log_server_stop();
   esp_wifi_disconnect();
   xEventGroupClearBits(my_events, CONNECTED_BIT);
   wifi_event_sta_start(0, 0, 0, 0);

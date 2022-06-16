@@ -137,7 +137,8 @@ extern void			gm_fd_unregister(int fd);
 extern void			gm_icmpv6_start_listener_ipv6(gm_ipv6_router_advertisement_after_t after);
 extern void			gm_improv_wifi(int fd);
 
-extern void			gm_log_server(void);
+extern void			gm_log_server_start(void);
+extern void			gm_log_server_stop(void);
 
 extern gm_param_result_t	gm_param_erase(const char * name);
 extern gm_param_result_t	gm_param_get(const char * name, char * buffer, size_t size);

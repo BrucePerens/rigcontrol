@@ -89,7 +89,7 @@ static void initialize(void)
   repl_config.prompt = ">";
   ESP_ERROR_CHECK(esp_console_new_repl_uart(&uart_config, &repl_config, &GM.repl));
   gm_command_add_registered_to_console();
-  gm_log_server();
   gm_user_initialize_late();
+  gm_improv_wifi(0);
   ESP_ERROR_CHECK(esp_console_start_repl(GM.repl));
 }

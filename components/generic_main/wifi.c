@@ -185,6 +185,7 @@ static void ip_event_sta_got_ip4(void* arg, esp_event_base_t event_base, int32_t
   gm_port_control_protocol_start_listener_ipv4();
   gm_port_control_protocol_request_mapping_ipv4();
   start_webserver();
+  gm_log_server();
 }
 
 // This handler is called when any netif gets an IPv6 address.

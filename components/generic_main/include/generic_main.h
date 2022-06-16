@@ -135,6 +135,7 @@ extern void			gm_fd_register(int fd, gm_fd_handler_t handler, void * data, bool 
 extern void			gm_fd_unregister(int fd);
 
 extern void			gm_icmpv6_start_listener_ipv6(gm_ipv6_router_advertisement_after_t after);
+extern void			gm_improv_wifi(int fd);
 
 extern void			gm_log_server(void);
 

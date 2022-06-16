@@ -18,8 +18,8 @@ gm_fail(const char * function, const char * file, int line, const char * pattern
 
   pthread_mutex_lock(&GM.console_print_mutex);
 
-  printf("\nError in function: %s at: %s:%d, errno: %s\n", function, file, line, strerror(errno));
-  vfprintf(stdout, pattern, args);
+  fprintf(GM.log_file_pointer, "\nError in function: %s at: %s:%d, errno: %s\n", function, file, line, strerror(errno));
+  vfprintf(GM.log_file_pointer, pattern, args);
   esp_backtrace_print(100);
 
   pthread_mutex_unlock(&GM.console_print_mutex);
@@ -32,7 +32,8 @@ gm_vprintf(const char * pattern, va_list args)
 {
   int length;
   pthread_mutex_lock(&GM.console_print_mutex);
-  length = vfprintf(stdout, pattern, args);
+  length = vfprintf(GM.log_file_pointer, pattern, args);
+  fflush(GM.log_file_pointer);
   pthread_mutex_unlock(&GM.console_print_mutex);
   return length;
 }

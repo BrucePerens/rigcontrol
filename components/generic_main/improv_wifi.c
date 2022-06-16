@@ -24,7 +24,6 @@
 #include <errno.h>
 #include <stdbool.h>
 #include <setjmp.h>
-#include <signal.h>
 #include <esp_event.h>
 #include <esp_wifi.h>
 #include "generic_main.h"
@@ -369,11 +368,7 @@ gm_improv_wifi(int fd)
 
   gm_printf("Waiting for the Web Updater.\n");
   if ( !setjmp(jump) ) {
-    signal(SIGALRM, timed_out);
-    alarm(5);
     error = improv_read(fd, data, &type, &length);
-    alarm(0);
-    signal(SIGALRM, SIG_DFL);
 
     if ( error == NoError ) {
       // If we get here, Improv started within the timeout. So keep it running on the

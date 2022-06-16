@@ -243,10 +243,9 @@ get_address(const char * host, uint16_t port, bool ipv6)
   snprintf(port_string, sizeof(port_string), "%d", port);
   int gai_result =  getaddrinfo(host, port_string, &hints, &send_address);
 
-  if ( gai_result != 0 ) {
-    GM_FAIL("%s: getaddrinfo() error %d\n", host, gai_result);
+  if ( gai_result != 0 )
     return 0;
-  }
+
   return send_address;
 }
 
@@ -298,7 +297,7 @@ send_stun_request(bool ipv6)
   freeaddrinfo(send_address);
 
   if ( send_result < (send_packet->length + 20) ) {
-    GM_FAIL("Send error: %d %s.\n", send_result, strerror(errno));
+    gm_printf("STUN: Send error: %d %s.\n", send_result, strerror(errno));
     close(sock);
     return -1;
   }

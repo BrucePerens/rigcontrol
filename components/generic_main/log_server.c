@@ -14,14 +14,34 @@
 // that would be running the Improv protocol was problematic.
 
 static void
+logging_connection_closed()
+{
+  if ( GM.log_fd == 2 )
+    return;
+
+  gm_fd_unregister(GM.log_fd);
+  fclose(GM.log_file_pointer);
+  GM.log_fd = 2;
+  GM.log_file_pointer = stderr;
+  gm_printf("Now logging to the console.\n");
+}
+
+static void
 socket_event_handler(int fd, void * data, bool readable, bool writable, bool exception, bool timeout)
 {
   if ( exception ) {
-    fclose(GM.log_file_pointer);
-    GM.log_fd = 2;
-    GM.log_file_pointer = stderr;
+    logging_connection_closed();
+    return;
   }
-  gm_printf("Logging to the console.\n");
+ 
+  if ( readable ) {
+    char	buffer[64];
+    int		result;
+
+    if ( (result = recv(fd, buffer, sizeof(buffer), 0)) == 0 ) {
+      logging_connection_closed();
+    }
+  }
 }
 
 static void
@@ -34,14 +54,15 @@ accept_handler(int sock, void * data, bool readable, bool writable, bool excepti
   if ( readable ) {
     size = sizeof(client_address);
     if ( (connection = accept(sock, (struct sockaddr *)&client_address, &size)) < 0 ) {
-      GM_FAIL("Select event server listen failed: %s\n", strerror(errno));
+      GM_FAIL("Select event server accept failed: %s\n", strerror(errno));
       return;
     }
     int flags = fcntl(connection, F_GETFL, 0);
-    fcntl(connection, F_SETFL, flags | O_NONBLOCK);
+    // fcntl(connection, F_SETFL, flags | O_NONBLOCK);
     gm_printf("Now logging to the telnet client rather than the console.\n");
     GM.log_fd = connection;
     GM.log_file_pointer = fdopen(GM.log_fd, "a");
+    setlinebuf(GM.log_file_pointer);
     gm_printf("Logging to the telnet client initiated.\n");
     gm_fd_register(connection, socket_event_handler, 0, true, false, true, 0);
   }
@@ -58,8 +79,8 @@ gm_log_server(void)
   int server = socket(AF_INET, SOCK_STREAM, 0);
 
   address.sin_family = AF_INET;
-  address.sin_addr.s_addr = INADDR_ANY;
-  address.sin_port = 23;
+  address.sin_addr.s_addr = GM.sta.ip4.address.sin_addr.s_addr;
+  address.sin_port = htons(23);
 
   if ( bind(server, (struct sockaddr *)&address, sizeof(address)) != 0 ) {
     GM_FAIL("Log server bind failed: %s\n", strerror(errno));
@@ -73,4 +94,5 @@ gm_log_server(void)
   }
 
   gm_fd_register(server, accept_handler, 0, true, false, true, 0);
+  gm_printf("Log server waiting for connection.\n");
 }

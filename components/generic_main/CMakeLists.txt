@@ -35,8 +35,8 @@ add_custom_target(fs-gen DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/fs_gen)
 add_dependencies(${COMPONENT_LIB} fs-gen)
 
 
-add_custom_command(
-  OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/git_version.c
+add_custom_target(
+  git-version
   COMMAND sh ${CMAKE_CURRENT_SOURCE_DIR}/generate_git_version.sh ${CMAKE_CURRENT_BINARY_DIR}/git_version.c
 )
 
@@ -44,5 +44,4 @@ set_source_files_properties(
     ${CMAKE_CURRENT_BINARY_DIR}/git_version.c 
     PROPERTIES GENERATED TRUE
 )
-add_custom_target(git-version DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/git_version.c)
 add_dependencies(${COMPONENT_LIB} git-version)

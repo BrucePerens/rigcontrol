@@ -115,7 +115,7 @@ gm_event_server(void)
   
   address.sin_family = AF_INET;
   address.sin_addr.s_addr = inet_addr("127.0.0.1"); 
-  address.sin_port = 2139; // Private port not expected to be used by other code.
+  address.sin_port = htons(2139); // Private port not expected to be used by other code.
 
   if ( bind(server, (struct sockaddr *)&address, sizeof(address)) != 0 ) {
     GM_FAIL("Select event server bind failed: %s\n", strerror(errno));

@@ -7,6 +7,7 @@
 //
 // Improv is an Open Protocol, not a "standard" as they say on their web site,
 // because there wasn't any formal standards process.
+//
 // The Improv protocol isn't directly compatible with running the REPL (console command
 // processor) on the same serial connection. It really could be, if the magic number
 // was "IMPROV " with a space, the data was some text representation like JSON, and the
@@ -14,6 +15,12 @@
 // version. I kludge around the incompatibility with the REPL by waiting
 // for the Improv protocol for a few seconds, and then falling through to the REPL
 // if I don't see any Improv packets.
+//
+// Important things that weren't said in the Improv Serial document:
+// * The speed is 115200 baud.
+// * Implementations actually send a newline character after the Improv packet,
+//   although that is not in the spec. This may be _required_ because some
+//   implementations use line-based I/O.
 //
 
 #include <stdio.h>
@@ -23,7 +30,6 @@
 #include <stdint.h>
 #include <errno.h>
 #include <stdbool.h>
-#include <setjmp.h>
 #include <esp_event.h>
 #include <esp_wifi.h>
 #include "generic_main.h"
@@ -63,7 +69,6 @@ typedef enum improv_error_state {
 
 static improv_state_t	improv_state = Ready;
 static bool		improv_received_a_valid_packet = false;
-static jmp_buf		jump;
 static esp_event_handler_instance_t handler_wifi_event_sta_connected_to_ap = NULL;
 static esp_event_handler_instance_t handler_wifi_event_sta_disconnected = NULL;
 
@@ -73,6 +78,7 @@ improv_send(int fd, const uint8_t * data, improv_type_t type, unsigned int lengt
   uint8_t buffer[256 + 11];
   unsigned int	checksum = 0;
 
+  gm_printf("Improv send type %d, length %d\n", type, length);
   memcpy(buffer, magic, sizeof(magic));
   buffer[6] = ImprovVersion;
   buffer[7] = (type & 0xff);
@@ -82,18 +88,20 @@ improv_send(int fd, const uint8_t * data, improv_type_t type, unsigned int lengt
   for ( unsigned int i = 0; i < 9 + length; i++ )
     checksum += buffer[i];
 
+  gm_printf("Checksum is 0x%x\n", checksum & 0xff);
   buffer[9 + length] = (checksum & 0xff);
-  // gm_printf("Write: ");
-  for ( int i = 0; i < length; i++ ) {
-    // uint8_t c = buffer[i];
+  buffer[10 + length] = '\n';
+  gm_printf("Write: ");
+  for ( int i = 0; i < 10 + length; i++ ) {
+    uint8_t c = buffer[i];
 
-    // if ( c > ' ' && c <= '~' )
-      // gm_printf("%c ", c);
-    // else
-      // gm_printf("0x%x ", (int)c);
+    if ( c > ' ' && c <= '~' )
+      gm_printf("%c ", c);
+    else
+      gm_printf("0x%x ", (int)c);
   }
-  // gm_printf("\n");
-  write(fd, buffer, length + 10);
+  gm_printf("\n");
+  write(fd, buffer, 11 + length);
 }
 
 static void
@@ -141,24 +149,31 @@ improv_read (int fd, uint8_t * data, improv_type_t * r_type, uint8_t * r_length)
   *r_type = 0;
   *r_length = 0;
 
+  gm_printf("improv_read\n");
   for ( ; ; ) {
+    gm_printf("Index = %d\n", index);
     if ( (status = read(fd, &c, 1)) == 1 ) {
-      // if ( c > ' ' && c <= '~' )
-        // gm_printf("%s read %c\n", c);
-      // else
-        // gm_printf("%s read 0x%x\n", (int)c);
+      if ( c > ' ' && c <= '~' )
+        gm_printf("read %c\n", c);
+      else
+        gm_printf("read 0x%x\n", (int)c);
     }
       
     else {
-      // gm_printf("%sread failure: %s\n", name, strerror(errno));
+      gm_printf("%sread failure: %s\n", name, strerror(errno));
       return Invalid_RPC_Packet;
     }
 
-    internal_checksum += c;
 
     // Keep throwing away data until I see "IMPROV".
-    if ( index < sizeof(magic) ) {
+    if ( index < sizeof(magic) - 1) {
       if ( c != magic[index] ) {
+        if ( c == 0xc0 ) {
+          // This is probably a SLIP packet for the ROM bootloader.
+	  // Reset the chip and hope it gets into bootloader mode.
+          // There isn't a documented way to jump into it.
+          esp_restart();
+        }
         index = 0;
         continue;
       }
@@ -168,34 +183,37 @@ improv_read (int fd, uint8_t * data, improv_type_t * r_type, uint8_t * r_length)
     case 6:
       version = c;
       if ( version != 1 ) {
-        // gm_printf("%sversion %d not implemented.\n", name, (int)c);
+        gm_printf("%sversion %d not implemented.\n", name, (int)c);
         improv_send_error(fd, Invalid_RPC_Packet);
         return Invalid_RPC_Packet;
       }
       break;
     case 7:
       type = c;
+      gm_printf("Got type %d\n", c);
       break;
     case 8:
       length = c;
+      gm_printf("Got length %d\n", c);
       break;
     }
 
-    int offset = (int)index - 9;
-
-    if ( offset >= 0 && offset < length )
-      data[offset] = c;
-    else if ( offset == length ) {
+    if ( index >= 9 && index < 9 + length ) {
+      data[index - 9] = c;
+      gm_printf("Wrote d to data[%d]\n", c, index - 9);
+    }
+    else if ( index == length + 9 ) {
       checksum = c;
       break;
     }
-
+    internal_checksum += c;
     index++;
   }
  
   if ( checksum != (internal_checksum & 0xff) ) {
-    // gm_printf("%schecksum doesn't match.\n", name);
+    gm_printf("%schecksum doesn't match.\n", name);
     improv_send_error(fd, Invalid_RPC_Packet);
+    return Invalid_RPC_Packet;
   }
 
   *r_type = (improv_type_t)type;
@@ -326,25 +344,19 @@ improv_process(int fd, const uint8_t * data, improv_type_t type, uint8_t length)
       improv_send_scanned_wifi_networks(fd);
       break;
     default:
-      // gm_printf("%sBad command %d.\n", name, type);
+      gm_printf("%sBad command %d.\n", name, command);
       improv_send_error(fd, Invalid_RPC_Packet);
       return Invalid_RPC_Packet;
     }
     break;
 
   default:
-    // gm_printf("%sBad type %d.\n", name, type);
+    gm_printf("%sBad type %d.\n", name, type);
     improv_send_error(fd, Unknown_RPC_Command);
     return Unknown_RPC_Command;
   }
 
   return NoError;
-}
-
-static void
-timed_out(int sig)
-{
-  longjmp(jump, 1);
 }
 
 void
@@ -367,18 +379,16 @@ gm_improv_wifi(int fd)
   ESP_ERROR_CHECK(esp_wifi_scan_start(&config, false));
 
   gm_printf("Waiting for the Web Updater.\n");
-  if ( !setjmp(jump) ) {
-    error = improv_read(fd, data, &type, &length);
+  error = improv_read(fd, data, &type, &length);
 
-    if ( error == NoError ) {
-      // If we get here, Improv started within the timeout. So keep it running on the
-      // console rather than the REPL.
-      improv_process(fd, data, type, length);
-      for ( ; ; ) {
-        error = improv_read(fd, data, &type, &length);
-        if ( error == NoError ) {
-          improv_process(fd, data, type, length);
-        }
+  if ( error == NoError ) {
+    // If we get here, Improv started within the timeout. So keep it running on the
+    // console rather than the REPL.
+    improv_process(fd, data, type, length);
+    for ( ; ; ) {
+      error = improv_read(fd, data, &type, &length);
+      if ( error == NoError ) {
+        improv_process(fd, data, type, length);
       }
     }
   }

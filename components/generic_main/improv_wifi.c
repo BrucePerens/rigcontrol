@@ -77,10 +77,12 @@ typedef enum improv_error_state {
   Invalid_RPC_Packet = 1,	// The command was malformed.
   Unknown_RPC_Command = 2,
   UnableToConnect = 3,		// The requested WiFi connection failed.
+  EndImprov = 0xfe,	// End Improv and go to the command line.
   UnknownError = 0xff
 } improv_error_state_t;
 
 static improv_state_t	improv_state = Ready;
+static int		enter_count = 0;
 struct sockaddr_in	address = {};
 static bool		improv_received_a_valid_packet = false;
 static esp_event_handler_instance_t handler_wifi_event_sta_got_ip4 = NULL;
@@ -203,6 +205,14 @@ improv_read (int fd, uint8_t * data, improv_type_t * r_type, uint8_t * r_length)
   for ( ; ; ) {
     ; // gm_printf("Index = %d\n", index);
     if ( (status = read(fd, &c, 1)) == 1 ) {
+      if ( c == '\r' || c == '\n' ) {
+        if ( enter_count >= 2 )
+          return EndImprov;
+        enter_count++;
+      }
+      else
+        enter_count = 0;
+
       if ( c > ' ' && c <= '~' )
         ; // gm_printf("read %c\n", c);
       else
@@ -417,23 +427,13 @@ gm_improv_wifi(int fd)
   improv_type_t		type;
   uint8_t		length;
 
-  ; // gm_printf("Waiting for the Web Updater.\n");
-  error = improv_read(fd, data, &type, &length);
+  gm_printf("*** To start the command line, press ENTER three times. ***\n");
 
-  if ( error == NoError ) {
-    // If we get here, Improv started within the timeout. So keep it running on the
-    // console rather than the REPL.
-    improv_process(fd, data, type, length);
-    for ( ; ; ) {
-      error = improv_read(fd, data, &type, &length);
-      if ( error == NoError ) {
-        improv_process(fd, data, type, length);
-      }
-    }
-  }
-  else {
-    ; // gm_printf("Not connected to the Web updater.\nStarting the command processor.\n");
-    // Timed out without receiving an Improv packet.
-    // Return so that the REPL can take over the console.
+  for ( ; ; ) {
+    error = improv_read(fd, data, &type, &length);
+    if ( error == EndImprov )
+      return;
+    else if ( error == NoError )
+      improv_process(fd, data, type, length);
   }
 }

@@ -21,6 +21,19 @@
 // * Implementations actually send a newline character after the Improv packet,
 //   although that is not in the spec. This may be _required_ because some
 //   implementations use line-based I/O.
+// * The flow for the Send WiFi Settings packet is not correctly explained, it leaves
+//   out the current state packet sent while the state is Provisioning. The flow is:
+//   * Set the WiFi information.
+//   * Set the current state to Provisioning.
+//   * Send the current state.
+//   * Wait for WiFi to connect.
+//   * Set the current state to Provisioned.
+//   * Send the current state.
+//   * Send the URL of the device as an RPC response.
+//
+//   * If WiFi doesn't connect:
+//      * Set the current state back to Ready
+//	* Send the current state.
 //
 
 #include <stdio.h>
@@ -35,7 +48,7 @@
 #include "generic_main.h"
 
 const char	name[] = "Improv WiFi ";
-const uint8_t	magic[] = "IMPROV";
+const uint8_t	magic[6] = "IMPROV"; // Explicit size eliminates trailing '\0'.
 const uint8_t	ImprovVersion = 1;
 
 typedef enum improv_type
@@ -68,8 +81,9 @@ typedef enum improv_error_state {
 } improv_error_state_t;
 
 static improv_state_t	improv_state = Ready;
+struct sockaddr_in	address = {};
 static bool		improv_received_a_valid_packet = false;
-static esp_event_handler_instance_t handler_wifi_event_sta_connected_to_ap = NULL;
+static esp_event_handler_instance_t handler_wifi_event_sta_got_ip4 = NULL;
 static esp_event_handler_instance_t handler_wifi_event_sta_disconnected = NULL;
 
 static void
@@ -78,7 +92,7 @@ improv_send(int fd, const uint8_t * data, improv_type_t type, unsigned int lengt
   uint8_t buffer[256 + 11];
   unsigned int	checksum = 0;
 
-  gm_printf("Improv send type %d, length %d\n", type, length);
+  ; // gm_printf("Improv send type %d, length %d\n", type, length);
   memcpy(buffer, magic, sizeof(magic));
   buffer[6] = ImprovVersion;
   buffer[7] = (type & 0xff);
@@ -88,20 +102,52 @@ improv_send(int fd, const uint8_t * data, improv_type_t type, unsigned int lengt
   for ( unsigned int i = 0; i < 9 + length; i++ )
     checksum += buffer[i];
 
-  gm_printf("Checksum is 0x%x\n", checksum & 0xff);
+  ; // gm_printf("Checksum is 0x%x\n", checksum & 0xff);
   buffer[9 + length] = (checksum & 0xff);
   buffer[10 + length] = '\n';
-  gm_printf("Write: ");
+  ; // gm_printf("Write: ");
   for ( int i = 0; i < 10 + length; i++ ) {
     uint8_t c = buffer[i];
 
     if ( c > ' ' && c <= '~' )
-      gm_printf("%c ", c);
+      ; // gm_printf("%c ", c);
     else
-      gm_printf("0x%x ", (int)c);
+      ; // gm_printf("0x%x ", (int)c);
   }
-  gm_printf("\n");
+  ; // gm_printf("\n");
   write(fd, buffer, 11 + length);
+}
+
+static int
+improv_encode_string(const char * s, uint8_t * data)
+{
+  int	length = strlen(s);
+
+  *data++ = (length & 0xff);
+
+  memcpy(data, s, length);
+
+  return length + 1;
+}
+
+static void
+improv_report_url(int fd)
+{
+  unsigned int	offset;
+  uint8_t	data[256];
+  char		ntop_buffer[INET_ADDRSTRLEN + 1];
+  char		url_buffer[INET_ADDRSTRLEN + 10];
+
+  data[0] = (SendWiFiSettings & 0xff);
+  offset = 2;
+
+  if ( address.sin_addr.s_addr != 0 ) {
+    inet_ntop(AF_INET, &address.sin_addr, ntop_buffer, sizeof(ntop_buffer));
+    snprintf(url_buffer, sizeof(url_buffer), "http://%s/", ntop_buffer);
+    offset += improv_encode_string(url_buffer, &data[offset]);
+  }
+  data[1] = offset - 2;
+  improv_send(fd, data, RPC_Result, offset);
 }
 
 static void
@@ -109,16 +155,20 @@ improv_send_current_state(int fd)
 {
   const uint8_t	state = (improv_state & 0xff);
   improv_send(fd, &state, CurrentState, 1);
+  if ( improv_state == Provisioned )
+    improv_report_url(fd);
 }
 
-static void wifi_event_sta_connected_to_ap(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data) {
-  int fd = (int)event_data;
+static void wifi_event_sta_got_ip4(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data) {
+  int fd = (int)arg;
+  ip_event_got_ip_t* event = (ip_event_got_ip_t*)event_data;
   
   ESP_ERROR_CHECK(esp_event_handler_instance_unregister(
-   WIFI_EVENT,
-   WIFI_EVENT_STA_CONNECTED,
-   &handler_wifi_event_sta_connected_to_ap));
+   IP_EVENT,
+   IP_EVENT_STA_GOT_IP,
+   &handler_wifi_event_sta_got_ip4));
 
+  address.sin_addr.s_addr = event->ip_info.ip.addr;
   improv_state = Provisioned;
   improv_send_current_state(fd);
 }
@@ -149,24 +199,24 @@ improv_read (int fd, uint8_t * data, improv_type_t * r_type, uint8_t * r_length)
   *r_type = 0;
   *r_length = 0;
 
-  gm_printf("improv_read\n");
+  ; // gm_printf("improv_read\n");
   for ( ; ; ) {
-    gm_printf("Index = %d\n", index);
+    ; // gm_printf("Index = %d\n", index);
     if ( (status = read(fd, &c, 1)) == 1 ) {
       if ( c > ' ' && c <= '~' )
-        gm_printf("read %c\n", c);
+        ; // gm_printf("read %c\n", c);
       else
-        gm_printf("read 0x%x\n", (int)c);
+        ; // gm_printf("read 0x%x\n", (int)c);
     }
       
     else {
-      gm_printf("%sread failure: %s\n", name, strerror(errno));
+      ; // gm_printf("%sread failure: %s\n", name, strerror(errno));
       return Invalid_RPC_Packet;
     }
 
 
     // Keep throwing away data until I see "IMPROV".
-    if ( index < sizeof(magic) - 1) {
+    if ( index < sizeof(magic)) {
       if ( c != magic[index] ) {
         if ( c == 0xc0 ) {
           // This is probably a SLIP packet for the ROM bootloader.
@@ -183,25 +233,23 @@ improv_read (int fd, uint8_t * data, improv_type_t * r_type, uint8_t * r_length)
     case 6:
       version = c;
       if ( version != 1 ) {
-        gm_printf("%sversion %d not implemented.\n", name, (int)c);
+        ; // gm_printf("%sversion %d not implemented.\n", name, (int)c);
         improv_send_error(fd, Invalid_RPC_Packet);
         return Invalid_RPC_Packet;
       }
       break;
     case 7:
       type = c;
-      gm_printf("Got type %d\n", c);
+      ; // gm_printf("Got type %d\n", c);
       break;
     case 8:
       length = c;
-      gm_printf("Got length %d\n", c);
+      ; // gm_printf("Got length %d\n", c);
       break;
     }
 
-    if ( index >= 9 && index < 9 + length ) {
+    if ( index >= 9 && index < 9 + length )
       data[index - 9] = c;
-      gm_printf("Wrote d to data[%d]\n", c, index - 9);
-    }
     else if ( index == length + 9 ) {
       checksum = c;
       break;
@@ -211,7 +259,7 @@ improv_read (int fd, uint8_t * data, improv_type_t * r_type, uint8_t * r_length)
   }
  
   if ( checksum != (internal_checksum & 0xff) ) {
-    gm_printf("%schecksum doesn't match.\n", name);
+    ; // gm_printf("%schecksum doesn't match.\n", name);
     improv_send_error(fd, Invalid_RPC_Packet);
     return Invalid_RPC_Packet;
   }
@@ -228,19 +276,7 @@ improv_decode_string(const uint8_t * data, uint8_t * s)
   uint8_t	length = *data++;
   memcpy(s, data, length);
   s[length] = '\0';
-  return (unsigned int)length;
-}
-
-static int
-improv_encode_string(const char * s, uint8_t * data)
-{
-  int	length = strlen(s);
-
-  *data++ = (length & 0xff);
-
-  memcpy(data, s, length);
-
-  return length + 1;
+  return (unsigned int)length + 1;
 }
 
 static void
@@ -250,17 +286,17 @@ improv_set_wifi(int fd, const uint8_t * data, uint8_t length)
   uint8_t	password[257]; 
   uint8_t	ssid_length;
 
-  ssid_length = improv_decode_string(&data[11], ssid);
-  improv_decode_string(&data[ssid_length + 12], password);
+  ssid_length = improv_decode_string(data, ssid);
+  improv_decode_string(&data[ssid_length], password);
   improv_state = Provisioning;
   improv_send_current_state(fd);
 
   ESP_ERROR_CHECK(esp_event_handler_instance_register(
-   WIFI_EVENT,
-   WIFI_EVENT_STA_CONNECTED,
-   &wifi_event_sta_connected_to_ap,
+   IP_EVENT,
+   IP_EVENT_STA_GOT_IP,
+   &wifi_event_sta_got_ip4,
    (void *)fd,
-   &handler_wifi_event_sta_connected_to_ap));
+   &handler_wifi_event_sta_got_ip4));
 
 
   gm_param_set("ssid", (const char *)ssid);
@@ -271,6 +307,9 @@ improv_set_wifi(int fd, const uint8_t * data, uint8_t length)
    WIFI_EVENT_STA_DISCONNECTED,
    &wifi_event_sta_disconnected,
    &handler_wifi_event_sta_disconnected));
+
+  improv_state = Provisioning;
+  improv_send_current_state(fd);
 }
 
 static void
@@ -291,9 +330,18 @@ static void
 improv_send_scanned_wifi_networks(int fd)
 {
   uint8_t		data[256];
+  wifi_scan_config_t	config = {};
   wifi_ap_record_t *	ap_records;
   uint16_t		number_of_access_points;
   char			rssi[5];
+
+  config.scan_type = WIFI_SCAN_TYPE_ACTIVE;
+  // WiFi scan times are in milliseconds per channel.
+  config.scan_time.active.min = 120;
+  config.scan_time.active.max = 120;
+  config.scan_time.passive = 120;
+
+  ESP_ERROR_CHECK(esp_wifi_scan_start(&config, true));
 
   ESP_ERROR_CHECK(esp_wifi_scan_get_ap_num(&number_of_access_points));
 
@@ -344,14 +392,14 @@ improv_process(int fd, const uint8_t * data, improv_type_t type, uint8_t length)
       improv_send_scanned_wifi_networks(fd);
       break;
     default:
-      gm_printf("%sBad command %d.\n", name, command);
+      ; // gm_printf("%sBad command %d.\n", name, command);
       improv_send_error(fd, Invalid_RPC_Packet);
       return Invalid_RPC_Packet;
     }
     break;
 
   default:
-    gm_printf("%sBad type %d.\n", name, type);
+    ; // gm_printf("%sBad type %d.\n", name, type);
     improv_send_error(fd, Unknown_RPC_Command);
     return Unknown_RPC_Command;
   }
@@ -365,20 +413,11 @@ gm_improv_wifi(int fd)
   // Start the WiFi scan as soon as possible, so that the data is ready when the user
   // wishes to configure WiFi.
   uint8_t		data[256];
-  wifi_scan_config_t	config = {};
   improv_error_state_t	error;
   improv_type_t		type;
   uint8_t		length;
 
-  config.scan_type = WIFI_SCAN_TYPE_ACTIVE;
-  // WiFi scan times are in milliseconds per channel.
-  config.scan_time.active.min = 120;
-  config.scan_time.active.max = 120;
-  config.scan_time.passive = 120;
-
-  ESP_ERROR_CHECK(esp_wifi_scan_start(&config, false));
-
-  gm_printf("Waiting for the Web Updater.\n");
+  ; // gm_printf("Waiting for the Web Updater.\n");
   error = improv_read(fd, data, &type, &length);
 
   if ( error == NoError ) {
@@ -393,7 +432,7 @@ gm_improv_wifi(int fd)
     }
   }
   else {
-    gm_printf("Not connected to the Web updater.\nStarting the command processor.\n");
+    ; // gm_printf("Not connected to the Web updater.\nStarting the command processor.\n");
     // Timed out without receiving an Improv packet.
     // Return so that the REPL can take over the console.
   }

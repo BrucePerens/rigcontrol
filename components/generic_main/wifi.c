@@ -126,11 +126,17 @@ void wifi_event_sta_start(void* arg, esp_event_base_t event_base, int32_t event_
 
 void wifi_event_sta_disconnected(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data)
 {
-  gm_printf("Wifi disconnected.\n");
-  fflush(stderr);
-  stop_webserver();
-  esp_wifi_connect();
-  xEventGroupClearBits(my_events, CONNECTED_BIT);
+  EventBits_t uxBits;
+
+  uxBits = xEventGroupGetBits(my_events);
+  if ( uxBits & CONNECTED_BIT ) {
+    gm_printf("Wifi disconnected.\n");
+    fflush(stderr);
+    stop_webserver();
+    gm_log_server_stop();
+    xEventGroupClearBits(my_events, CONNECTED_BIT);
+    esp_wifi_connect();
+  }
 }
 
 static void

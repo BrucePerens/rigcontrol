@@ -427,7 +427,7 @@ gm_improv_wifi(int fd)
   improv_type_t		type;
   uint8_t		length;
 
-  gm_printf("*** To start the command line, press ENTER three times. ***\n");
+  gm_printf("\n\n*** To start the command line, press ENTER three times. ***\n\n");
 
   for ( ; ; ) {
     error = improv_read(fd, data, &type, &length);

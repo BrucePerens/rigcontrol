@@ -7,9 +7,8 @@ project(k6bp_rigcontrol)
 
 # To build a firmware archive for the web installer, use:
 # idf.py build firmware
-add_custom_command(
-  OUTPUT firmware.tar.gz
-  COMMAND tar cvlzf firmware.tar.gz bootloader/bootloader.bin partition_table/partition-table.bin k6bp_rigcontrol.bin build/manifest.json
+add_custom_target(
+  firmware
+  COMMAND sh ${CMAKE_CURRENT_SOURCE_DIR}/scripts/make_firmware_archive.sh
   DEPENDS bootloader/bootloader.bin partition_table/partition-table.bin k6bp_rigcontrol.bin
 )
-add_custom_target(firmware DEPENDS firmware.tar.gz)

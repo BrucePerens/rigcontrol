@@ -1,7 +1,7 @@
 # K6BP RigControl
 
 ## Easy Firmware Install
-  Click [this](https://perens.com/static/Rigcontrol/) and follow the instructions.
+  Click [this](https://perens.com/static/Rigcontrol/firmware) and follow the instructions.
   This will work better than the instructions below for people who aren't experienced
   programmers.
 

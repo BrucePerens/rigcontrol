@@ -9,7 +9,7 @@ project(k6bp_rigcontrol)
 # idf.py build firmware
 add_custom_command(
   OUTPUT firmware.tar.gz
-  COMMAND tar cvlzf firmware.tar.gz bootloader/bootloader.bin partition_table/partition-table.bin k6bp_rigcontrol.bin
+  COMMAND tar cvlzf firmware.tar.gz bootloader/bootloader.bin partition_table/partition-table.bin k6bp_rigcontrol.bin build/manifest.json
   DEPENDS bootloader/bootloader.bin partition_table/partition-table.bin k6bp_rigcontrol.bin
 )
 add_custom_target(firmware DEPENDS firmware.tar.gz)

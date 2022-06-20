@@ -94,7 +94,7 @@ gm_log_server_start(void)
   }
 
   gm_fd_register(server, accept_handler, 0, true, false, true, 0);
-  gm_printf("Log server waiting for connection.\n");
+  ; // gm_printf("Log server waiting for connection.\n");
 }
 
 void

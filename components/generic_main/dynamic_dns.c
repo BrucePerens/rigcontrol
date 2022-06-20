@@ -83,12 +83,12 @@ send_ddns(const char * url)
   gm_pattern_string(url, parameter, request, sizeof(request));
   int status = gm_web_get(request, response, sizeof(response));
   if (status == 200) {
-    gm_printf("\nDynamic DNS succeeded: %s.\n", response);
+    ; // gm_printf("\nDynamic DNS succeeded: %s.\n", response);
     fflush(stderr);
     return 0;
   }
   else {
-    gm_printf("Dynamic DNS failed: %d %s\n", status, response);
+    ; // gm_printf("Dynamic DNS failed: %d %s\n", status, response);
     return -1;
   }
 }

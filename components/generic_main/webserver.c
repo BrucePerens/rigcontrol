@@ -23,7 +23,7 @@ static void time_was_synchronized(struct timeval * t)
   // to the current time. This sets the SNTP code so that the second and subsequent
   // times, it is adjusted smoothly.
   if (GM.time_last_synchronized == 0) {
-    gm_printf("Time was synchronized.\n");
+    ; // gm_printf("Time was synchronized.\n");
     fflush(stderr);
     sntp_set_sync_mode(SNTP_SYNC_MODE_SMOOTH);
     sntp_restart();

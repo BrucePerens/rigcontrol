@@ -211,7 +211,7 @@ int request_mapping_ipv6(gm_port_mapping_t * m)
 
   memset(buffer, '\0', sizeof(buffer));
   inet_ntop(a6->sin6_family, &a6->sin6_addr, buffer, sizeof(buffer));
-  gm_printf("Request IPv6 port mapping of router %s\n", buffer);
+  ; // gm_printf("Request IPv6 port mapping of router %s\n", buffer);
   p->version = PORT_MAPPING_PROTOCOL;
   p->opcode = PCP_MAP;
   p->pcp.lifetime = htonl(24 * 60 * 60);
@@ -255,7 +255,7 @@ gm_port_control_protocol_request_mapping_ipv6()
 static void
 decode_pcp_announce(nat_pmp_or_pcp_t * p, ssize_t message_size, bool multicast, struct sockaddr_storage * address)
 {
-  gm_printf("Received PCP Announce\n");
+  ; // gm_printf("Received PCP Announce\n");
 }
 
 static void
@@ -322,7 +322,7 @@ decode_pcp_map(nat_pmp_or_pcp_t * p, ssize_t message_size, bool multicast, struc
     inet_ntop(AF_INET6, p->pcp.mp.external_address.s6_addr, buffer, sizeof(buffer));
   else
     inet_ntop(AF_INET, &p->pcp.mp.external_address.s6_addr[12], buffer, sizeof(buffer));
-  gm_printf("Router public mapping address: %s port: %d\n", buffer, m.external_port);
+  ; // gm_printf("Router public mapping address: %s port: %d\n", buffer, m.external_port);
   if ( m.ipv6 )
     mp = &GM.sta.ip6.port_mappings;
   else
@@ -339,7 +339,7 @@ decode_pcp_map(nat_pmp_or_pcp_t * p, ssize_t message_size, bool multicast, struc
 static void
 decode_pcp_peer(nat_pmp_or_pcp_t * p, ssize_t message_size, bool multicast, struct sockaddr_storage * address)
 {
-  gm_printf("Received PCP Peer\n");
+  ; // gm_printf("Received PCP Peer\n");
 }
 
 void
@@ -425,7 +425,7 @@ incoming_packet(int fd, void * data, bool readable, bool writable, bool exceptio
     struct sockaddr_storage	address;
     socklen_t			address_size = sizeof(address);
     ssize_t			message_size;
-    int				port;
+    // int				port;
     char			buffer[INET6_ADDRSTRLEN + 1];
 
     message_size = recvfrom(fd, &packet, sizeof(packet), MSG_DONTWAIT, (struct sockaddr *)&address, &address_size);
@@ -437,18 +437,18 @@ incoming_packet(int fd, void * data, bool readable, bool writable, bool exceptio
     memset(buffer, '\0', sizeof(buffer));
     if ( address.ss_family == AF_INET ) {
       inet_ntop(AF_INET, &((struct sockaddr_in *)&address)->sin_addr.s_addr, buffer, sizeof(buffer));
-      port = htons(((struct sockaddr_in *)&address)->sin_port);
+      // port = htons(((struct sockaddr_in *)&address)->sin_port);
     }
     else {
       inet_ntop(AF_INET6, &((struct sockaddr_in6 *)&address)->sin6_addr, buffer, sizeof(buffer));
-      port = htons(((struct sockaddr_in6 *)&address)->sin6_port);
+      // port = htons(((struct sockaddr_in6 *)&address)->sin6_port);
     }
 
-    gm_printf("PCP received %s packet of size %d from %s port %d.\n",
-     data != 0 ? "multicast" : "unicast",
-     message_size,
-     buffer,
-     port);
+    ; // gm_printf("PCP received %s packet of size %d from %s port %d.\n",
+     // data != 0 ? "multicast" : "unicast",
+     // message_size,
+     // buffer,
+     // port);
 
 
     // Data is set to 1 for multicast, 0 for unicast.

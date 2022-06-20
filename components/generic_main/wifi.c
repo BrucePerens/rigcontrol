@@ -66,10 +66,10 @@ static void after_stun(bool success, bool ipv6, struct sockaddr * address)
     else
       inet_ntop(AF_INET, &((struct sockaddr_in *)address)->sin_addr, buffer, sizeof(buffer));
    
-    gm_printf("Public address %s.\n", buffer);
+    ; // gm_printf("Public address %s.\n", buffer);
   }
   else {
-    gm_printf("STUN for %s failed.\n", ipv6 ? "IPv6" : "IPv4");
+    ; // gm_printf("STUN for %s failed.\n", ipv6 ? "IPv6" : "IPv4");
   }
 }
 
@@ -130,7 +130,7 @@ void wifi_event_sta_disconnected(void* arg, esp_event_base_t event_base, int32_t
 
   uxBits = xEventGroupGetBits(my_events);
   if ( uxBits & CONNECTED_BIT ) {
-    gm_printf("Wifi disconnected.\n");
+    ; // gm_printf("Wifi disconnected.\n");
     fflush(stderr);
     stop_webserver();
     gm_log_server_stop();
@@ -146,7 +146,7 @@ ipv6_router_advertisement_handler(struct sockaddr_in6 * address, uint16_t router
    && memcmp(GM.sta.ip6.router.sin6_addr.s6_addr, address->sin6_addr.s6_addr, sizeof(address->sin6_addr.s6_addr)) != 0 ) {
     static bool first_time = true;
     if ( first_time ) {
-      gm_printf("Received a router advertisement from more than one IPv6 router. Ignoring all but the first.\n");
+      ; // gm_printf("Received a router advertisement from more than one IPv6 router. Ignoring all but the first.\n");
       first_time = false;
     }
     return;
@@ -185,7 +185,7 @@ static void ip_event_sta_got_ip4(void* arg, esp_event_base_t event_base, int32_t
   inet_ntop(AF_INET, &event->ip_info.ip.addr, buffer, sizeof(buffer));
   gm_printf("Got IPv4: interface %s, address %s ", esp_netif_get_desc(event->esp_netif), buffer);
   inet_ntop(AF_INET, &event->ip_info.gw.addr, buffer, sizeof(buffer));
-  gm_printf("router %s\n", buffer);
+  ; // gm_printf("router %s\n", buffer);
   fflush(stderr);
   gm_stun(false, (struct sockaddr *)&GM.sta.ip4.public, after_stun);
   gm_port_control_protocol_start_listener_ipv4();
@@ -207,10 +207,10 @@ static void ip_event_got_ip6(void* arg, esp_event_base_t event_base, int32_t eve
   bool			is_station = false;
    
   inet_ntop(AF_INET6, &event->ip6_info.ip.addr, buffer, sizeof(buffer));
-  gm_printf("Got IPv6: interface %s, address, type %s\n",
-  netif_name,
-  buffer,
-  GM.ipv6_address_types[ipv6_type]);
+  ; // gm_printf("Got IPv6: interface %s, address, type %s\n",
+  // netif_name,
+  // buffer,
+  // GM.ipv6_address_types[ipv6_type]);
   fflush(stderr);
 
   if (strcmp(netif_name, "sta") == 0) {

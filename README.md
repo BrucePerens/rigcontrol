@@ -5,9 +5,6 @@
   This will work better than the instructions below for people who aren't experienced
   programmers.
 
-  This doesn't yet set your WiFi parameters, watch this page and I'll update to a
-  firmware version with that working.
-
 ## Introduction
 
 * There's a discussion group

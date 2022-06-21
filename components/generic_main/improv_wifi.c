@@ -1,4 +1,4 @@
-// This implements the Improv WiFi protocol as documented at
+// This implements the Improv WiFi serial protocol as documented at
 // https://www.improv-wifi.com/serial/
 // This version is an independent development, from the document above.
 // I didn't look at their SDK while developing this.
@@ -8,15 +8,11 @@
 // Improv is an Open Protocol, not a "standard" as they say on their web site,
 // because there wasn't any formal standards process.
 //
-// The Improv protocol isn't directly compatible with running the REPL (console command
-// processor) on the same serial connection. It really could be, if the magic number
-// was "IMPROV " with a space, the data was some text representation like JSON, and the
-// packet ended with a carriage-return character. I suggest that if there's ever a later
-// version. I kludge around the incompatibility with the REPL by waiting
-// for the Improv protocol for a few seconds, and then falling through to the REPL
-// if I don't see any Improv packets.
-//
 // Important things that weren't said in the Improv Serial document:
+// * Improv is sensitive to having the UART set up to receive commands as soon as you
+//   get into app_main(). I was setting it up after WiFi was initialized, and it missed
+//   the initial command, and the browser code did not retry and failed to initialize
+//   Improv serial.
 // * The speed is 115200 baud.
 // * Implementations actually send a newline character after the Improv packet,
 //   although that is not in the spec. This may be _required_ because some
@@ -34,6 +30,23 @@
 //   * If WiFi doesn't connect:
 //      * Set the current state back to Ready
 //	* Send the current state.
+//
+// I were to re-do the Improv serial protocol:
+// * The Improv protocol isn't directly compatible with running the REPL (console command
+//   processor) on the same serial connection. It really could be, if the magic number
+//   was "IMPROV " with a space, the data was some text representation like JSON, and the
+//   packet ended with a carriage-return character. I suggest that if there's ever a later
+//   version. I kludge around the incompatibility with the REPL by waiting
+//   for the Improv protocol for a few seconds, and then falling through to the REPL
+//   if I don't see any Improv packets.
+// * There would only be one response packet per command. This is easier if you use
+//   JSON, it can, for example, include the device URL or not.
+// * It would have a command serial number so that it understood what command packet
+//   a response packet is actually in reply to. Improv tries to do this by giving the
+//   RPC command number in the response, but this doesn't detect responses to duplicate
+//   commands. The serial number 0 would indicate an
+//   unsolicited packet, this would be for setting the Provisioned status, and
+//   for gratuitious status packets in general (because WiFi disconnects, etc.).
 //
 
 #include <stdio.h>
@@ -177,14 +190,29 @@ static void wifi_event_sta_got_ip4(void* arg, esp_event_base_t event_base, int32
    IP_EVENT,
    IP_EVENT_STA_GOT_IP,
    &handler_wifi_event_sta_got_ip4));
+  ESP_ERROR_CHECK(esp_event_handler_instance_unregister(
+   WIFI_EVENT,
+   WIFI_EVENT_STA_DISCONNECTED,
+   &handler_wifi_event_sta_disconnected));
 
   address.sin_addr.s_addr = event->ip_info.ip.addr;
   improv_state = Provisioned;
-  improv_send_current_state(fd);
 }
 
 static void wifi_event_sta_disconnected(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data) {
+  int fd = (int)arg;
+
+  ESP_ERROR_CHECK(esp_event_handler_instance_unregister(
+   IP_EVENT,
+   IP_EVENT_STA_GOT_IP,
+   &handler_wifi_event_sta_got_ip4));
+  ESP_ERROR_CHECK(esp_event_handler_instance_unregister(
+   WIFI_EVENT,
+   WIFI_EVENT_STA_DISCONNECTED,
+   &handler_wifi_event_sta_disconnected));
+
   improv_state = Ready;
+  improv_send_current_state(fd);
 }
 
 static void
@@ -320,10 +348,11 @@ improv_set_wifi(int fd, const uint8_t * data, uint8_t length)
   gm_param_set("ssid", (const char *)ssid);
   gm_param_set("wifi_password", (const char *)password);
 
-  ESP_ERROR_CHECK(esp_event_handler_register(
+  ESP_ERROR_CHECK(esp_event_handler_instance_register(
    WIFI_EVENT,
    WIFI_EVENT_STA_DISCONNECTED,
    &wifi_event_sta_disconnected,
+   (void *)fd,
    &handler_wifi_event_sta_disconnected));
 
   improv_state = Provisioning;

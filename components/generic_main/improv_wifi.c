@@ -43,13 +43,20 @@
 #include <stdint.h>
 #include <errno.h>
 #include <stdbool.h>
+#include "sdkconfig.h"
 #include <esp_event.h>
 #include <esp_wifi.h>
+#include <esp_vfs.h>
+#include <esp_vfs_dev.h>
+#include <driver/uart.h>
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 #include "generic_main.h"
 
-const char	name[] = "Improv WiFi ";
-const uint8_t	magic[6] = "IMPROV"; // Explicit size eliminates trailing '\0'.
-const uint8_t	ImprovVersion = 1;
+// static const char	name[] = "Improv WiFi ";
+static const uint8_t	magic[6] = "IMPROV"; // Explicit size eliminates trailing '\0'.
+static const uint8_t	ImprovVersion = 1;
+static const esp_console_dev_uart_config_t dev_uart_config = ESP_CONSOLE_DEV_UART_CONFIG_DEFAULT();
 
 typedef enum improv_type
 {
@@ -81,6 +88,7 @@ typedef enum improv_error_state {
   UnknownError = 0xff
 } improv_error_state_t;
 
+static TaskHandle_t	improv_task_id = NULL;
 static improv_state_t	improv_state = Ready;
 static int		enter_count = 0;
 struct sockaddr_in	address = {};
@@ -417,23 +425,69 @@ improv_process(int fd, const uint8_t * data, improv_type_t type, uint8_t length)
   return NoError;
 }
 
-void
-gm_improv_wifi(int fd)
+static void
+initialize_uart(void)
 {
-  // Start the WiFi scan as soon as possible, so that the data is ready when the user
-  // wishes to configure WiFi.
+  const uart_config_t uart_config = {
+    .baud_rate = dev_uart_config.baud_rate,
+    .data_bits = UART_DATA_8_BITS,
+    .parity    = UART_PARITY_DISABLE,
+    .stop_bits = UART_STOP_BITS_1,
+    .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
+    .source_clk = UART_SCLK_REF_TICK,
+  };
+
+#if CONFIG_UART_ISR_IN_IRAM
+  const int intr_alloc_flags = ESP_INTR_FLAG_IRAM;
+#else
+  const int intr_alloc_flags = 0;
+#endif
+
+  // Apparently this works to set the UART driver to be interrupt-driven rather than
+  // to work in an event queue.
+  ESP_ERROR_CHECK(uart_driver_install(dev_uart_config.channel, 512, 512, 0, NULL, intr_alloc_flags));
+
+  ESP_ERROR_CHECK(uart_param_config(dev_uart_config.channel, &uart_config));
+  ESP_ERROR_CHECK(uart_set_pin(
+   dev_uart_config.channel,
+   dev_uart_config.tx_gpio_num,
+   dev_uart_config.rx_gpio_num,
+   -1,
+   -1));
+
+  esp_vfs_dev_uart_use_driver(dev_uart_config.channel);
+}
+
+static void
+improv_task(void * p)
+{
   uint8_t		data[256];
   improv_error_state_t	error;
   improv_type_t		type;
   uint8_t		length;
 
-  gm_printf("\n\n*** To start the command line, press ENTER three times. ***\n\n");
+  int fd = 0;
 
+
+
+  gm_printf("*** To start the command line, press ENTER three times. ***\n");
   for ( ; ; ) {
     error = improv_read(fd, data, &type, &length);
     if ( error == EndImprov )
-      return;
+      break;
     else if ( error == NoError )
       improv_process(fd, data, type, length);
   }
+  uart_driver_delete(CONFIG_ESP_CONSOLE_UART_NUM);
+  gm_command_interpreter_start();
+  vTaskDelete(improv_task_id);
+}
+
+void
+gm_improv_wifi(int fd)
+{
+  // Don't initialize the uart in the Improv task, it flushes the outgoing queue.
+  // Do it in main() before tasks that are likely to print start.
+  initialize_uart();
+  xTaskCreate(improv_task, "generic main: Improv WiFi protocol", 10240, NULL, 3, &improv_task_id);
 }

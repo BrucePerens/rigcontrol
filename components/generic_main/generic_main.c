@@ -30,7 +30,6 @@ static const char TASK_NAME[] = "main";
 void app_main(void)
 {
   GM.log_file_pointer = stderr;
-  gm_user_initialize_early();
   initialize();
 }
 
@@ -39,6 +38,10 @@ static void initialize(void)
   // Set the console print lock, so that things in tasks don't print over each other.
   // This can't be used for non-tasks.
   pthread_mutex_init(&GM.console_print_mutex, 0);
+
+  gm_improv_wifi(0);
+
+  gm_user_initialize_early();
 
   // Initialize the TCP/IP stack. gm_select_task uses sockets.
   esp_netif_init();
@@ -80,16 +83,4 @@ static void initialize(void)
 
   // Start WiFi, if it's already configured.
   gm_wifi_start();
-
-  esp_console_dev_uart_config_t uart_config = ESP_CONSOLE_DEV_UART_CONFIG_DEFAULT();
-
-  // Configure the console command system.
-  esp_console_repl_config_t repl_config = ESP_CONSOLE_REPL_CONFIG_DEFAULT();
-  repl_config.task_stack_size = 20 * 1024;
-  repl_config.prompt = ">";
-  ESP_ERROR_CHECK(esp_console_new_repl_uart(&uart_config, &repl_config, &GM.repl));
-  gm_command_add_registered_to_console();
-  gm_user_initialize_late();
-  gm_improv_wifi(0);
-  ESP_ERROR_CHECK(esp_console_start_repl(GM.repl));
 }

@@ -46,3 +46,17 @@ gm_command_add_registered_to_console(void)
   }
   gm_array_destroy(array);
 }
+
+void
+gm_command_interpreter_start(void)
+{
+  esp_console_dev_uart_config_t uart_config = ESP_CONSOLE_DEV_UART_CONFIG_DEFAULT();
+
+  // Configure the console command system.
+  esp_console_repl_config_t repl_config = ESP_CONSOLE_REPL_CONFIG_DEFAULT();
+  repl_config.task_stack_size = 20 * 1024;
+  repl_config.prompt = ">";
+  ESP_ERROR_CHECK(esp_console_new_repl_uart(&uart_config, &repl_config, &GM.repl));
+  gm_command_add_registered_to_console();
+  ESP_ERROR_CHECK(esp_console_start_repl(GM.repl));
+}

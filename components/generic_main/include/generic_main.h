@@ -124,6 +124,7 @@ extern size_t			gm_array_size(GM_Array * array);
 
 extern size_t			gm_choose_one(size_t number_of_entries);
 extern void			gm_command_add_registered_to_console(void);
+extern void			gm_command_interpreter_start(void);
 extern void			gm_command_register(const esp_console_cmd_t * command);
 
 extern int			gm_ddns(void);

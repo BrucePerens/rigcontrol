@@ -63,13 +63,13 @@ cat > firmware/index.html <<-END
     <LI>If the program says
     <i>Serial port is not ready. Close any other application using it and try again:</i>
     Unplug and reconnect its USB interface.
-    Sometimes, it's necessary to remove and restore
+    If that doesn't work, remove and restore
     power to the USB hub the card is connected to.</LI>
     <LI>If the browser opens an alert box that says
     <i>Failed to open serial port:</i>
      The first time you run this, you may have to grant yourself
     permission to open serial ports on your computer. You'll only
-    need to do this once per user and computer.<BR>
+    need to do this once per user and computer:<BR>
       <P>On <B>Linux</B> use the command</P>
       <BLOCKQUOTE>
         <SPAN style="font-family: monospace">sudo adduser</SPAN>

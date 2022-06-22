@@ -35,9 +35,15 @@ void app_main(void)
 
 static void initialize(void)
 {
+  // Initialize the UART as early as possible, so that Improv WiFi commands are not
+  // missed.
+  gm_uart_initialize();
+
   // Set the console print lock, so that things in tasks don't print over each other.
   // This can't be used for non-tasks.
   pthread_mutex_init(&GM.console_print_mutex, 0);
+
+  gm_wifi_events_initialize();
 
   gm_improv_wifi(0);
 

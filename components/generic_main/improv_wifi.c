@@ -197,10 +197,13 @@ static void wifi_event_sta_got_ip4(void* arg, esp_event_base_t event_base, int32
 
   address.sin_addr.s_addr = event->ip_info.ip.addr;
   improv_state = Provisioned;
+  improv_send_current_state(fd);
 }
 
 static void wifi_event_sta_disconnected(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data) {
   int fd = (int)arg;
+
+  return;
 
   ESP_ERROR_CHECK(esp_event_handler_instance_unregister(
    IP_EVENT,
@@ -212,7 +215,7 @@ static void wifi_event_sta_disconnected(void* arg, esp_event_base_t event_base, 
    &handler_wifi_event_sta_disconnected));
 
   improv_state = Ready;
-  improv_send_current_state(fd);
+  // improv_send_current_state(fd);
 }
 
 static void
@@ -328,12 +331,27 @@ improv_decode_string(const uint8_t * data, uint8_t * s)
 static void
 improv_set_wifi(int fd, const uint8_t * data, uint8_t length)
 {
-  uint8_t	ssid[257]; 
-  uint8_t	password[257]; 
+  uint8_t	ssid[33]; 
+  char		old_ssid[33]; 
+  size_t	old_ssid_size = sizeof(old_ssid);
+  
+  uint8_t	password[65]; 
+  char		old_password[65]; 
+  size_t	old_password_size = sizeof(old_password);
   uint8_t	ssid_length;
 
   ssid_length = improv_decode_string(data, ssid);
   improv_decode_string(&data[ssid_length], password);
+
+  esp_err_t ssid_err = nvs_get_str(GM.nvs, "ssid", old_ssid, &old_ssid_size);
+  esp_err_t password_err = nvs_get_str(GM.nvs, "wifi_password", old_password, &old_password_size);
+
+  if ( ssid_err == ESP_OK && password_err == ESP_OK && strcmp((const char *)ssid, old_ssid) == 0 && strcmp((const char *)password, old_password) == 0 ) {
+    improv_state = Provisioned;
+    improv_send_current_state(fd);
+    return;
+  }
+
   improv_state = Provisioning;
   improv_send_current_state(fd);
 
@@ -344,10 +362,6 @@ improv_set_wifi(int fd, const uint8_t * data, uint8_t length)
    (void *)fd,
    &handler_wifi_event_sta_got_ip4));
 
-
-  gm_param_set("ssid", (const char *)ssid);
-  gm_param_set("wifi_password", (const char *)password);
-
   ESP_ERROR_CHECK(esp_event_handler_instance_register(
    WIFI_EVENT,
    WIFI_EVENT_STA_DISCONNECTED,
@@ -355,8 +369,8 @@ improv_set_wifi(int fd, const uint8_t * data, uint8_t length)
    (void *)fd,
    &handler_wifi_event_sta_disconnected));
 
-  improv_state = Provisioning;
-  improv_send_current_state(fd);
+  gm_param_set("ssid", (const char *)ssid);
+  gm_param_set("wifi_password", (const char *)password);
 }
 
 static void
@@ -382,13 +396,17 @@ improv_send_scanned_wifi_networks(int fd)
   uint16_t		number_of_access_points;
   char			rssi[5];
 
+  gm_wifi_wait_until_ready();
+
   config.scan_type = WIFI_SCAN_TYPE_ACTIVE;
   // WiFi scan times are in milliseconds per channel.
   config.scan_time.active.min = 120;
   config.scan_time.active.max = 120;
   config.scan_time.passive = 120;
 
+  gm_printf("Starting blocking scan.\n");
   ESP_ERROR_CHECK(esp_wifi_scan_start(&config, true));
+  gm_printf("Scan done.\n");
 
   ESP_ERROR_CHECK(esp_wifi_scan_get_ap_num(&number_of_access_points));
 
@@ -454,8 +472,8 @@ improv_process(int fd, const uint8_t * data, improv_type_t type, uint8_t length)
   return NoError;
 }
 
-static void
-initialize_uart(void)
+void
+gm_uart_initialize(void)
 {
   const uart_config_t uart_config = {
     .baud_rate = dev_uart_config.baud_rate,
@@ -497,8 +515,6 @@ improv_task(void * p)
 
   int fd = 0;
 
-
-
   gm_printf("*** To start the command line, press ENTER three times. ***\n");
   for ( ; ; ) {
     error = improv_read(fd, data, &type, &length);
@@ -517,6 +533,5 @@ gm_improv_wifi(int fd)
 {
   // Don't initialize the uart in the Improv task, it flushes the outgoing queue.
   // Do it in main() before tasks that are likely to print start.
-  initialize_uart();
   xTaskCreate(improv_task, "generic main: Improv WiFi protocol", 10240, NULL, 3, &improv_task_id);
 }

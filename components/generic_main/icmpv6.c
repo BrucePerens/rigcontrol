@@ -77,3 +77,13 @@ gm_icmpv6_start_listener_ipv6 (gm_ipv6_router_advertisement_after_t after)
 
   gm_fd_register(icmpv6_socket, incoming_packet, after, after, false, true, 0);
 }
+
+void
+gm_icmpv6_stop_listener_ipv6(void)
+{
+  if ( icmpv6_socket >= 0 ) {
+    gm_fd_unregister(icmpv6_socket);
+    close(icmpv6_socket);
+    icmpv6_socket = -1;
+  }
+}

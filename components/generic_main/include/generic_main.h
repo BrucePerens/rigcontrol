@@ -136,6 +136,8 @@ extern void			gm_fd_register(int fd, gm_fd_handler_t handler, void * data, bool 
 extern void			gm_fd_unregister(int fd);
 
 extern void			gm_icmpv6_start_listener_ipv6(gm_ipv6_router_advertisement_after_t after);
+extern void			gm_icmpv6_stop_listener_ipv6(void);
+
 extern void			gm_improv_wifi(int fd);
 
 extern void			gm_log_server_start(void);
@@ -151,23 +153,30 @@ extern int			gm_port_control_protocol_request_mapping_ipv4(void);
 extern int			gm_port_control_protocol_request_mapping_ipv6(void);
 extern void			gm_port_control_protocol_start_listener_ipv4(void);
 extern void			gm_port_control_protocol_start_listener_ipv6(void);
+extern void			gm_port_control_protocol_stop_listener_ipv4(void);
+extern void			gm_port_control_protocol_stop_listener_ipv6(void);
 extern int			gm_printf(const char * format, ...);
 extern int			gm_public_ipv4(char * data, size_t size);
 
 extern int			gm_stun(bool ipv6, struct sockaddr * address, gm_stun_after_t after);
+extern void			gm_stun_stop();
+
 extern void			gm_select_task(void);
 extern void			gm_select_wakeup(void);
 
 extern void			gm_timer_to_human(int64_t, char *, size_t);
 
-extern void			gm_user_initialize_early();
-extern void			gm_user_initialize_late();
+extern void			gm_uart_initialize(void);
+extern void			gm_user_initialize_early(void);
+extern void			gm_user_initialize_late(void);
 
 extern int			gm_vprintf(const char * format, va_list args);
 
 extern int			gm_web_get(const char *url, char *data, size_t size);
 extern int			gm_web_get_with_coroutine(const char *url, gm_web_get_coroutine_t coroutine);
 
-extern void			gm_wifi_start(void);
+extern void			gm_wifi_events_initialize(void);
 extern void			gm_wifi_restart(void);
+extern void			gm_wifi_start(void);
+extern void			gm_wifi_wait_until_ready(void);
 

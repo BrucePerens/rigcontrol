@@ -37,7 +37,7 @@ static fd_set read_fds = {};
 static fd_set write_fds = {};
 static fd_set exception_fds = {};
 static int fd_limit = 0;
-static gm_fd_handler_t handlers[NUMBER_OF_FDS] = {};
+static volatile gm_fd_handler_t handlers[NUMBER_OF_FDS] = {};
 static void * data[NUMBER_OF_FDS] = {};
 static struct timeval timeouts[NUMBER_OF_FDS] = {};
 static volatile bool	in_select = false;
@@ -60,7 +60,6 @@ gm_fd_register(int fd, gm_fd_handler_t handler, void * d, bool readable, bool wr
   if ( fd_limit < limit )
     fd_limit = limit;
 
-  handlers[fd] = handler;
   data[fd] = d;
 
   gettimeofday(&now, 0);
@@ -89,6 +88,8 @@ gm_fd_register(int fd, gm_fd_handler_t handler, void * d, bool readable, bool wr
     FD_SET(fd, &exception_fds);
   else
     FD_CLR(fd, &exception_fds);
+
+  handlers[fd] = handler;
 
   if ( in_select )
     gm_select_wakeup();
@@ -221,7 +222,8 @@ select_task(void * param)
 
             if ( timeout )
               gm_fd_unregister(i);
-            (handler)(i, d, readable, writable, exception, timeout);
+            if (handler)
+              (handler)(i, d, readable, writable, exception, timeout);
           }
   
         }
@@ -253,14 +255,19 @@ select_task(void * param)
             void * d = data[i];
 
             gm_fd_unregister(i);
-            (handler)(i, d, false, false, false, true);
+            if (handler)
+              (handler)(i, d, false, false, false, true);
           }
         }
       }
     }
     else {
       // Select failed.
-      GM_FAIL("Select failed");
+      if ( errno == EBADF ) {
+        // A file descriptor was closed while select() was running upon it.
+      }
+      else
+        GM_FAIL("Select failed");
     }
   }
 }

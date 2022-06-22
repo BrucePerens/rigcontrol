@@ -122,8 +122,10 @@ enum pcp_response_code {
 
 static last_request_t	last_request_ipv4;
 static last_request_t	last_request_ipv6;
-static int		ipv4_sock = -1;
-static int		ipv6_sock = -1;
+static int		ipv4_unicast_sock = -1;
+static int		ipv4_multicast_sock = -1;
+static int		ipv6_unicast_sock = -1;
+static int		ipv6_multicast_sock = -1;
 
 static int
 request_mapping_ipv4(gm_port_mapping_t * m)
@@ -162,7 +164,7 @@ request_mapping_ipv4(gm_port_mapping_t * m)
 
   // Send the packet to the gateway.
   send_result = sendto(
-   ipv4_sock,
+   ipv4_unicast_sock,
    p,
    map_packet_size,
    0,
@@ -224,7 +226,7 @@ int request_mapping_ipv6(gm_port_mapping_t * m)
 
   // Send the packet to the gateway.
   send_result = sendto(
-   ipv6_sock,
+   ipv6_unicast_sock,
    p,
    map_packet_size,
    0,
@@ -463,7 +465,8 @@ start_multicast_listener_ipv4(void)
   int			value = 1;
   struct ip_mreq	multi_request = {};
   struct sockaddr_in	address = {};
-  int			sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+
+  ipv4_multicast_sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
 
   // IPv4 "all hosts" multicast.
   inet_pton(AF_INET, "224.0.0.1", &multi_request.imr_multiaddr);
@@ -474,16 +477,16 @@ start_multicast_listener_ipv4(void)
   address.sin_port = htons(PCP_ANNOUNCE_PORT);
 
   // Reuse addresses, because other software listens for all-hosts multicast.
-  if ( setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &value, sizeof(value)) < 0 ) {
+  if ( setsockopt(ipv4_multicast_sock, SOL_SOCKET, SO_REUSEADDR, &value, sizeof(value)) < 0 ) {
     GM_FAIL("Setsockopt SOL_SOCKET failed: %s.\n", strerror(errno));
     return;
   }
-  if ( bind(sock, (struct sockaddr *)&address, sizeof(address)) < 0 ) {
+  if ( bind(ipv4_multicast_sock, (struct sockaddr *)&address, sizeof(address)) < 0 ) {
     GM_FAIL("bind failed.\n");
     return;
   }
 
-  if ( setsockopt(sock, IPPROTO_IP, IP_ADD_MEMBERSHIP, &multi_request, sizeof(multi_request)) < 0 ) {
+  if ( setsockopt(ipv4_multicast_sock, IPPROTO_IP, IP_ADD_MEMBERSHIP, &multi_request, sizeof(multi_request)) < 0 ) {
     // This fails because the host is already registered to the "all-hosts" multicast
     // group. Ignore that.
     if ( errno != EADDRNOTAVAIL ) {
@@ -492,7 +495,7 @@ start_multicast_listener_ipv4(void)
     }
   }
   // Data is set to 1 for multicast, 0 for unicast.
-  gm_fd_register(sock, incoming_packet, (void *)1, true, false, true, 0);
+  gm_fd_register(ipv4_multicast_sock, incoming_packet, (void *)1, true, false, true, 0);
 }
 
 static void
@@ -504,14 +507,14 @@ start_unicast_listener_ipv4(void)
   address.sin_addr.s_addr = GM.sta.ip4.address.sin_addr.s_addr;
   address.sin_port = htons(PCP_PORT);
 
-  ipv4_sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-  if ( bind(ipv4_sock, (struct sockaddr *)&address, sizeof(address)) < 0 ) {
+  ipv4_unicast_sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+  if ( bind(ipv4_unicast_sock, (struct sockaddr *)&address, sizeof(address)) < 0 ) {
     GM_FAIL("bind failed.\n");
     return;
   }
 
   // Data is set to 1 for multicast, 0 for unicast.
-  gm_fd_register(ipv4_sock, incoming_packet, (void *)0, true, false, true, 0);
+  gm_fd_register(ipv4_unicast_sock, incoming_packet, (void *)0, true, false, true, 0);
 }
 
 // At this writing, May 2022, OpenWRT is not configured by default to forward multicasts
@@ -522,7 +525,10 @@ start_multicast_listener_ipv6(void)
   int			value = 1;
   struct ipv6_mreq	multi_request = {};
   struct sockaddr_in6	address = {};
-  int			sock = socket(AF_INET6, SOCK_DGRAM, IPPROTO_UDP);
+  ipv6_multicast_sock = socket(AF_INET6, SOCK_DGRAM, IPPROTO_UDP);
+
+  if ( ipv6_multicast_sock < 0 )
+    GM_FAIL("Can't open socket.");
 
   // IPv6 "all hosts" multicast.
   inet_pton(AF_INET6, "ff02::1", &multi_request.ipv6mr_multiaddr);
@@ -533,40 +539,47 @@ start_multicast_listener_ipv6(void)
   address.sin6_port = htons(PCP_ANNOUNCE_PORT);
 
   // Reuse addresses, because other software listens for all-hosts multicast.
-  if ( setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &value, sizeof(value)) < 0 ) {
+  if ( setsockopt(ipv6_multicast_sock, SOL_SOCKET, SO_REUSEADDR, &value, sizeof(value)) < 0 ) {
     GM_FAIL("Setsockopt SOL_SOCKET failed.\n");
     return;
   }
-  if ( bind(sock, (struct sockaddr *)&address, sizeof(address)) < 0 ) {
+  if ( bind(ipv6_multicast_sock, (struct sockaddr *)&address, sizeof(address)) < 0 ) {
     GM_FAIL("bind failed");
     return;
   }
 
-  if ( setsockopt(sock, IPPROTO_IPV6, IPV6_JOIN_GROUP, &multi_request, sizeof(multi_request)) < 0 ) {
+  if ( setsockopt(ipv6_multicast_sock, IPPROTO_IPV6, IPV6_JOIN_GROUP, &multi_request, sizeof(multi_request)) < 0 ) {
     GM_FAIL("Setsockopt IPV6_JOIN_GROUP failed: %s.\n", strerror(errno));
     return;
   }
   // Data is set to 1 for multicast, 0 for unicast.
-  gm_fd_register(sock, incoming_packet, (void *)1, true, false, true, 0);
+  gm_fd_register(ipv6_multicast_sock, incoming_packet, (void *)1, true, false, true, 0);
 }
 
 static void
 start_unicast_listener_ipv6(void)
 {
   struct sockaddr_in6	address = {};
+  int			value = 1;
 
   address.sin6_family = AF_INET6;
+  if ( GM.sta.ip6.link_local.sin6_addr.s6_addr == 0 ) {
+    GM_FAIL("Starting unicast listener before the link-local address is set.");
+  }
   memcpy(&address.sin6_addr.s6_addr, &GM.sta.ip6.link_local.sin6_addr.s6_addr, sizeof(address.sin6_addr.s6_addr));
   address.sin6_port = htons(PCP_PORT);
 
-  ipv6_sock = socket(AF_INET6, SOCK_DGRAM, IPPROTO_UDP);
-  if ( bind(ipv6_sock, (struct sockaddr *)&address, sizeof(address)) < 0 ) {
+  ipv6_unicast_sock = socket(AF_INET6, SOCK_DGRAM, IPPROTO_UDP);
+  if ( setsockopt(ipv6_unicast_sock, SOL_SOCKET, SO_REUSEADDR, &value, sizeof(value)) < 0 ) {
+    GM_FAIL("ipv6_unicast_sock set reuse address failed.\n");
+  }
+  if ( bind(ipv6_unicast_sock, (struct sockaddr *)&address, sizeof(address)) < 0 ) {
     GM_FAIL("bind failed.\n");
     return;
   }
 
-  // Data is set to 1 for multicast, 0 for unicast.
-  gm_fd_register(ipv6_sock, incoming_packet, (void *)0, true, false, true, 0);
+  // Data is set to 1 for unicast, 0 for unicast.
+  gm_fd_register(ipv6_unicast_sock, incoming_packet, (void *)0, true, false, true, 0);
 }
 
 void
@@ -581,4 +594,34 @@ gm_port_control_protocol_start_listener_ipv6(void)
 {
   start_unicast_listener_ipv6();
   start_multicast_listener_ipv6();
+}
+
+void
+gm_port_control_protocol_stop_listener_ipv4(void)
+{
+  if ( ipv4_unicast_sock >= 0 ) {
+    gm_fd_unregister(ipv4_unicast_sock);
+    close(ipv4_unicast_sock);
+    ipv4_unicast_sock = -1;
+  }
+  if ( ipv4_multicast_sock >= 0 ) {
+    gm_fd_unregister(ipv4_multicast_sock);
+    close(ipv4_multicast_sock);
+    ipv4_multicast_sock = -1;
+  }
+}
+
+void
+gm_port_control_protocol_stop_listener_ipv6(void)
+{
+  if ( ipv6_unicast_sock >= 0 ) {
+    gm_fd_unregister(ipv6_unicast_sock);
+    close(ipv6_unicast_sock);
+    ipv6_unicast_sock = -1;
+  }
+  if ( ipv6_multicast_sock >= 0 ) {
+    gm_fd_unregister(ipv6_multicast_sock);
+    close(ipv6_multicast_sock);
+    ipv6_multicast_sock = -1;
+  }
 }

@@ -32,15 +32,15 @@
 #include <pthread.h>
 #include "generic_main.h"
 
-/* FreeRTOS event group to signal when we are connected & ready to make a request */
-static EventGroupHandle_t my_events = NULL;
 enum EventBits {
   CONNECTED_BIT = 1 << 0,
-  ESPTOUCH_DONE_BIT = 1 << 1
+  ESPTOUCH_DONE_BIT = 1 << 1,
+  STATION_READY_BIT = 1 << 2
 };
 
 static const char TASK_NAME[] = "wifi";
 static TaskHandle_t smart_config_task_id = NULL;
+static EventGroupHandle_t wifi_events = NULL;
 static esp_event_handler_instance_t handler_wifi_event_sta_connected_to_ap = NULL;
 static esp_event_handler_instance_t handler_ip_event_sta_got_ip4 = NULL;
 static esp_event_handler_instance_t handler_ip_event_got_ip6 = NULL;
@@ -54,6 +54,21 @@ static void smart_config_task(void * parm);
 static void wifi_connect_to_ap(const char * ssid, const char * password);
 static void wifi_event_sta_start(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data);
 void wifi_event_sta_disconnected(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data);
+
+void
+gm_wifi_events_initialize(void)
+{
+  if (wifi_events == NULL)
+    wifi_events = xEventGroupCreate();
+}
+
+void
+gm_wifi_wait_until_ready(void)
+{
+  EventBits_t	uxBits;
+
+  uxBits = xEventGroupWaitBits(wifi_events, STATION_READY_BIT, true, false, portMAX_DELAY);
+}
 
 static void after_stun(bool success, bool ipv6, struct sockaddr * address)
 {
@@ -108,34 +123,36 @@ void wifi_event_sta_start(void* arg, esp_event_base_t event_base, int32_t event_
   char password[65] = { 0 };
   size_t ssid_size = sizeof(ssid);
   size_t password_size = sizeof(password);
+  wifi_scan_config_t config = {};
 
   esp_err_t ssid_err = nvs_get_str(GM.nvs, "ssid", ssid, &ssid_size);
   esp_err_t password_err = nvs_get_str(GM.nvs, "wifi_password", password, &password_size);
 
-  // Create a local event group for communication from event handlers to
-  // tasks.
-  if (my_events == NULL)
-    my_events = xEventGroupCreate();
+  config.scan_type = WIFI_SCAN_TYPE_PASSIVE;
+  config.scan_type = WIFI_ALL_CHANNEL_SCAN;
+  config.scan_time.active.min = 120;
+  config.scan_time.active.max = 120;
+  config.scan_time.passive = 120;
+  // esp_wifi_scan_start(&config, 0);
 
   // ssid_size includes the terminating null.
   if (ssid_err == ESP_OK && password_err == ESP_OK && ssid_size > 1)
     wifi_connect_to_ap(ssid, password);
-  else
+  else {
     xTaskCreate(smart_config_task, TASK_NAME, 4096, NULL, 3, &smart_config_task_id);
+  }
+
+  xEventGroupSetBits(wifi_events, STATION_READY_BIT);
 }
 
 void wifi_event_sta_disconnected(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data)
 {
   EventBits_t uxBits;
 
-  uxBits = xEventGroupGetBits(my_events);
+  uxBits = xEventGroupGetBits(wifi_events);
   if ( uxBits & CONNECTED_BIT ) {
-    ; // gm_printf("Wifi disconnected.\n");
-    fflush(stderr);
-    stop_webserver();
-    gm_log_server_stop();
-    xEventGroupClearBits(my_events, CONNECTED_BIT);
-    esp_wifi_connect();
+    gm_printf("Wifi disconnected.\n");
+    gm_wifi_restart();
   }
 }
 
@@ -172,7 +189,7 @@ static void ip_event_sta_got_ip4(void* arg, esp_event_base_t event_base, int32_t
   char	buffer[INET6_ADDRSTRLEN + 1];
 
   // Smartconfig waits on this bit, then prints a message.
-  xEventGroupSetBits(my_events, CONNECTED_BIT);
+  xEventGroupSetBits(wifi_events, CONNECTED_BIT);
 
   // Save the IP information for other facilities, like NAT-PCP, to use.
   GM.sta.esp_netif = event->esp_netif;
@@ -287,7 +304,7 @@ static void sc_event_got_ssid_pswd(void* arg, esp_event_base_t event_base,
 }
 
 static void sc_event_send_ack_done(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data) {
-  xEventGroupSetBits(my_events, ESPTOUCH_DONE_BIT);
+  xEventGroupSetBits(wifi_events, ESPTOUCH_DONE_BIT);
 }
 
 void stop_smart_config_task(bool external)
@@ -343,7 +360,7 @@ static void smart_config_task(void * parm)
   ESP_ERROR_CHECK( esp_smartconfig_start(&cfg) );
 
   for (;;) {
-    uxBits = xEventGroupWaitBits(my_events, CONNECTED_BIT | ESPTOUCH_DONE_BIT, true, false, portMAX_DELAY);
+    uxBits = xEventGroupWaitBits(wifi_events, CONNECTED_BIT | ESPTOUCH_DONE_BIT, true, false, portMAX_DELAY);
     if(uxBits & CONNECTED_BIT)
       ESP_LOGI(TASK_NAME, "WiFi Connected to ap");
     if(uxBits & ESPTOUCH_DONE_BIT)
@@ -397,10 +414,26 @@ static void wifi_connect_to_ap(const char * ssid, const char * password)
 
 void gm_wifi_restart(void)
 {
+  char ssid[33] = { 0 };
+  char password[65] = { 0 };
+  size_t ssid_size = sizeof(ssid);
+  size_t password_size = sizeof(password);
+
+  esp_err_t ssid_err = nvs_get_str(GM.nvs, "ssid", ssid, &ssid_size);
+  esp_err_t password_err = nvs_get_str(GM.nvs, "wifi_password", password, &password_size);
+
   stop_smart_config_task(true);
   stop_webserver();
   gm_log_server_stop();
+  gm_icmpv6_stop_listener_ipv6();
+  gm_port_control_protocol_stop_listener_ipv4();
+  gm_port_control_protocol_stop_listener_ipv6();
+  gm_stun_stop();
+  xEventGroupClearBits(wifi_events, CONNECTED_BIT);
   esp_wifi_disconnect();
-  xEventGroupClearBits(my_events, CONNECTED_BIT);
-  wifi_event_sta_start(0, 0, 0, 0);
+
+  // ssid_size includes the terminating null.
+  if (ssid_err == ESP_OK && password_err == ESP_OK && ssid_size > 1 && password_size > 1) {
+    wifi_connect_to_ap(ssid, password);
+  }
 }

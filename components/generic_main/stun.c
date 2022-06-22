@@ -147,6 +147,8 @@ static const struct stun_server ipv6_servers[] = {
 };
 static const size_t	ipv6_table_count = sizeof(ipv6_servers) / sizeof(*ipv6_servers);
 
+static int		stun_sock = -1;
+
 static void
 decode_mapped_address(struct stun_attribute * a, struct sockaddr * address)
 {
@@ -169,13 +171,13 @@ decode_mapped_address(struct stun_attribute * a, struct sockaddr * address)
 static void
 decode_error_code(struct stun_attribute * a)
 {
-  GM_FAIL("STUN Error code.\n");
+  gm_printf("STUN: Received error code.\n");
 }
 
 static void
 decode_unknown_attributes(struct stun_attribute * a)
 {
-  GM_FAIL("STUN Unknown attribute.\n");
+  gm_printf("STUN: Unknown attribute.\n");
 }
 
 static void
@@ -276,9 +278,9 @@ send_stun_request(bool ipv6)
   if ( (send_address = get_address(server->host, server->port, ipv6)) == 0 )
     return -1;
 
-  int sock = socket (send_address->ai_family, SOCK_DGRAM, send_address->ai_protocol);
-  if ( sock < 0 ) {
-    GM_FAIL("Can't get socket: %s\n", strerror(errno));
+  stun_sock = socket(send_address->ai_family, SOCK_DGRAM, send_address->ai_protocol);
+  if ( stun_sock < 0 ) {
+    gm_printf("STUN: Can't get socket: %s\n", strerror(errno));
     return -1;
   }
 
@@ -287,7 +289,7 @@ send_stun_request(bool ipv6)
   esp_fill_random(send_packet->transaction_id, sizeof(send_packet->transaction_id));
 
   send_result = sendto(
-   sock,
+   stun_sock,
    send_packet,
    send_packet->length + 20,
    0,
@@ -298,10 +300,11 @@ send_stun_request(bool ipv6)
 
   if ( send_result < (send_packet->length + 20) ) {
     ; // gm_printf("STUN: Send error: %d %s.\n", send_result, strerror(errno));
-    close(sock);
+    close(stun_sock);
+    stun_sock = -1;
     return -1;
   }
-  return sock;
+  return stun_sock;
 }
 
 static int
@@ -312,7 +315,7 @@ process_received_packet(struct stun_message * receive_packet, struct sockaddr * 
   struct stun_attribute * attribute = (struct stun_attribute *)receive_packet->attributes;
   uint16_t attribute_size = ntohs(receive_packet->length);
   if ( attribute_size < (receive_result - 20) ) {
-    GM_FAIL("STUN packet was truncated.\n");
+    gm_printf("STUN: packet was truncated.\n");
     return -1;
   }
   
@@ -320,7 +323,7 @@ process_received_packet(struct stun_message * receive_packet, struct sockaddr * 
     uint16_t type = ntohs(attribute->type);
     uint16_t length = ntohs(attribute->length);
     if ( length == 0 || length >= 768 ) {
-      GM_FAIL("STUN attribute length %d is invalid.\n", length);
+      gm_printf("STUN: attribute length %d is invalid.\n", length);
     }
     switch ( type ) {
     case MAPPED_ADDRESS:
@@ -361,7 +364,7 @@ process_received_packet(struct stun_message * receive_packet, struct sockaddr * 
       increment += (4 - odd);
 
     if ( increment > attribute_size ) {
-      GM_FAIL("Attribute size mismatch.\n");
+      gm_printf("STUN: Attribute size mismatch.\n");
       return -1;
     }
     attribute = (struct stun_attribute *)((uint8_t *)attribute + increment);
@@ -370,7 +373,7 @@ process_received_packet(struct stun_message * receive_packet, struct sockaddr * 
   if ( got_an_address )
     return 0;
   else {
-    GM_FAIL("STUN message didn't include an address.\n");
+    gm_printf("STUN: message didn't include an address.\n");
     return -1;
   }
 }
@@ -395,12 +398,16 @@ int receive_stun_response(int sock, struct sockaddr * address)
    0);
 
   if ( receive_result < 22 ) {
+    gm_fd_unregister(sock);
     close(sock);
+    stun_sock = -1;
     return -1;
   }
 
   result = process_received_packet(receive_packet, address, receive_result);
+  gm_fd_unregister(sock);
   close(sock);
+  stun_sock = -1;
   return result;
 }
 
@@ -429,13 +436,15 @@ stun_receive(int fd, void * data, bool readable, bool writable, bool exception, 
     if ( status == 0 ) {
       gm_fd_unregister(fd);
       close(fd);
+      stun_sock = -1;
       if ( run->after )
         (run->after)(true, run->ipv6, run->address);
       free(run);
       return;
     }
   }
-  if ( timeout ) {
+  if ( timeout || exception ) {
+    gm_fd_unregister(fd);
     close(fd);
   }
   if ( run->tries >= 5 ) {
@@ -455,7 +464,7 @@ int gm_stun(bool ipv6, struct sockaddr * address, gm_stun_after_t after)
   struct stun_run * run = malloc(sizeof(struct stun_run));
 
   if ( run == 0 ) {
-    GM_FAIL("malloc failed");
+    gm_printf("STUN: malloc failed");
     return -1;
   }
     
@@ -467,4 +476,14 @@ int gm_stun(bool ipv6, struct sockaddr * address, gm_stun_after_t after)
   gm_run(stun_send, run, GM_FAST);
 
   return 0;
+}
+
+void
+gm_stun_stop()
+{
+  if ( stun_sock >= 0 ) {
+    gm_fd_unregister(stun_sock);
+    close(stun_sock);
+    stun_sock = -1;
+  }
 }

@@ -203,8 +203,6 @@ static void wifi_event_sta_got_ip4(void* arg, esp_event_base_t event_base, int32
 static void wifi_event_sta_disconnected(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data) {
   int fd = (int)arg;
 
-  return;
-
   ESP_ERROR_CHECK(esp_event_handler_instance_unregister(
    IP_EVENT,
    IP_EVENT_STA_GOT_IP,
@@ -215,7 +213,7 @@ static void wifi_event_sta_disconnected(void* arg, esp_event_base_t event_base, 
    &handler_wifi_event_sta_disconnected));
 
   improv_state = Ready;
-  // improv_send_current_state(fd);
+  improv_send_current_state(fd);
 }
 
 static void
@@ -346,7 +344,11 @@ improv_set_wifi(int fd, const uint8_t * data, uint8_t length)
   esp_err_t ssid_err = nvs_get_str(GM.nvs, "ssid", old_ssid, &old_ssid_size);
   esp_err_t password_err = nvs_get_str(GM.nvs, "wifi_password", old_password, &old_password_size);
 
-  if ( ssid_err == ESP_OK && password_err == ESP_OK && strcmp((const char *)ssid, old_ssid) == 0 && strcmp((const char *)password, old_password) == 0 ) {
+  if ( gm_wifi_is_connected()
+   && ssid_err == ESP_OK
+   && password_err == ESP_OK
+   && strcmp((const char *)ssid, old_ssid) == 0
+   && strcmp((const char *)password, old_password) == 0 ) {
     improv_state = Provisioned;
     improv_send_current_state(fd);
     return;
@@ -354,6 +356,11 @@ improv_set_wifi(int fd, const uint8_t * data, uint8_t length)
 
   improv_state = Provisioning;
   improv_send_current_state(fd);
+
+  if ( gm_wifi_is_connected() ) {
+    esp_wifi_disconnect();
+    gm_wifi_wait_until_disconnected();
+  }
 
   ESP_ERROR_CHECK(esp_event_handler_instance_register(
    IP_EVENT,

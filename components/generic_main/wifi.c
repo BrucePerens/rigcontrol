@@ -34,8 +34,9 @@
 
 enum EventBits {
   CONNECTED_BIT = 1 << 0,
-  ESPTOUCH_DONE_BIT = 1 << 1,
-  STATION_READY_BIT = 1 << 2
+  DISCONNECTED_BIT = 1 << 1,
+  STATION_READY_BIT = 1 << 2,
+  ESPTOUCH_DONE_BIT = 1 << 3
 };
 
 static const char TASK_NAME[] = "wifi";
@@ -58,16 +59,31 @@ void wifi_event_sta_disconnected(void* arg, esp_event_base_t event_base, int32_t
 void
 gm_wifi_events_initialize(void)
 {
-  if (wifi_events == NULL)
+  if (wifi_events == NULL) {
     wifi_events = xEventGroupCreate();
+    xEventGroupSetBits(wifi_events, DISCONNECTED_BIT);
+  }
 }
 
 void
 gm_wifi_wait_until_ready(void)
 {
-  EventBits_t	uxBits;
+  xEventGroupWaitBits(wifi_events, STATION_READY_BIT, true, false, portMAX_DELAY);
+}
 
-  uxBits = xEventGroupWaitBits(wifi_events, STATION_READY_BIT, true, false, portMAX_DELAY);
+void
+gm_wifi_wait_until_disconnected(void)
+{
+  xEventGroupWaitBits(wifi_events, DISCONNECTED_BIT, true, false, portMAX_DELAY);
+}
+
+bool
+gm_wifi_is_connected(void)
+{
+  EventBits_t uxBits;
+
+  uxBits = xEventGroupGetBits(wifi_events);
+  return !!uxBits & CONNECTED_BIT;
 }
 
 static void after_stun(bool success, bool ipv6, struct sockaddr * address)
@@ -151,6 +167,8 @@ void wifi_event_sta_disconnected(void* arg, esp_event_base_t event_base, int32_t
 
   uxBits = xEventGroupGetBits(wifi_events);
   if ( uxBits & CONNECTED_BIT ) {
+    xEventGroupClearBits(wifi_events, CONNECTED_BIT);
+    xEventGroupSetBits(wifi_events, DISCONNECTED_BIT);
     gm_printf("Wifi disconnected.\n");
     gm_wifi_restart();
   }
@@ -190,6 +208,7 @@ static void ip_event_sta_got_ip4(void* arg, esp_event_base_t event_base, int32_t
 
   // Smartconfig waits on this bit, then prints a message.
   xEventGroupSetBits(wifi_events, CONNECTED_BIT);
+  xEventGroupClearBits(wifi_events, DISCONNECTED_BIT);
 
   // Save the IP information for other facilities, like NAT-PCP, to use.
   GM.sta.esp_netif = event->esp_netif;
@@ -430,7 +449,11 @@ void gm_wifi_restart(void)
   gm_port_control_protocol_stop_listener_ipv6();
   gm_stun_stop();
   xEventGroupClearBits(wifi_events, CONNECTED_BIT);
-  esp_wifi_disconnect();
+  xEventGroupSetBits(wifi_events, DISCONNECTED_BIT);
+  if ( gm_wifi_is_connected() ) {
+    esp_wifi_disconnect();
+    gm_wifi_wait_until_disconnected();
+  }
 
   // ssid_size includes the terminating null.
   if (ssid_err == ESP_OK && password_err == ESP_OK && ssid_size > 1 && password_size > 1) {

@@ -175,8 +175,10 @@ extern int			gm_vprintf(const char * format, va_list args);
 extern int			gm_web_get(const char *url, char *data, size_t size);
 extern int			gm_web_get_with_coroutine(const char *url, gm_web_get_coroutine_t coroutine);
 
+extern bool			gm_wifi_is_connected(void);
 extern void			gm_wifi_events_initialize(void);
 extern void			gm_wifi_restart(void);
 extern void			gm_wifi_start(void);
+extern void			gm_wifi_wait_until_disconnected(void);
 extern void			gm_wifi_wait_until_ready(void);
 

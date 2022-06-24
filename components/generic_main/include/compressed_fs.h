@@ -15,6 +15,6 @@ struct compressed_fs_entry {
   uint32_t			name_offset;
   uint32_t			data_offset;
   uint32_t			compressed_size;
-  uint32_t			uncompressed_size;
+  uint32_t			size;
   enum compression_method	method;
 };

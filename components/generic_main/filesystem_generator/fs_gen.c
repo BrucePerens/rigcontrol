@@ -24,8 +24,13 @@ static const char * do_not_compress_suffixes[] = {
   "webp"
 };
 
-static char *	output = 0;
-static long	output_size = 0;
+static char *			output = 0;
+static char *			output_base = 0;
+static long			output_size = 0;
+struct compressed_fs_header *	header = 0;
+struct compressed_fs_entry *	entries = 0;
+unsigned int		 	entry_index = 0;
+unsigned int			entries_size = 0;
 
 static void
 descend(int fd, const char * name, void (*function)(int fd, const char * name, const char * pathname))
@@ -107,11 +112,33 @@ write_file(int dir_fd, const char * name, const char * pathname)
   const char *	dot = strrchr(name, '.');
   int		suffix_count = sizeof(do_not_compress_suffixes) / sizeof(*do_not_compress_suffixes);
   bool		do_not_compress = false;
+  int		name_length = 1 + strlen(pathname);
+  struct compressed_fs_entry * e;
 
-  for ( unsigned int i = 0; i < suffix_count; i++ ) {
-    if ( strcmp(do_not_compress_suffixes[i], dot) == 0 ) {
-      do_not_compress = true;
-      break;
+  if ( entry_index >= entries_size ) {
+    entries_size *= 2;
+    if ( (entries = realloc(entries, entries_size * sizeof(*entries))) == 0 ) {
+      fprintf(stderr, "Out of memory.\n");
+      exit(1);
+    }
+  }
+  e = &entries[entry_index];
+  entry_index++;
+
+  e->name_offset = output - output_base;
+  memcpy(output, pathname, name_length);
+  output += name_length;
+  output_size -= name_length;
+  e->data_offset = output - output_base;
+
+  header->number_of_files++;
+
+  if ( dot ) {
+    for ( unsigned int i = 0; i < suffix_count; i++ ) {
+      if ( strcmp(do_not_compress_suffixes[i], dot) == 0 ) {
+        do_not_compress = true;
+        break;
+      }
     }
   }
 
@@ -123,6 +150,8 @@ write_file(int dir_fd, const char * name, const char * pathname)
     fprintf(stderr, "%s: stat failed: %s\n", pathname, strerror(errno));
     exit(1);
   }
+
+  e->size = s.st_size;
 
   // The system should really know not to reserve swap space for a read-only
   // mapping, and MAP_NORESERVE should have no effect here. Unless there is
@@ -141,27 +170,29 @@ write_file(int dir_fd, const char * name, const char * pathname)
     // Sendfile would be faster, but it doesn't matter for this application.
     fprintf(stderr, "copy %d bytes from %lx to %lx\n", s.st_size, input, output);
     memcpy(output, input, s.st_size);
+    e->compressed_size = s.st_size;
+    e->method = NONE;
     output += s.st_size;
+    output_size -= s.st_size;
   }
   else {
-    int		result;
     long	size = output_size;
 
-    result = compress2(output, &size, input, s.st_size, Z_BEST_COMPRESSION);
-
-    if ( result != Z_OK ) {
+    if ( compress2(output, &size, input, s.st_size, Z_BEST_COMPRESSION) != Z_OK) {
       fprintf(stderr, "%s: compress failed.\n", pathname);
       exit(1);
     }
-
+    e->compressed_size = size;
+    e->method = ZLIB;
     output += size;
+    output_size -= size;
+
     if ( size > output_size ) {
       fprintf(stderr, "Maximum output file size was too small.\n");
       exit(1);
     }
     output_size -= size;
   }
-
 
   munmap(input, s.st_size);
   close(fd);
@@ -172,8 +203,8 @@ main(int argc, char * * argv)
 {
   char *	name = argv[1];
   size_t	length = strlen(name);
-  char *	output_base = 0;
   long		output_base_size;
+  long		file_size;
   int		fd;
 
   if ( argc < 2 ) {
@@ -183,7 +214,7 @@ main(int argc, char * * argv)
   if ( length > 1 && name[length - 1] == '/' )
     name[length - 1] = '\0';
 
-  // Maximum output size. The ESP-32 only has 4 MB RAM, so 2 MB here.
+  // Maximum output size. The ESP-32 only has 4 MB FLASH.
   output_size = output_base_size = 4 * 1024 * 1024;
 
   if ( (fd = open(argv[2], O_CREAT|O_TRUNC|O_RDWR, 0666)) < 0 ) {
@@ -202,11 +233,28 @@ main(int argc, char * * argv)
     exit(1);
   }
 
+  header = (struct compressed_fs_header *)output;
+  output += sizeof(*header);
 
-  *output = 0;
+  entries_size = 100;
+  entries = malloc(entries_size * sizeof(*entries));
+  if ( entries == NULL ) {
+    fprintf(stderr, "Out of memory.\n");
+    exit(1);
+  }
+
   descend(-1, name, write_file);
-  msync(output_base, output_base_size - output_size, MS_ASYNC);
+  entries_size = sizeof(*entries) * entry_index;
+  memcpy(output, entries, entries_size);
+  output += entries_size;
+
+  file_size = output - output_base;
+  msync(output_base, file_size, MS_ASYNC);
   munmap(output_base, output_base_size);
+  if ( ftruncate(fd, file_size) != 0 ) {
+    fprintf(stderr, "%s: final truncate failed: %s\n", argv[2], strerror(errno));
+    exit(1);
+  }
   close(fd);
   return 0;
 }

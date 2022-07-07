@@ -3,6 +3,7 @@ idf_component_register(
 SRCS
   ${DOT_C}
   ${CMAKE_CURRENT_BINARY_DIR}/git_version.c 
+  ${CMAKE_CURRENT_SOURCE_DIR}/filesystem_generator/magic.c 
 INCLUDE_DIRS
   "."
   "include"
@@ -27,7 +28,7 @@ REQUIRES
 
 add_custom_command(
   OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/fs_gen
-  COMMAND cc -g -I ${CMAKE_CURRENT_SOURCE_DIR}/include ${CMAKE_CURRENT_SOURCE_DIR}/filesystem_generator/fs_gen.c -lz -o ${CMAKE_CURRENT_BINARY_DIR}/fs_gen
+  COMMAND cc -g -I ${CMAKE_CURRENT_SOURCE_DIR}/include ${CMAKE_CURRENT_SOURCE_DIR}/filesystem_generator/fs_gen.c ${CMAKE_CURRENT_SOURCE_DIR}/filesystem_generator/magic.c -lz -o ${CMAKE_CURRENT_BINARY_DIR}/fs_gen
   MAIN_DEPENDENCY ${CMAKE_CURRENT_SOURCE_DIR}/filesystem_generator/fs_gen.c
   DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/include/compressed_fs.h
 )

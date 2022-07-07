@@ -37,10 +37,12 @@ descend(int fd, const char * name, void (*function)(int fd, const char * name, c
 {
   DIR *			d;
   struct dirent *	e;
+  bool			top = false;
 
   if ( fd >= 0 )
     d = fdopendir(fd);
   else {
+    top = true;
     d = opendir(name);
     if ( d == NULL ) {
       fprintf(stderr, "%s: %s\n", name, strerror(errno));
@@ -58,8 +60,8 @@ descend(int fd, const char * name, void (*function)(int fd, const char * name, c
      | ( e->d_name[1] == '.' && e->d_name[2] == '\0' ) ) )
       continue;
 
-    if ( name[0] == '/' && name[1] == '\0' )
-      snprintf(pathname, sizeof(pathname), "/%s", e->d_name);
+    if ( top )
+      snprintf(pathname, sizeof(pathname), "%s", e->d_name);
     else
       snprintf(pathname, sizeof(pathname), "%s/%s", name, e->d_name);
 
@@ -153,48 +155,48 @@ write_file(int dir_fd, const char * name, const char * pathname)
 
   e->size = s.st_size;
 
-  // The system should really know not to reserve swap space for a read-only
-  // mapping, and MAP_NORESERVE should have no effect here. Unless there is
-  // some semantic about the mapping not being shared and the file changing
-  // under the mapping.
-  // Remove this if it's a problem.
-  if ( (input = mmap(0, s.st_size, PROT_READ, MAP_PRIVATE, fd, 0)) == MAP_FAILED ) {
-    fprintf(stderr, "%s: mmap failed: %s\n", pathname, strerror(errno));
-    exit(1);
-  }
 
-  printf("%s\n", pathname);
-  fflush(stdout);
-
-  if ( do_not_compress ) {
-    // Sendfile would be faster, but it doesn't matter for this application.
-    fprintf(stderr, "copy %d bytes from %lx to %lx\n", s.st_size, input, output);
-    memcpy(output, input, s.st_size);
-    e->compressed_size = s.st_size;
-    e->method = NONE;
-    output += s.st_size;
-    output_size -= s.st_size;
+  if ( s.st_size == 0 ) {
+    e->compressed_size = 0;
+    e->method = ZERO_LENGTH;
+    e->data_offset = 0;
   }
   else {
-    long	size = output_size;
-
-    if ( compress2(output, &size, input, s.st_size, Z_BEST_COMPRESSION) != Z_OK) {
-      fprintf(stderr, "%s: compress failed.\n", pathname);
+    if ( (input = mmap(0, s.st_size, PROT_READ, MAP_PRIVATE, fd, 0)) == MAP_FAILED ) {
+      fprintf(stderr, "%s: mmap failed: %s\n", pathname, strerror(errno));
       exit(1);
     }
-    e->compressed_size = size;
-    e->method = ZLIB;
-    output += size;
-    output_size -= size;
 
-    if ( size > output_size ) {
-      fprintf(stderr, "Maximum output file size was too small.\n");
-      exit(1);
+    if ( do_not_compress ) {
+      // Sendfile would be faster, but it doesn't matter for this application.
+      fprintf(stderr, "copy %d bytes from %lx to %lx\n", s.st_size, input, output);
+      memcpy(output, input, s.st_size);
+      e->compressed_size = s.st_size;
+      e->method = NONE;
+      output += s.st_size;
+      output_size -= s.st_size;
     }
-    output_size -= size;
+    else {
+      long	size = output_size;
+  
+      if ( compress2(output, &size, input, s.st_size, Z_BEST_COMPRESSION) != Z_OK) {
+        fprintf(stderr, "%s: compress failed.\n", pathname);
+        exit(1);
+      }
+      e->compressed_size = size;
+      e->method = ZLIB;
+      output += size;
+      output_size -= size;
+  
+      if ( size > output_size ) {
+        fprintf(stderr, "Maximum output file size was too small.\n");
+        exit(1);
+      }
+      output_size -= size;
+    }
+  
+    munmap(input, s.st_size);
   }
-
-  munmap(input, s.st_size);
   close(fd);
 }
 
@@ -206,6 +208,7 @@ main(int argc, char * * argv)
   long		output_base_size;
   long		file_size;
   int		fd;
+  long		table_offset;
 
   if ( argc < 2 ) {
     fprintf(stderr, "Usage: %s source-directory output-file\n", argv[0]);
@@ -235,6 +238,7 @@ main(int argc, char * * argv)
 
   header = (struct compressed_fs_header *)output;
   output += sizeof(*header);
+  memcpy(header->magic, compressed_fs_magic, sizeof(header->magic));
 
   entries_size = 100;
   entries = malloc(entries_size * sizeof(*entries));
@@ -245,6 +249,12 @@ main(int argc, char * * argv)
 
   descend(-1, name, write_file);
   entries_size = sizeof(*entries) * entry_index;
+
+  table_offset = output - output_base;
+  if ( table_offset & 3 )
+    table_offset += (4 - (table_offset & 3));
+
+  header->table_offset = table_offset;
   memcpy(output, entries, entries_size);
   output += entries_size;
 

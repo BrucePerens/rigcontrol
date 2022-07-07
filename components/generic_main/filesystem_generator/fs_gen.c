@@ -13,6 +13,7 @@
 #include <zlib.h>
 #include "compressed_fs.h"
 
+// Files with these suffixes should not be compressed.
 static const char * do_not_compress_suffixes[] = {
   "gif",
   "gz",
@@ -24,21 +25,40 @@ static const char * do_not_compress_suffixes[] = {
   "webp"
 };
 
-static char *			output = 0;
-static char *			output_base = 0;
-static long			output_size = 0;
-struct compressed_fs_header *	header = 0;
-struct compressed_fs_entry *	entries = 0;
-unsigned int		 	entry_index = 0;
-unsigned int			entries_size = 0;
+// Moving pointer to output data.
+static char *				output = 0;
 
+// Pointer to the base of the memory mapped output file.
+static char *				output_base = 0;
+
+// Used to keep track of overflow of the maximum size of the output file.
+static long				output_size = 0;
+
+// Filesystem header.
+static struct compressed_fs_header *	header = 0;
+
+// Entries for each file in the filesystem.
+static struct compressed_fs_entry *	entries = 0;
+
+// Index to the current filesystem entry.
+static unsigned int		 	entry_index = 0;
+
+// Number of filesystem entries currently allocated.
+static unsigned int			entries_size = 0;
+
+// Descend a directory tree, processing each file with the given coroutine.
+//
+// fd is called with the value -1 for the top-level directory. Internally it is set for
+// each subdirectory.
 static void
 descend(int fd, const char * name, void (*function)(int fd, const char * name, const char * pathname))
 {
-  DIR *			d;
-  struct dirent *	e;
-  bool			top = false;
+  DIR *			d;	// Handle on a directory in the source filesystem.
+  struct dirent *	e;	// Entry in a directory in the source filesystem.
+  bool			top = false; // Set if this is the top-level directory.
 
+  // Open the directory. Get an fd upon it to use with openat(). That saves inode
+  // references, but this code isn't actually performance-sensitive.
   if ( fd >= 0 )
     d = fdopendir(fd);
   else {
@@ -51,56 +71,58 @@ descend(int fd, const char * name, void (*function)(int fd, const char * name, c
     fd = dirfd(d);
   }
 
+  // Read the directory, and process each entry.
   while ( (e = readdir(d)) ) {
     char		pathname[1024];
     struct stat		s;
     int			dir_fd;
 
+    // "." and ".." are irrelevant.
     if ( e->d_name[0] == '.' && ( e->d_name[1] == '\0'
      | ( e->d_name[1] == '.' && e->d_name[2] == '\0' ) ) )
       continue;
 
+    // Construct a pathname to put in the filesystem entry.
     if ( top )
       snprintf(pathname, sizeof(pathname), "%s", e->d_name);
     else
       snprintf(pathname, sizeof(pathname), "%s/%s", name, e->d_name);
 
+    if ( e->d_type == DT_UNKNOWN ) {
+      // The directory didn't contain the file type. Fall back to fstatat() to get it.
+      if ( fstatat(dirfd(d), e->d_name, &s, 0) != 0 ) {
+        fprintf(stderr, "%s: %s\n", pathname, strerror(errno));
+        exit(1);
+      }
+      // d_type values are not the same as (s.st_mode & S_IFMT) values.
+      switch ( s.st_mode & S_IFMT ) {
+      case ST_REG:
+        e->d_type = DT_REG;
+        break;
+      case ST_DIR:
+        e->d_type = DT_DIR;
+        break;
+      }
+    }
+
+    // Switch on the file type to determine how to process it.
     switch ( e->d_type ) {
     case DT_DIR:
+      // It's a directory. Recurse.
       dir_fd = openat(fd, e->d_name, O_RDONLY);
       if ( dir_fd < 0 ) {
         fprintf(stderr, "%s: %s\n", pathname, strerror(errno));
         exit(1);
       }
       descend(dir_fd, pathname, function);
+      close(dir_fd);
       break;
     case DT_REG:
+      // It's a regular file. Call the coroutine to process it.
       (*function)(fd, e->d_name, pathname);
-      break;
-    case DT_UNKNOWN:
-      if ( fstatat(dirfd(d), e->d_name, &s, 0) != 0 ) {
-        fprintf(stderr, "%s: %s\n", pathname, strerror(errno));
-        exit(1);
-      }
-      switch ( s.st_mode & S_IFMT ) {
-      case S_IFDIR:
-        dir_fd = openat(fd, e->d_name, O_RDONLY);
-        if ( dir_fd < 0 ) {
-          fprintf(stderr, "%s: %s\n", pathname, strerror(errno));
-          exit(1);
-        }
-        descend(dir_fd, pathname, function);
-        break;
-      case S_IFREG:
-        (*function)(fd, e->d_name, pathname);
-        break;
-      default:
-        break;
-      }
       break;
     default:
       break;
-    }
   }
   closedir(d);
 }
@@ -112,7 +134,7 @@ write_file(int dir_fd, const char * name, const char * pathname)
   char *	input;
   int		fd = openat(dir_fd, name, O_RDONLY);
   const char *	dot = strrchr(name, '.');
-  int		suffix_count = sizeof(do_not_compress_suffixes) / sizeof(*do_not_compress_suffixes);
+  const int	suffix_count = sizeof(do_not_compress_suffixes) / sizeof(*do_not_compress_suffixes);
   bool		do_not_compress = false;
   int		name_length = 1 + strlen(pathname);
   struct compressed_fs_entry * e;

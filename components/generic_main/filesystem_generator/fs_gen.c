@@ -31,8 +31,8 @@ static char *				output = 0;
 // Pointer to the base of the memory mapped output file.
 static char *				output_base = 0;
 
-// Used to keep track of overflow of the maximum size of the output file.
-static long				output_size = 0;
+// Maximum size of the output file.
+static const long			maximum_size = 4 * 1024 * 1024;
 
 // Filesystem header.
 static struct compressed_fs_header *	header = 0;
@@ -49,12 +49,11 @@ static unsigned int			entries_size = 0;
 // Descend a directory tree, processing each file with the given coroutine.
 //
 // fd is called with the value -1 for the top-level directory. Internally it is set for
-// each subdirectory.
+// each subirectory.
 static void
 descend(int fd, const char * name, void (*function)(int fd, const char * name, const char * pathname))
 {
   DIR *			d;	// Handle on a directory in the source filesystem.
-  struct dirent *	e;	// Entry in a directory in the source filesystem.
   bool			top = false; // Set if this is the top-level directory.
 
   // Open the directory. Get an fd upon it to use with openat(). That saves inode
@@ -72,10 +71,9 @@ descend(int fd, const char * name, void (*function)(int fd, const char * name, c
   }
 
   // Read the directory, and process each entry.
-  while ( (e = readdir(d)) ) {
+  for ( struct dirent * e; e = readdir(d); ) {
     char		pathname[1024];
     struct stat		s;
-    int			dir_fd;
 
     // "." and ".." are irrelevant.
     if ( e->d_name[0] == '.' && ( e->d_name[1] == '\0'
@@ -109,13 +107,15 @@ descend(int fd, const char * name, void (*function)(int fd, const char * name, c
     switch ( e->d_type ) {
     case DT_DIR:
       // It's a directory. Recurse.
-      dir_fd = openat(fd, e->d_name, O_RDONLY);
-      if ( dir_fd < 0 ) {
-        fprintf(stderr, "%s: %s\n", pathname, strerror(errno));
-        exit(1);
+      {
+        const int dir_fd = openat(fd, e->d_name, O_RDONLY);
+        if ( dir_fd < 0 ) {
+          fprintf(stderr, "%s: %s\n", pathname, strerror(errno));
+          exit(1);
+        }
+        descend(dir_fd, pathname, function);
+        close(dir_fd);
       }
-      descend(dir_fd, pathname, function);
-      close(dir_fd);
       break;
     case DT_REG:
       // It's a regular file. Call the coroutine to process it.
@@ -134,31 +134,24 @@ descend(int fd, const char * name, void (*function)(int fd, const char * name, c
 // pathname is relative to the root of the source directory, with no leading slash.
 //
 static void
-write_file(int dir_fd, const char * name, const char * pathname)
+write_file(const int dir_fd, const char * const name, const char * const pathname)
 {
-  // stat() is used to get the size of the file.
-  struct stat	s;	
-
-  // Pointer to the mapped input file.
-  char *	input;
-
   // File descriptor of the file.
-  int		fd = openat(dir_fd, name, O_RDONLY);
+  int			fd = openat(dir_fd, name, O_RDONLY);
 
   // Used to scan for suffixes of files that should not be compressed.
-  const char *	dot = strrchr(name, '.');
+  const char * const	dot = strrchr(name, '.');
 
   // Number of entries in the suffix table.
-  const int	suffix_count = sizeof(do_not_compress_suffixes) / sizeof(*do_not_compress_suffixes);
+  const int		suffix_count = sizeof(do_not_compress_suffixes) / sizeof(*do_not_compress_suffixes);
 
   // If set, this file should not be compressed.
-  bool		do_not_compress = false;
+  bool			do_not_compress = false;
 
   // Length of the pathname with terminating null.
-  int		name_length = 1 + strlen(pathname);
+  const int		name_length = 1 + strlen(pathname);
 
   // Entry for the file in the compressed filesystem.
-  struct compressed_fs_entry * e;
 
   // Grow the number of filesystem entries as necessary.
   if ( entry_index >= entries_size ) {
@@ -168,14 +161,13 @@ write_file(int dir_fd, const char * name, const char * pathname)
       exit(1);
     }
   }
-  e = &entries[entry_index];
+  struct compressed_fs_entry * e = &entries[entry_index];
   entry_index++;
 
   // Store the file name.
   e->name_offset = output - output_base;
   memcpy(output, pathname, name_length);
   output += name_length;
-  output_size -= name_length;
   header->number_of_files++;
 
   // The file data goes right after the name.
@@ -195,6 +187,8 @@ write_file(int dir_fd, const char * name, const char * pathname)
     fprintf(stderr, "%s: %s\n", pathname, strerror(errno));
     exit(1);
   }
+  // stat() is used to get the size of the file.
+  struct stat	s;	
   if ( fstat(fd, &s) < 0 ) {
     fprintf(stderr, "%s: stat failed: %s\n", pathname, strerror(errno));
     exit(1);
@@ -209,7 +203,8 @@ write_file(int dir_fd, const char * name, const char * pathname)
   }
   else {
     // Map the input file.
-    if ( (input = mmap(0, s.st_size, PROT_READ, MAP_PRIVATE, fd, 0)) == MAP_FAILED ) {
+    void * const input = mmap(0, s.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+    if ( input == MAP_FAILED ) {
       fprintf(stderr, "%s: mmap failed: %s\n", pathname, strerror(errno));
       exit(1);
     }
@@ -219,30 +214,26 @@ write_file(int dir_fd, const char * name, const char * pathname)
       do_not_compress = true;
 
     if ( do_not_compress ) {
+      if ( output - output_base + s.st_size >= maximum_size ) {
+        fprintf(stderr, "Compressed filesystem too large.\n");
+        exit(1);
+      }
       // Sendfile would be faster, but it doesn't matter for this application.
       memcpy(output, input, s.st_size);
       e->compressed_size = s.st_size;
       e->method = NONE;
       output += s.st_size;
-      output_size -= s.st_size;
     }
     else {
-      long	size = output_size;
+      long size = maximum_size - (output - output_base);
   
       if ( compress2(output, &size, input, s.st_size, Z_BEST_COMPRESSION) != Z_OK) {
-        fprintf(stderr, "%s: compress failed.\n", pathname);
+        fprintf(stderr, "%s: compress failed, probably compressed filesystem too large.\n", pathname);
         exit(1);
       }
       e->compressed_size = size;
       e->method = ZLIB;
       output += size;
-      output_size -= size;
-  
-      if ( size > output_size ) {
-        fprintf(stderr, "Maximum output file size was too small.\n");
-        exit(1);
-      }
-      output_size -= size;
     }
   
     munmap(input, s.st_size);
@@ -253,12 +244,8 @@ write_file(int dir_fd, const char * name, const char * pathname)
 int
 main(int argc, char * * argv)
 {
-  char *	name = argv[1];
-  size_t	length = strlen(name);
-  long		output_base_size;
-  long		file_size;
-  int		fd;
-  long		table_offset;
+  char * const	name = argv[1];
+  const size_t	length = strlen(name);
 
   if ( argc < 2 ) {
     fprintf(stderr, "Usage: %s source-directory output-file\n", argv[0]);
@@ -268,23 +255,23 @@ main(int argc, char * * argv)
     name[length - 1] = '\0';
 
   // Maximum output size. The ESP-32 only has 4 MB FLASH.
-  output_size = output_base_size = 4 * 1024 * 1024;
 
-  if ( (fd = open(argv[2], O_CREAT|O_TRUNC|O_RDWR, 0666)) < 0 ) {
+  const int fd = open(argv[2], O_CREAT|O_TRUNC|O_RDWR, 0666);
+  if ( fd < 0 ) {
     fprintf(stderr, "%s: %s\n", argv[2], strerror(errno));
     exit(1);
   }
-  // Can't write a mmapped file with size 0.
+  // Can't write a memory-mapped file with size 0.
   // ftruncate() sets the file size to our maximum, but doesn't allocate any blocks
-  // to the file. At the end of processing, the file is truncated again, to its actual
-  // length.
-  if ( ftruncate(fd, output_base_size) != 0 ) {
+  // to the file. msync() does that. At the end of processing, the file is truncated
+  // again, to its actual length.
+  if ( ftruncate(fd, maximum_size) != 0 ) {
     fprintf(stderr, "%s: allocate space failed: %s\n", argv[2], strerror(errno));
     exit(1);
   }
 
   // Map the output file.
-  if ( (output = output_base = mmap(0, output_base_size, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0)) == MAP_FAILED ) {
+  if ( (output = output_base = mmap(0, maximum_size, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0)) == MAP_FAILED ) {
     fprintf(stderr, "%s: mmap failed: %s\n", argv[2], strerror(errno));
     exit(1);
   }
@@ -312,18 +299,22 @@ main(int argc, char * * argv)
 
   // Write the file table to the end of the compressed filesystem.
   entries_size = sizeof(*entries) * entry_index;
-  table_offset = output - output_base;
-  if ( table_offset & 3 )
-    table_offset += (4 - (table_offset & 3));
+  const int unaligned_bits = (long)output & 3;
+  if ( unaligned_bits )
+    output += 4 - unaligned_bits;
 
-  header->table_offset = table_offset;
+  if ( output + entries_size - output_base > maximum_size ) {
+    fprintf(stderr, "Compressed filesystem too large.\n");
+    exit(1);
+  }
+  header->table_offset = output - output_base;
   memcpy(output, entries, entries_size);
   output += entries_size;
 
   // Write the output file blocks, and set the correct file size.
-  file_size = output - output_base;
+  const long file_size = output - output_base;
   msync(output_base, file_size, MS_ASYNC);
-  munmap(output_base, output_base_size);
+  munmap(output_base, maximum_size);
   if ( ftruncate(fd, file_size) != 0 ) {
     fprintf(stderr, "%s: final truncate failed: %s\n", argv[2], strerror(errno));
     exit(1);

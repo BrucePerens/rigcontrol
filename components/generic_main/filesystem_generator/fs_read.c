@@ -45,7 +45,15 @@ main(int argc, char * * argv)
   // are interleaved after the header. Position of things does matter somewhat because
   // it's a block-based FLASH device.
   struct compressed_fs_header * header = (struct compressed_fs_header *)image;
+  struct compressed_fs_entry * entries = (struct compressed_fs_entry *)(image + header->table_offset);
 
+  for ( int i = 0; i < header->number_of_files; i++ ) {
+    const char * const name = (image + entries[i].name_offset);
+    if ( strcmp(name, argv[2]) == 0 ) {
+      write(1, (image + entries[i].data_offset), entries[i].size);
+    }
+  }
+  
   munmap(image, s.st_size);
 
   close(fd);

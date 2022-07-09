@@ -11,8 +11,6 @@
 #include <inttypes.h>
 #include "generic_main.h"
 
-extern void user_web_handlers(httpd_handle_t);
-
 // extern const uint8_t servercert_pem[] asm("_binary_servercert_pem_start");
 static const char TASK_NAME[] = "web_server";
 static httpd_handle_t server = NULL;
@@ -55,7 +53,8 @@ void start_webserver(void)
   // Start the httpd server
   ESP_LOGI(TASK_NAME, "Starting server on port: '%d'", config.server_port);
   if (httpd_start(&server, &config) == ESP_OK) {
-    user_web_handlers(server);
+    gm_compressed_fs_web_handlers(server);
+    gm_user_web_handlers(server);
   }
   else {
     server = NULL;

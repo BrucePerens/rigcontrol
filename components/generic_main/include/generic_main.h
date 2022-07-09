@@ -6,6 +6,7 @@
 #include <esp_netif_types.h>
 #include <esp_netif_net_stack.h>
 #include <esp_event.h>
+#include <esp_http_server.h>
 #include <netinet/in.h>
 #include <../lwip/esp_netif_lwip_internal.h>
 #include <pthread.h>
@@ -126,7 +127,7 @@ extern size_t			gm_choose_one(size_t number_of_entries);
 extern void			gm_command_add_registered_to_console(void);
 extern void			gm_command_interpreter_start(void);
 extern void			gm_command_register(const esp_console_cmd_t * command);
-
+extern void			gm_compressed_fs_web_handlers(httpd_handle_t server);
 extern int			gm_ddns(void);
 
 extern void			gm_event_server(void);
@@ -169,6 +170,8 @@ extern void			gm_timer_to_human(int64_t, char *, size_t);
 extern void			gm_uart_initialize(void);
 extern void			gm_user_initialize_early(void);
 extern void			gm_user_initialize_late(void);
+extern void			gm_user_web_get(httpd_req_t * req);
+extern void			gm_user_web_handlers(httpd_handle_t server);
 
 extern int			gm_vprintf(const char * format, va_list args);
 

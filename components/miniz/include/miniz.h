@@ -1,3 +1,8 @@
+/*
+ * It looks like Rich formerly used the unlicense, but the unlicense text is no longer
+ * present and this version came with the MIT license in the LICENSE file.
+ * Bruce Perens - July 2022.
+ */
 #define MINIZ_EXPORT
 /* miniz.c 2.2.0 - public domain deflate/inflate, zlib-subset, ZIP reading/writing/appending, PNG writing
    See "unlicense" statement at the end of this file.

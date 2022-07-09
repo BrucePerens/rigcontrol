@@ -1,6 +1,13 @@
+/*
+ * This is taken from the Miniz github at https://github.com/richgel999/miniz
+ * is copyrighted by Rich Geldreich <richgel99@gmail.com>
+ * and is under the BSD license.
+ * It looks like he previously used the unlicense - there is a reference to it,
+ * but the license text is not present.
+ */
 #include <miniz.h>
 
-int tinfl_decompress_mem_to_callback1(const void *pIn_buf, size_t *pIn_buf_size, tinfl_put_buf_func_ptr pPut_buf_func, void *pPut_buf_user, int flags)
+int tinfl_decompress_mem_to_callback(const void *pIn_buf, size_t *pIn_buf_size, tinfl_put_buf_func_ptr pPut_buf_func, void *pPut_buf_user, int flags)
 {
     int result = 0;
     tinfl_decompressor decomp;

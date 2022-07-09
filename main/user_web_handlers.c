@@ -6,27 +6,26 @@
 #include <fcntl.h>
 #include "generic_main.h"
 
-static const char	page[] = " \
-<http> \
-<head> \
-<title> \
-K6BP Rigcontrol \
-</title> \
-</head> \
-<body> \
-<h1>K6BP Rigcontrol</h1> \
-See <a href=\"https://github.com/BrucePerens/rigcontrol\"> \
-https://github.com/BrucePerens/rigcontrol \
-</a> \
-</body> \
-</http> \
-";
+// The embedded filesystem.
+static const char * fs[] asm("_binary_fs_start");
 
 static esp_err_t
 http_root_handler(httpd_req_t *req)
 {
-  httpd_resp_send_chunk(req, page, sizeof(page));
-  httpd_resp_send_chunk(req, page, 0);
+  // Redirect to /index.html
+  httpd_resp_set_type(req, "text/html");
+  httpd_resp_set_status(req, "301 Moved Permanently");
+  httpd_resp_set_hdr(req, "Location", "/index.html");
+  httpd_resp_send(req, NULL, 0);
+  return ESP_OK;
+}
+
+static esp_err_t
+http_file_handler(httpd_req_t *req)
+{
+  printf("%s\n", *fs);
+  // httpd_resp_send_chunk(req, page, sizeof(page));
+  httpd_resp_send_chunk(req, "", 0);
   return ESP_OK;
 }
 
@@ -39,4 +38,12 @@ void user_web_handlers(httpd_handle_t server)
       .user_ctx  = NULL
   };
   httpd_register_uri_handler(server, &root);
+
+  static const httpd_uri_t file = {
+      .uri       = "*",
+      .method    = HTTP_GET,
+      .handler   = http_file_handler,
+      .user_ctx  = NULL
+  };
+  httpd_register_uri_handler(server, &file);
 }

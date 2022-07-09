@@ -12,3 +12,4 @@ add_custom_target(
   COMMAND sh ${CMAKE_CURRENT_SOURCE_DIR}/scripts/make_firmware_archive.sh
   DEPENDS bootloader/bootloader.bin partition_table/partition-table.bin k6bp_rigcontrol.bin
 )
+

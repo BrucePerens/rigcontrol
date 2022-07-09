@@ -1,5 +1,7 @@
 file(GLOB DOT_C *.c)
 idf_component_register(
+EMBED_FILES
+  ${CMAKE_CURRENT_BINARY_DIR}/fs
 SRCS
   ${DOT_C}
   ${CMAKE_CURRENT_BINARY_DIR}/git_version.c 
@@ -45,6 +47,15 @@ add_custom_command(
 add_custom_target(fs-read DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/fs_read)
 add_dependencies(${COMPONENT_LIB} fs-read)
 
+file(GLOB FILESYSTEM ${CMAKE_CURRENT_SOURCE_DIR}/../../filesystem/*)
+add_custom_command(
+  OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/fs
+  COMMAND ${CMAKE_CURRENT_BINARY_DIR}/fs_gen ${CMAKE_CURRENT_SOURCE_DIR}/../../filesystem ${CMAKE_CURRENT_BINARY_DIR}/fs
+  MAIN_DEPENDENCY ${CMAKE_CURRENT_BINARY_DIR}/fs_gen
+  DEPENDS ${FILESYSTEM}
+)
+add_custom_target(build-fs DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/fs)
+add_dependencies(${COMPONENT_LIB} build-fs)
 
 add_custom_target(
   git-version

@@ -29,11 +29,12 @@ decompress_file(const char * const image, const struct compressed_fs_entry * con
 static void
 read_file(const char * const image, const struct compressed_fs_entry * const e)
 {
+  fflush(stdout);
+
   switch ( e->method ) {
   case ZERO_LENGTH:
     break;
   case NONE:
-    fflush(stdout);
     write(1, image + e->data_offset, e->size);
     break;
   case ZLIB:

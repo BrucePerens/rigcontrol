@@ -16,13 +16,13 @@ REQUIRES
   esp_http_server
   esp_hw_support
   esp_netif
-  esp_rom
   esp_timer
   esp_wifi
   freertos
   hal
   lwip
   main
+  miniz
   nvs_flash
   wpa_supplicant
 )

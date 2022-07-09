@@ -16,6 +16,5 @@ REQUIRES
   hal
   lwip
   nvs_flash
-  puff
   tcpip_adapter
 )

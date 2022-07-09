@@ -8,11 +8,42 @@
 #include <sys/stat.h>
 #include <sys/fcntl.h>
 #include <sys/mman.h>
-#include <zlib.h>
+#include <miniz/miniz.h>
 #include "compressed_fs.h"
 
+static int
+process_decompressed_data(const void * data, int length, void * context)
+{
+  write(1, data, length);
+  return 1; // Success code.
+}
+
+static void
+decompress_file(const char * const image, const struct compressed_fs_entry * const e)
+{
+  size_t	size = e->compressed_size;
+
+  const int status = tinfl_decompress_mem_to_callback(image + e->data_offset, &size, process_decompressed_data, 0, TINFL_FLAG_PARSE_ZLIB_HEADER);
+}
+
+static void
+read_file(const char * const image, const struct compressed_fs_entry * const e)
+{
+  switch ( e->method ) {
+  case ZERO_LENGTH:
+    break;
+  case NONE:
+    fflush(stdout);
+    write(1, image + e->data_offset, e->size);
+    break;
+  case ZLIB:
+    decompress_file(image, e);
+    break;
+  }
+}
+
 int
-main(int argc, char * * argv)
+main(const int argc, const char * * const argv)
 {
   if ( argc < 2 ) {
     fprintf(stderr, "Usage: %s image file\n", argv[0]);
@@ -47,15 +78,24 @@ main(int argc, char * * argv)
   struct compressed_fs_header * header = (struct compressed_fs_header *)image;
   struct compressed_fs_entry * entries = (struct compressed_fs_entry *)(image + header->table_offset);
 
+  bool found = false;
+
   for ( int i = 0; i < header->number_of_files; i++ ) {
     const char * const name = (image + entries[i].name_offset);
     if ( strcmp(name, argv[2]) == 0 ) {
-      write(1, (image + entries[i].data_offset), entries[i].size);
+      read_file(image, &entries[i]);
+      found = true;
+      break;
     }
   }
   
   munmap(image, s.st_size);
-
   close(fd);
-  return 0;
+
+  if ( !found ) {
+    fprintf(stderr, "%s: not found.\n", argv[2]);
+    return 1;
+  }
+  else
+    return 0;
 }

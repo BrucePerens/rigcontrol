@@ -25,7 +25,6 @@ https://github.com/BrucePerens/rigcontrol \
 static esp_err_t
 http_root_handler(httpd_req_t *req)
 {
-  
   httpd_resp_send_chunk(req, page, sizeof(page));
   httpd_resp_send_chunk(req, page, 0);
   return ESP_OK;

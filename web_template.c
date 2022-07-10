@@ -35,12 +35,20 @@ static html_t		doc = { };
 static html_t *		current = &doc;
 static char		scratchpad[1024];
 
+static char *		stralloc(const char *);
+
+void
+output(const char * pattern, va_list argument_pointer)
+{
+  vfprintf(stdout, pattern, argument_pointer);
+}
+
 void
 emit(const char * pattern, ...)
 {
   va_list argument_pointer;
   va_start(argument_pointer, pattern);
-  vfprintf(stdout, pattern, argument_pointer);
+  output(pattern, argument_pointer);
   va_end(argument_pointer);
 }
 
@@ -76,11 +84,12 @@ param(const char * name, const char * pattern, ...)
 
   va_list argument_pointer;
   va_start(argument_pointer, pattern);
-  vsnprintf(scratchpad, sizeof(scratchpad), pattern, argument_pointer);
+  snprintf(scratchpad, sizeof(scratchpad), pattern, argument_pointer);
   va_end(argument_pointer);
 
   p->name = name;
   p->value = stralloc(scratchpad);
+
   *(current->tag.params_end) = p;
   current->tag.params_end = &(p->next);
 }
@@ -101,7 +110,7 @@ splice(html_t * h)
   }
 }
 
-const char *
+char *
 stralloc(const char * s)
 {
   const size_t 	length = strlen(s) + 1;
@@ -118,9 +127,25 @@ tag(const char * name)
 {
   html_t * h = mem(sizeof(html_t));
 
-  emit("<%s", name);
   h->name = name;
   splice(h);
+}
+
+void
+text(const char * pattern, ...)
+{
+}
+
+void
+body()
+{
+  tag("body");
+}
+
+void
+html()
+{
+  tag("html");
 }
 
 void

@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <stdbool.h>
 
 typedef struct param {
   const char *		name;
@@ -14,6 +15,7 @@ struct html {
   const char *		name;
   struct html *		next;
   struct html *		parent;
+  bool			nesting;
   union {
     struct {
       param_t *		params;
@@ -31,19 +33,20 @@ typedef struct html html_t;
 static const char	document[] = "document";
 static const char	raw[] = "raw";
 
-static html_t		doc = { };
-static html_t *		current = &doc;
+static html_t		root = { };
+static html_t *		current = &root;
 static char		scratchpad[1024];
 
 static char *		stralloc(const char *);
+static void		fail(const char * pattern, ...);
 
-void
+static void
 output(const char * pattern, va_list argument_pointer)
 {
   vfprintf(stdout, pattern, argument_pointer);
 }
 
-void
+static void
 emit(const char * pattern, ...)
 {
   va_list argument_pointer;
@@ -52,12 +55,21 @@ emit(const char * pattern, ...)
   va_end(argument_pointer);
 }
 
-void
+static void
 end()
 {
+  html_t * const h = current;
+  if ( current->nesting ) {
+    current = current->parent;
+    if ( current == &root ) {
+    }
+  }
+  else {
+    fail("end() called too many times (check for non-nesting tags).\n");
+  }
 }
 
-void
+static void
 fail(const char * pattern, ...)
 {
   va_list argument_pointer;
@@ -67,7 +79,7 @@ fail(const char * pattern, ...)
   exit(1);
 }
 
-void *
+static void *
 mem(size_t size)
 {
   void * const m = malloc(size);
@@ -77,7 +89,7 @@ mem(size_t size)
   return m;
 }
 
-void
+static void
 param(const char * name, const char * pattern, ...)
 {
   param_t * const p = mem(sizeof(*p));
@@ -94,23 +106,22 @@ param(const char * name, const char * pattern, ...)
   current->tag.params_end = &(p->next);
 }
 
-void
+static void
 splice(html_t * h)
 {
-  if ( doc.name == 0 ) {
-    doc.name = document;
-    doc.tag.content_end = &(doc.tag.content);
-    doc.tag.params_end = &(doc.tag.params);
+  if ( root.name == 0 ) {
+    root.name = document;
+    root.tag.content_end = &(root.tag.content);
+    root.tag.params_end = &(root.tag.params);
   }
-  if ( h->name != raw ) {
-    h->parent = current;
-    *(current->tag.content_end) = h;
-    current->tag.content_end = &(h->next);
+  h->parent = current;
+  *(current->tag.content_end) = h;
+  current->tag.content_end = &(h->next);
+  if ( h->nesting )
     current = h;
-  }
 }
 
-char *
+static char *
 stralloc(const char * s)
 {
   const size_t 	length = strlen(s) + 1;
@@ -122,36 +133,47 @@ stralloc(const char * s)
   return c;
 }
 
-void
-tag(const char * name)
+static void
+tag(const char * name, bool nesting)
 {
   html_t * h = mem(sizeof(html_t));
 
   h->name = name;
+  h->nesting = nesting;
   splice(h);
 }
 
-void
+static void
 text(const char * pattern, ...)
 {
+  va_list argument_pointer;
+  html_t * h = mem(sizeof(html_t));
+
+  va_start(argument_pointer, pattern);
+  h->name = raw;
+  snprintf(scratchpad, sizeof(scratchpad), pattern, argument_pointer);
+  h->raw.text = stralloc(scratchpad);
+  h->nesting = false;
+  splice(h);
+  va_end(argument_pointer);
 }
 
 void
 body()
 {
-  tag("body");
+  tag("body", true);
 }
 
 void
 html()
 {
-  tag("html");
+  tag("html", true);
 }
 
 void
 p()
 {
-  tag("p");
+  tag("p", true);
 }
 
 int main(int argc, char * * argv)

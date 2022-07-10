@@ -13,20 +13,9 @@ typedef struct param {
 
 struct html {
   const char *		name;
-  struct html *		next;
   struct html *		parent;
+  bool			open;
   bool			nesting;
-  union {
-    struct {
-      param_t *		params;
-      param_t * *	params_end;
-      struct html *	content;
-      struct html * *	content_end;
-    } tag;
-    struct {
-      const char *	text;
-    } raw;
-  };
 };
 typedef struct html html_t;
 
@@ -37,8 +26,10 @@ static html_t		root = { };
 static html_t *		current = &root;
 static char		scratchpad[1024];
 
-static char *		stralloc(const char *);
+static void		emit(const char * pattern, ...);
 static void		fail(const char * pattern, ...);
+static void		finish_current_tag();
+static char *		stralloc(const char *);
 
 static void
 output(const char * pattern, va_list argument_pointer)
@@ -59,10 +50,13 @@ static void
 end()
 {
   html_t * const h = current;
-  if ( current->nesting ) {
-    current = current->parent;
-    if ( current == &root ) {
-    }
+
+  finish_current_tag();
+  if ( h->nesting ) {
+    emit("</%s>", h->name);
+    html_t * const parent = h->parent;
+    free(current);
+    current = parent;
   }
   else {
     fail("end() called too many times (check for non-nesting tags).\n");
@@ -79,6 +73,23 @@ fail(const char * pattern, ...)
   exit(1);
 }
 
+static void
+finish_current_tag()
+{
+  if ( current->open ) {
+    if ( current->nesting ) {
+      emit(">");
+      current->open = false;
+    }
+    else {
+      emit("/>");
+      html_t * parent = current->parent;
+      free(current);
+      current = parent;
+    }
+  }
+}
+
 static void *
 mem(size_t size)
 {
@@ -92,18 +103,17 @@ mem(size_t size)
 static void
 param(const char * name, const char * pattern, ...)
 {
-  param_t * const p = mem(sizeof(*p));
-
   va_list argument_pointer;
   va_start(argument_pointer, pattern);
-  snprintf(scratchpad, sizeof(scratchpad), pattern, argument_pointer);
+
+  if ( !current->open ) {
+    fail("param() must be under the tag it applies to, before anything but another param().\n");
+  }
+  emit(" %s=\"", name);
+  emit(pattern, argument_pointer);
+  emit("\"");
+
   va_end(argument_pointer);
-
-  p->name = name;
-  p->value = stralloc(scratchpad);
-
-  *(current->tag.params_end) = p;
-  current->tag.params_end = &(p->next);
 }
 
 static void
@@ -111,14 +121,9 @@ splice(html_t * h)
 {
   if ( root.name == 0 ) {
     root.name = document;
-    root.tag.content_end = &(root.tag.content);
-    root.tag.params_end = &(root.tag.params);
   }
   h->parent = current;
-  *(current->tag.content_end) = h;
-  current->tag.content_end = &(h->next);
-  if ( h->nesting )
-    current = h;
+  current = h;
 }
 
 static char *
@@ -136,9 +141,12 @@ stralloc(const char * s)
 static void
 tag(const char * name, bool nesting)
 {
-  html_t * h = mem(sizeof(html_t));
+  finish_current_tag();
+  emit("<%s", name);
 
+  html_t * h = mem(sizeof(html_t));
   h->name = name;
+  h->open = true;
   h->nesting = nesting;
   splice(h);
 }
@@ -147,14 +155,10 @@ static void
 text(const char * pattern, ...)
 {
   va_list argument_pointer;
-  html_t * h = mem(sizeof(html_t));
 
+  finish_current_tag();
   va_start(argument_pointer, pattern);
-  h->name = raw;
-  snprintf(scratchpad, sizeof(scratchpad), pattern, argument_pointer);
-  h->raw.text = stralloc(scratchpad);
-  h->nesting = false;
-  splice(h);
+  output(pattern, argument_pointer);
   va_end(argument_pointer);
 }
 

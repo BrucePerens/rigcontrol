@@ -1,7 +1,9 @@
 file(GLOB DOT_C *.c)
+file(GLOB DOT_CXX *.cxx)
 idf_component_register(
 SRCS
   ${DOT_C}
+  ${DOT_CXX}
   ${CMAKE_CURRENT_BINARY_DIR}/git_version.c 
   ${CMAKE_CURRENT_SOURCE_DIR}/filesystem_generator/magic.c 
 INCLUDE_DIRS

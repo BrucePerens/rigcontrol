@@ -1,15 +1,15 @@
 #include <stdarg.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
-#include <stdbool.h>
+#include <cstdlib>
+#include <pthread.h>
+#include "components/generic_main/include/web_template.hpp"
 
 typedef struct tag {
   const char *	name;
   struct tag *	parent;
-  bool		open:1;
-  bool		nesting:1;
+  unsigned int	open:1;
+  unsigned int	nesting:1;
 } tag_t;
 
 static const char	document[] = "document";
@@ -17,17 +17,27 @@ static const char	raw[] = "raw";
 
 static tag_t		root = { };
 static tag_t *		current = &root;
-static char		scratchpad[1024];
 
 static void		emit(const char * pattern, ...);
 static void		fail(const char * pattern, ...);
 static void		finish_current_tag();
+static void		flush();
 static char *		stralloc(const char *);
 
+char	buffer[2048];
+int	buf_index = 0;
+
 static void
-output(const char * pattern, va_list argument_pointer)
+emit_va(const char * pattern, va_list argument_pointer)
 {
-  vfprintf(stdout, pattern, argument_pointer);
+
+  size_t size = vsnprintf(&buffer[buf_index], sizeof(buffer) - buf_index, pattern, argument_pointer);
+  buf_index += size;
+  if ( buf_index >= sizeof(buffer) )
+    fail("output (probably text) too large for buffer.\n");
+
+  if ( buf_index > sizeof(buffer) / 2 )
+    flush();
 }
 
 static void
@@ -35,7 +45,7 @@ emit(const char * pattern, ...)
 {
   va_list argument_pointer;
   va_start(argument_pointer, pattern);
-  output(pattern, argument_pointer);
+  emit_va(pattern, argument_pointer);
   va_end(argument_pointer);
 }
 
@@ -50,6 +60,8 @@ end()
     tag_t * const parent = h->parent;
     free(current);
     current = parent;
+    if ( current == &root )
+      flush();
   }
   else {
     fail("end() called too many times (check for non-nesting tags).\n");
@@ -63,7 +75,6 @@ fail(const char * pattern, ...)
   va_start(argument_pointer, pattern);
   vfprintf(stderr, pattern, argument_pointer);
   va_end(argument_pointer);
-  exit(1);
 }
 
 static void
@@ -81,6 +92,13 @@ finish_current_tag()
       current = parent;
     }
   }
+}
+
+static void
+flush()
+{
+  gm_send_to_client(buffer, buf_index);
+  buf_index = 0;
 }
 
 static void *
@@ -140,7 +158,7 @@ tag(const char * name, bool nesting)
   tag_t * h = (tag_t *)mem(sizeof(tag_t));
   h->name = name;
   h->open = true;
-  h->nesting = nesting;
+  h->nesting = nesting ? 1 : 0;
   splice(h);
 }
 
@@ -151,7 +169,7 @@ text(const char * pattern, ...)
 
   finish_current_tag();
   va_start(argument_pointer, pattern);
-  output(pattern, argument_pointer);
+  emit_va(pattern, argument_pointer);
   va_end(argument_pointer);
 }
 
@@ -336,6 +354,12 @@ namespace HTML {
     tag("dl", true);
   }
   
+  void
+  doctype()
+  {
+    text("<!DOCTYPE HTML>\n");
+  }
+
   void
   dt()
   {
@@ -811,17 +835,17 @@ namespace HTML {
   }
 }
 
-
 int
 main(int argc, char * * argv)
 {
   using namespace HTML;
+  doctype();
   html();
-    param("lang", "en");
+    head();
+    end();
     body();
-      text("Hello, World!");
-      br();
+      text("Hello!");
     end();
   end();
-  return 0;
 }
+

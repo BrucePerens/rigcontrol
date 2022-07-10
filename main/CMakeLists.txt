@@ -1,7 +1,7 @@
+file(GLOB DOT_C *.c)
 idf_component_register(
 SRCS
-  user.c
-  user_web_handlers.c
+  ${DOT_C}
 INCLUDE_DIRS
   .
 # Components must be listed before any other components that they depend upon.

@@ -1,3 +1,4 @@
+/*
 #include <argtable3/argtable3.h>
 #include "generic_main.h"
 
@@ -22,5 +23,6 @@ CONSTRUCTOR install()
     .argtable = &args
   };
 
-  register_command(&command);
+  gm_command_register(&command);
 }
+ */

@@ -3,7 +3,10 @@
 #include <string.h>
 #include <cstdlib>
 #include <pthread.h>
-#include "components/generic_main/include/web_template.hpp"
+extern "C" {
+  #include "generic_main.h"
+};
+#include "web_template.hxx"
 
 typedef struct tag {
   const char *	name;
@@ -22,7 +25,6 @@ static void		emit(const char * pattern, ...);
 static void		fail(const char * pattern, ...);
 static void		finish_current_tag();
 static void		flush();
-static char *		stralloc(const char *);
 
 char	buffer[2048];
 int	buf_index = 0;
@@ -112,22 +114,6 @@ mem(size_t size)
 }
 
 static void
-param(const char * name, const char * pattern, ...)
-{
-  va_list argument_pointer;
-  va_start(argument_pointer, pattern);
-
-  if ( !current->open ) {
-    fail("param() must be under the tag it applies to, before anything but another param().\n");
-  }
-  emit(" %s=\"", name);
-  emit(pattern, argument_pointer);
-  emit("\"");
-
-  va_end(argument_pointer);
-}
-
-static void
 splice(tag_t * h)
 {
   if ( root.name == 0 ) {
@@ -135,18 +121,6 @@ splice(tag_t * h)
   }
   h->parent = current;
   current = h;
-}
-
-static char *
-stralloc(const char * s)
-{
-  const size_t 	length = strlen(s) + 1;
-  char * const	c = (char *)malloc(length);
-  if ( c == 0 )
-    fail("Out of memory.\n");
-
-  memcpy(c, s, length);
-  return c;
 }
 
 static void
@@ -174,6 +148,22 @@ text(const char * pattern, ...)
 }
 
 namespace HTML {
+  void
+  attr(const char * name, const char * pattern, ...)
+  {
+    va_list argument_pointer;
+    va_start(argument_pointer, pattern);
+  
+    if ( !current->open ) {
+      fail("attr() must be under the tag it applies to, before anything but another param().\n");
+    }
+    emit(" %s=\"", name);
+    emit(pattern, argument_pointer);
+    emit("\"");
+  
+    va_end(argument_pointer);
+  }
+
   void
   a()
   {

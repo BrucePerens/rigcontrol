@@ -219,7 +219,7 @@ int request_mapping_ipv6(gm_port_mapping_t * m)
   p->pcp.lifetime = htonl(24 * 60 * 60);
   memcpy(p->pcp.mp.nonce, m->nonce, sizeof(m->nonce));
   p->pcp.mp.protocol = m->tcp ? PCP_TCP : PCP_UDP;
-  // memcpy(p->pcp.mp.external_address.s6_addr, GM.sta.ip6.public.sin6_addr.s6_addr, sizeof(p->pcp.mp.external_address.s6_addr));
+  // memcpy(p->pcp.mp.external_address.s6_addr, GM.sta.ip6.pub.sin6_addr.s6_addr, sizeof(p->pcp.mp.external_address.s6_addr));
   p->pcp.mp.internal_port = htons(m->internal_port);
   p->pcp.mp.external_port = htons(m->external_port);
   p->pcp.lifetime = htonl(m->lifetime);

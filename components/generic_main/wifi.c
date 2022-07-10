@@ -223,7 +223,7 @@ static void ip_event_sta_got_ip4(void* arg, esp_event_base_t event_base, int32_t
   inet_ntop(AF_INET, &event->ip_info.gw.addr, buffer, sizeof(buffer));
   gm_printf("router %s\n", buffer);
   fflush(stderr);
-  gm_stun(false, (struct sockaddr *)&GM.sta.ip4.public, after_stun);
+  gm_stun(false, (struct sockaddr *)&GM.sta.ip4.pub, after_stun);
   gm_port_control_protocol_start_listener_ipv4();
   gm_port_control_protocol_request_mapping_ipv4();
   start_webserver();
@@ -282,7 +282,7 @@ static void ip_event_got_ip6(void* arg, esp_event_base_t event_base, int32_t eve
       // Cope with it if we don't.
       gm_port_control_protocol_start_listener_ipv6();
       gm_port_control_protocol_request_mapping_ipv6();
-      gm_stun(true, (struct sockaddr *)&interface->ip6.public, after_stun);
+      gm_stun(true, (struct sockaddr *)&interface->ip6.pub, after_stun);
     }
     break;
   case ESP_IP6_ADDR_IS_SITE_LOCAL:

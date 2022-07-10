@@ -70,7 +70,7 @@ typedef struct _gm_netif {
     struct sockaddr_in	address;
     struct sockaddr_in	router;
     uint32_t		netmask;
-    struct sockaddr_in	public;
+    struct sockaddr_in	pub;
     int			nat;	// 1 for NAT, 2 for double-nat.
     gm_port_mapping_t *	port_mappings;
   } ip4;
@@ -80,7 +80,7 @@ typedef struct _gm_netif {
     struct sockaddr_in6	site_unique;
     struct sockaddr_in6	global[3];
     struct sockaddr_in6 router;
-    struct sockaddr_in6	public;
+    struct sockaddr_in6	pub;
     gm_port_mapping_t *	port_mappings;
     bool pat66; // True if there is prefix-address-translation. Ugh.
     bool nat6;  // True if there is NAT6 that is not PAT66. Double-ugh.
@@ -159,6 +159,7 @@ extern void			gm_port_control_protocol_stop_listener_ipv6(void);
 extern int			gm_printf(const char * format, ...);
 extern int			gm_public_ipv4(char * data, size_t size);
 
+extern void			gm_send_to_client(const char *, size_t);
 extern int			gm_stun(bool ipv6, struct sockaddr * address, gm_stun_after_t after);
 extern void			gm_stun_stop();
 

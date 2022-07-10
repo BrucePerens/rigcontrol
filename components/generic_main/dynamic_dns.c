@@ -45,11 +45,11 @@ static const struct ddns_provider ddns_providers[] = {
 static int parameter(const char * name,  char * buffer, size_t buffer_size)
 {
   if ( strcmp(name, "ipv4") == 0 ) {
-    inet_ntop(AF_INET, &GM.sta.ip4.public.sin_addr.s_addr, buffer, buffer_size);
+    inet_ntop(AF_INET, &GM.sta.ip4.pub.sin_addr.s_addr, buffer, buffer_size);
     return 0;
   }
   else if ( strcmp(name, "ipv6") == 0 ) {
-    inet_ntop(AF_INET6, &GM.sta.ip6.public.sin6_addr.s6_addr, buffer, buffer_size);
+    inet_ntop(AF_INET6, &GM.sta.ip6.pub.sin6_addr.s6_addr, buffer, buffer_size);
     return 0;
   }
   else {
@@ -121,7 +121,7 @@ int gm_ddns(void)
   while ( p->name ) {
     if ( strcmp(p->name, ddns_provider) == 0 ) {
       send_ddns(p->url);
-      if (p->url_ipv6 && !gm_all_zeroes(&GM.sta.ip6.public.sin6_addr.s6_addr, sizeof(GM.sta.ip6.public.sin6_addr.s6_addr))) {
+      if (p->url_ipv6 && !gm_all_zeroes(&GM.sta.ip6.pub.sin6_addr.s6_addr, sizeof(GM.sta.ip6.pub.sin6_addr.s6_addr))) {
         send_ddns(p->url_ipv6);
       }
       return 0;

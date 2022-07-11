@@ -30,6 +30,23 @@ typedef enum _gm_param_result {
   GM_NOT_SET = 2
 } gm_param_result_t;
 
+typedef enum gm_parameter_type {
+  END = 0,
+  STRING,
+  INT,
+  FLOAT,
+  URL,
+  DOMAIN
+} gm_parameter_type_t;
+
+typedef struct gm_parameter {
+  const char * 		name;
+  gm_parameter_type_t	type;
+  bool			secret;
+  const char *		explanation;
+  void			(*call_after_set)(void);
+} gm_parameter_t;
+
 typedef enum _gm_run_speed {
   GM_SLOW,
   GM_MEDIUM,
@@ -115,6 +132,7 @@ typedef void (*gm_web_get_coroutine_t)(const char * data, size_t size);
 typedef int (*gm_pattern_coroutine_t)(const char * name, char * result, size_t result_size);
 
 extern generic_main_t		GM;
+extern const gm_parameter_t gm_parameters[];
 
 extern bool			gm_all_zeroes(const void *, size_t);
 extern const void *		gm_array_add(GM_Array * array, const void * data);

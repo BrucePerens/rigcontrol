@@ -6,33 +6,16 @@
 
 extern void gm_wifi_restart(void);
 
-typedef enum gm_parameter_type {
-  END = 0,
-  STRING,
-  INT,
-  FLOAT,
-  URL,
-  DOMAIN
-} gm_parameter_type_t;
-
-typedef struct gm_parameter {
-  const char * 		name;
-  gm_parameter_type_t	type;
-  bool			secret;
-  const char *		explanation;
-  void			(*call_after_set)(void);
-} gm_parameter_t;
-
 const gm_parameter_t gm_parameters[] = {
   { "ddns_basic_auth", STRING, false, "send HTTP basic authentication on the first transaction with the Dynamic DNS server.\n", 0},
-  { "ddns_hostname", STRING, false, "readable hostname to set in dynamic DNS.", 0 },
-  { "ddns_password", STRING, true, "password for secure access to the dynamic DNS host.", 0 },
-  { "ddns_provider", STRING, false, "name of the Dynamic DNS provider.", 0 },
+  { "ddns_hostname", STRING, false, "Hostname for this device to set in dynamic DNS.", 0 },
+  { "ddns_password", STRING, true, "Password for secure access to the dynamic DNS host.", 0 },
+  { "ddns_provider", STRING, false, "Name of the Dynamic DNS provider.", 0 },
   { "ddns_token", STRING, true, "secret token to set in dynamic DNS.", 0 },
-  { "ddns_username", STRING, false, "user name for secure access to the dynamic DNS host.", 0 },
-  { "ssid", STRING, false, "Name of WiFi access point", gm_wifi_restart },
-  { "timezone", STRING, false, "Set time zone (see https://github.com/nayarsystems/posix_tz_db/blob/master/zones.csv)", 0 },
-  { "wifi_password", STRING, true, "Password of WiFi access point", gm_wifi_restart },
+  { "ddns_username", STRING, false, "User name for secure access to the dynamic DNS host.", 0 },
+  { "ssid", STRING, false, "Name of the WiFi access point", gm_wifi_restart },
+  { "timezone", STRING, false, "Time zone (see https://github.com/nayarsystems/posix_tz_db/blob/master/zones.csv)", 0 },
+  { "wifi_password", STRING, true, "Password of the WiFi access point", gm_wifi_restart },
   { }
 };
 

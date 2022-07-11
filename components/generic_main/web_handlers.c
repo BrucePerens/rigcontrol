@@ -4,7 +4,7 @@
 #include <nvs.h>
 #include "generic_main.h"
 
-void gm_web_get_param(httpd_req_t * req);
+int gm_web_get_param(httpd_req_t * req);
 
 int
 gm_internal_web_get(httpd_req_t * req)
@@ -15,8 +15,7 @@ gm_internal_web_get(httpd_req_t * req)
     path++;
 
   if ( strcmp(path, "settings") == 0 ) {
-    gm_web_get_param(req);
-    return 0;
+    return gm_web_get_param(req);
   }
   return 1;
 }
@@ -62,7 +61,7 @@ post_button(const char * t, const char * l, ...)
   end
 }
 
-void
+int
 gm_web_get_param(httpd_req_t * req)
 {
   gm_web_set_request(req);
@@ -115,4 +114,5 @@ gm_web_get_param(httpd_req_t * req)
       end
     end
   end
+  return 0;
 }

@@ -7,7 +7,7 @@
 #define area html_area();
 #define article html_article();
 #define aside html_aside();
-#define attr(pattern, ...) html_text(pattern, ##__VA_ARGS__);
+#define attr(pattern, ...) html_attr(pattern, ##__VA_ARGS__);
 #define audio html_audio();
 #define b html_b();
 #define base html_base();

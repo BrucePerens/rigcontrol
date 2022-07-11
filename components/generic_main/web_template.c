@@ -21,7 +21,7 @@ static void		emit(const char * pattern, ...);
 static void		fail(const char * pattern, ...);
 static void		finish_current_tag();
 static void		flush();
-void			text(const char * pattern, ...);
+void			html_text(const char * pattern, ...);
 
 char	buffer[2048];
 int	buf_index = 0;
@@ -77,7 +77,7 @@ finish_current_tag()
 static void
 flush()
 {
-  gm_send_to_client(buffer, buf_index);
+  gm_web_send_to_client(buffer, buf_index);
   buf_index = 0;
 }
 
@@ -313,7 +313,7 @@ html_dl()
 void
 html_doctype()
 {
-  text("<!DOCTYPE HTML>\n");
+  html_text("<!DOCTYPE HTML>\n");
 }
 
 void
@@ -345,8 +345,10 @@ html_end()
     tag_t * const parent = h->parent;
     free(current);
     current = parent;
-    if ( current == &root )
+    if ( current == &root ) {
       flush();
+      gm_web_finish();
+    }
   }
   else {
     fail("end() called too many times (check for non-nesting tags).\n");

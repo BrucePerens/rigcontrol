@@ -1,3 +1,4 @@
+#include <stdarg.h>
 #include <esp_http_server.h>
 #include <nvs_flash.h>
 #include <nvs.h>
@@ -13,43 +14,48 @@ gm_internal_web_get(httpd_req_t * req)
   if ( *path == '/' )
     path++;
 
-  gm_printf("Request for %s\n", path);
   if ( strcmp(path, "settings") == 0 ) {
-    gm_printf("Running settings\n");
     gm_web_get_param(req);
     return 0;
   }
   return 1;
 }
 
-static void * gm_web_client_context;
+static void * gm_web_request;
 
 void
-gm_web_set_client_context(void * context)
+gm_web_set_request(void * context)
 {
-  gm_web_client_context = context;
+  gm_web_request = context;
 }
 
 void
 gm_web_send_to_client (const char *data, size_t size)
 {
-  httpd_resp_send_chunk((httpd_req_t *)gm_web_client_context, data, size);
+  httpd_resp_send_chunk((httpd_req_t *)gm_web_request, data, size);
 }
 
 void
 gm_web_finish(const char *data, size_t size)
 {
-  httpd_resp_send_chunk((httpd_req_t *)gm_web_client_context, "", 0);
-  gm_web_client_context = 0;
+  httpd_resp_send_chunk((httpd_req_t *)gm_web_request, "", 0);
+  gm_web_request = 0;
 }
 
 #include "web_template.h"
 
 void
-post_button(const char * t, const char * l)
+post_button(const char * t, const char * l, ...)
 {
+  char		buffer[128];
+  va_list	argument_list;
+
+  va_start(argument_list, l);
+  vsnprintf(buffer, sizeof(buffer), l, argument_list);
+  va_end(argument_list);
+
   form
-    attr("action", l)
+    attr("action", buffer)
     input
     attr("type", "submit")
     attr("value", t)
@@ -59,7 +65,7 @@ post_button(const char * t, const char * l)
 void
 gm_web_get_param(httpd_req_t * req)
 {
-  gm_web_set_client_context(req);
+  gm_web_set_request(req);
 
   doctype
   html
@@ -80,7 +86,7 @@ gm_web_get_param(httpd_req_t * req)
 
           tr
             td
-              post_button("Set", "/settings");
+              post_button("Set", "/settings?%s", v->name);
             end
             th
               text(v->name)
@@ -109,6 +115,4 @@ gm_web_get_param(httpd_req_t * req)
       end
     end
   end
-
-  gm_printf("End of settings\n");
 }

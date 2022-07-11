@@ -121,6 +121,11 @@ http_file_handler(httpd_req_t *req)
     }
   }
   // If we get here, the file was not found.
+  if ( gm_internal_web_get(req) == 0 )
+    return ESP_OK;
+  if ( gm_user_web_get(req) == 0 )
+    return ESP_OK;
+
   httpd_resp_send_404(req);
   return ESP_OK;
 }

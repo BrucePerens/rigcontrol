@@ -100,6 +100,7 @@ typedef struct _generic_main {
   esp_event_loop_handle_t medium_event_loop;
   esp_event_loop_handle_t slow_event_loop;
   const char * const	build_version;
+  const char * const	build_number;
   const char * const	nvs_index;
   const char * const	ipv6_address_types[6];
   int			log_fd;
@@ -140,6 +141,7 @@ extern void			gm_icmpv6_start_listener_ipv6(gm_ipv6_router_advertisement_after_t
 extern void			gm_icmpv6_stop_listener_ipv6(void);
 
 extern void			gm_improv_wifi(int fd);
+extern int			gm_internal_web_get(httpd_req_t * req);
 
 extern void			gm_log_server_start(void);
 extern void			gm_log_server_stop(void);
@@ -171,7 +173,7 @@ extern void			gm_timer_to_human(int64_t, char *, size_t);
 extern void			gm_uart_initialize(void);
 extern void			gm_user_initialize_early(void);
 extern void			gm_user_initialize_late(void);
-extern void			gm_user_web_get(httpd_req_t * req);
+extern int			gm_user_web_get(httpd_req_t * req);
 extern void			gm_user_web_handlers(httpd_handle_t server);
 
 extern int			gm_vprintf(const char * format, va_list args);

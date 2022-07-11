@@ -4,6 +4,7 @@
 #include "generic_main.h"
 
 extern const char gm_build_version[];
+extern const char gm_build_number[];
 
 static const char nvs_index[] = {
   194, 169, 32, 66, 114, 117, 99, 101, 32, 80, 101, 114, 101, 110, 115, 0
@@ -11,6 +12,7 @@ static const char nvs_index[] = {
 
 generic_main_t GM = {
   .build_version = gm_build_version,
+  .build_number = gm_build_number,
 
   // Address type names corresponding to the value returned by
   // esp_netif_ip6_get_addr_type().

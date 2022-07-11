@@ -6,24 +6,24 @@
 
 extern void gm_wifi_restart(void);
 
-enum parameter_type {
+typedef enum gm_parameter_type {
   END = 0,
   STRING,
   INT,
   FLOAT,
   URL,
   DOMAIN
-};
+} gm_parameter_type_t;
 
-struct parameter {
-  const char * name;
-  enum parameter_type type;
-  bool secret;
-  const char * explanation;
-  void (*call_after_set)(void);
-};
+typedef struct gm_parameter {
+  const char * 		name;
+  gm_parameter_type_t	type;
+  bool			secret;
+  const char *		explanation;
+  void			(*call_after_set)(void);
+} gm_parameter_t;
 
-static const struct parameter parameters[] = {
+const gm_parameter_t gm_parameters[] = {
   { "ddns_basic_auth", STRING, false, "send HTTP basic authentication on the first transaction with the Dynamic DNS server.\n", 0},
   { "ddns_hostname", STRING, false, "readable hostname to set in dynamic DNS.", 0 },
   { "ddns_password", STRING, true, "password for secure access to the dynamic DNS host.", 0 },
@@ -39,7 +39,7 @@ static const struct parameter parameters[] = {
 void
 gm_param_list(gm_param_list_coroutine_t coroutine)
 {
-  const struct parameter * p = parameters;
+  const gm_parameter_t * p = gm_parameters;
   char buffer[1024];
   size_t buffer_size;
 
@@ -63,7 +63,7 @@ gm_param_list(gm_param_list_coroutine_t coroutine)
 gm_param_result_t
 gm_param_get(const char * key, char * buffer, size_t buffer_size)
 {
-  const struct parameter * p = parameters;
+  const gm_parameter_t * p = gm_parameters;
   while (p->type) {
     if (strcmp(p->name, key) == 0)
       break;
@@ -90,7 +90,7 @@ gm_param_get(const char * key, char * buffer, size_t buffer_size)
 gm_param_result_t
 gm_param_set(const char * key, const char * value)
 {
-  const struct parameter * p = parameters;
+  const gm_parameter_t * p = gm_parameters;
   while (p->type) {
     if (strcmp(p->name, key) == 0)
       break;
@@ -115,7 +115,7 @@ gm_param_set(const char * key, const char * value)
 gm_param_result_t
 gm_param_erase(const char * key)
 {
-  const struct parameter * p = parameters;
+  const gm_parameter_t * p = gm_parameters;
   while (p->type) {
     if (strcmp(p->name, key) == 0)
       break;

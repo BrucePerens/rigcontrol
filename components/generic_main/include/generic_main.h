@@ -124,6 +124,12 @@ typedef struct _generic_main {
   FILE *		log_file_pointer;
 } generic_main_t;
 
+typedef struct gm_web_get_handler {
+  const char *	name;
+  int		(*handler)(httpd_req_t * request);
+  struct gm_web_get_handler * next;
+} gm_web_get_handler_t;
+
 struct _GM_Array;
 
 typedef struct _GM_Array GM_Array;
@@ -159,7 +165,6 @@ extern void			gm_icmpv6_start_listener_ipv6(gm_ipv6_router_advertisement_after_t
 extern void			gm_icmpv6_stop_listener_ipv6(void);
 
 extern void			gm_improv_wifi(int fd);
-extern int			gm_internal_web_get(httpd_req_t * req);
 
 extern void			gm_log_server_start(void);
 extern void			gm_log_server_stop(void);
@@ -179,7 +184,6 @@ extern void			gm_port_control_protocol_stop_listener_ipv6(void);
 extern int			gm_printf(const char * format, ...);
 extern int			gm_public_ipv4(char * data, size_t size);
 
-extern void			gm_send_to_client(const char *, size_t);
 extern int			gm_stun(bool ipv6, struct sockaddr * address, gm_stun_after_t after);
 extern void			gm_stun_stop();
 
@@ -191,15 +195,17 @@ extern void			gm_timer_to_human(int64_t, char *, size_t);
 extern void			gm_uart_initialize(void);
 extern void			gm_user_initialize_early(void);
 extern void			gm_user_initialize_late(void);
-extern int			gm_user_web_get(httpd_req_t * req);
 extern void			gm_user_web_handlers(httpd_handle_t server);
 
 extern int			gm_vprintf(const char * format, va_list args);
 
-extern int			gm_web_get(const char *url, char *data, size_t size);
-extern int			gm_web_get_with_coroutine(const char *url, gm_web_get_coroutine_t coroutine);
-extern void			gm_web_send_to_client(const char * data, size_t size);
 extern void			gm_web_finish();
+extern int			gm_web_get(const char *url, char *data, size_t size);
+extern void			gm_web_get_handler_register(gm_web_get_handler_t * handler);
+extern int			gm_web_get_run_handlers();
+extern int			gm_web_get_with_coroutine(const char *url, gm_web_get_coroutine_t coroutine);
+extern void			gm_web_send_to_client (const char *d, size_t size);
+extern void			gm_web_set_request(void * context);
 
 extern bool			gm_wifi_is_connected(void);
 extern void			gm_wifi_events_initialize(void);

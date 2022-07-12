@@ -1,6 +1,8 @@
 /*
  * Preprocessor HTML templating language for C.
  */
+#include <stdbool.h>
+
 #define a html_tag("a", true);
 #define abbr html_tag("abbr", true);
 #define address html_tag("address", true);
@@ -120,3 +122,8 @@ extern void html_doctype();
 extern void html_end();
 extern void html_tag(const char *, bool);
 extern void html_text(const char * pattern, ...);
+
+extern void post_button(const char * t, const char * pattern, ...);
+extern void gm_web_set_request(void * context);
+extern void gm_web_send_to_client (const char *d, size_t size);
+extern void gm_web_finish(const char *d, size_t size);

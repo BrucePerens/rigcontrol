@@ -1,5 +1,5 @@
-file(GLOB DOT_C *.c)
-file(GLOB DOT_CXX *.cxx)
+file(GLOB DOT_C *.c web/*.c)
+file(GLOB DOT_CXX *.cxx web/*.cxx)
 idf_component_register(
 SRCS
   ${DOT_C}

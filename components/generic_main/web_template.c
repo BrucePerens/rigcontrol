@@ -124,7 +124,7 @@ html_attr(const char * name, const char * pattern, ...)
     fail("attr() must be under the tag it applies to, before anything but another param().\n");
   }
   emit(" %s=\"", name);
-  emit(pattern, argument_pointer);
+  emit_va(pattern, argument_pointer);
   emit("\"");
 
   va_end(argument_pointer);

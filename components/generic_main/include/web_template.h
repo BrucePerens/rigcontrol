@@ -38,7 +38,7 @@
 #define dt html_tag("dt", true);
 #define em html_tag("em", true);
 #define embed html_tag("embed", false);
-#define end html_tag("end", true);
+#define end html_end();
 #define fieldset html_tag("fieldset", true);
 #define figcaption html_tag("figcaption", true);
 #define figure html_tag("figure", true);
@@ -123,6 +123,7 @@ extern void html_end();
 extern void html_tag(const char *, bool);
 extern void html_text(const char * pattern, ...);
 
+extern void get_button(const char * t, const char * pattern, ...);
 extern void post_button(const char * t, const char * pattern, ...);
 extern void gm_web_set_request(void * context);
 extern void gm_web_send_to_client (const char *d, size_t size);

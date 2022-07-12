@@ -4,8 +4,9 @@
 #include "web_template.h"
 
 static int
-function(httpd_req_t * req)
+settings(httpd_req_t * req)
 {
+  gm_printf("Running the settings handler.\n");
   gm_web_set_request(req);
 
   doctype
@@ -27,7 +28,7 @@ function(httpd_req_t * req)
 
           tr
             td
-              post_button("Set", "/settings?%s", v->name);
+              get_button("Set", "/set_parameter?%s", v->name);
             end
             th
               text(v->name)
@@ -56,15 +57,17 @@ function(httpd_req_t * req)
       end
     end
   end
+
   return 0;
 }
 
 
 CONSTRUCTOR install(void)
 {
+  printf("Running the constructor.\n");
   static gm_web_get_handler_t handler = {
     .name = "settings",
-    .handler = function
+    .handler = settings
   };
 
   gm_web_get_handler_register(&handler);

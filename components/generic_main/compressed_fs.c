@@ -121,9 +121,12 @@ http_file_handler(httpd_req_t *req)
     }
   }
   // If we get here, the file was not found.
-  if ( gm_web_get_run_handlers(req) )
+  if ( gm_web_get_run_handlers(req) == 0 ) {
+    gm_printf("Got 0 from gm_get_run_handlers\n");
     return ESP_OK;
+  }
   else {
+    gm_printf("Not found.\n");
     httpd_resp_send_404(req);
     return ESP_OK;
   }

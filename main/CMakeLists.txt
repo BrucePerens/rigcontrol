@@ -17,4 +17,5 @@ REQUIRES
   lwip
   nvs_flash
   tcpip_adapter
+  web_handlers
 )

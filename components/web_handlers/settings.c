@@ -44,24 +44,12 @@ settings(httpd_req_t * req)
 {
   gm_web_set_request(req);
 
-  doctype
-  html
-    attr("lang", "en")
-    head
-      title
-        text("Settings")
-      end
-    end
-    body
-      h1
-        text("Settings")
-      end
+  boilerplate("Settings");
 
-      table
-        gm_param_list(setting_row);
-      end
-    end
+  table
+    gm_param_list(setting_row);
   end
+  end_boilerplate
 
   return 0;
 }

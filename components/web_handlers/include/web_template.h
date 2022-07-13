@@ -2,6 +2,7 @@
  * Preprocessor HTML templating language for C.
  */
 #include <stdbool.h>
+#include <stdlib.h>
 
 #define a html_tag("a", true);
 #define abbr html_tag("abbr", true);
@@ -117,9 +118,14 @@
 #define video html_tag("video", true);
 #define wbr html_tag("wbr", false);
 
+#define boilerplate(t)	html_boilerplate(t);
+#define end_boilerplate	html_end_boilerplate();
+
 extern void html_attr(const char * pattern, ...);
+extern void html_boilerplate(const char * t);
 extern void html_doctype();
 extern void html_end();
+extern void html_end_boilerplate();
 extern void html_tag(const char *, bool);
 extern void html_text(const char * pattern, ...);
 

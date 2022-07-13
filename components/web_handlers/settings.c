@@ -3,10 +3,45 @@
 #include "generic_main.h"
 #include "web_template.h"
 
+static void
+setting_row(const char * name, const char * value, const char * explanation, gm_param_result_t type)
+{
+  const char * v;
+
+  switch ( type ) {
+  case GM_NORMAL:
+    v = value;
+    break;
+  case GM_SECRET:
+    v = "(secret)";
+    break;
+  case GM_NOT_SET:
+    v = "(not set)";
+    break;
+  default:
+    v = "(error)";
+    break;
+  }
+
+  tr
+    td
+      get_button("Set", "/set_parameter?%s", name);
+    end
+    th
+      text(name)
+    end
+    td
+      text(v)
+    end
+    td
+      text(explanation)
+    end
+  end
+}
+
 static int
 settings(httpd_req_t * req)
 {
-  gm_printf("Running the settings handler.\n");
   gm_web_set_request(req);
 
   doctype
@@ -23,37 +58,7 @@ settings(httpd_req_t * req)
       end
 
       table
-        const gm_parameter_t * v = gm_parameters;
-        while ( v->name ) {
-
-          tr
-            td
-              get_button("Set", "/set_parameter?%s", v->name);
-            end
-            th
-              text(v->name)
-            end
-            td
-            if ( v->secret )
-              text("(secret)")
-            else
-              {
-                char	buffer[128];
-                size_t	buffer_size = sizeof(buffer);
-                esp_err_t err = nvs_get_str(GM.nvs, v->name, buffer, &buffer_size);
-                if ( err )
-                  text("(not set)")
-                else
-                  text(buffer)
-              }
-            end
-            td
-              text(v->explanation)
-            end
-          end
-
-          v++;
-        }
+        gm_param_list(setting_row);
       end
     end
   end
@@ -64,7 +69,6 @@ settings(httpd_req_t * req)
 
 CONSTRUCTOR install(void)
 {
-  printf("Running the constructor.\n");
   static gm_web_get_handler_t handler = {
     .name = "settings",
     .handler = settings

@@ -1,17 +1,21 @@
+#include <stdarg.h>
+#include <stdio.h>
 #include "web_template.h"
 
-void html_boilerplate(const char * t)
+void html_boilerplate(const char * pattern, ...)
 {
+  const char * titl = VSPRINTF(pattern);
+
   doctype
   html
     head
       title
-        text(t)
+        text(titl)
       end
     end
     body
       h1
-        text(t)
+        text(titl)
       end
 }
 

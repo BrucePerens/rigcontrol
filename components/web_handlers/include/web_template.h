@@ -1,8 +1,21 @@
 /*
  * Preprocessor HTML templating language for C.
  */
+#pragma once
 #include <stdbool.h>
 #include <stdlib.h>
+
+#define VSPRINTF(pattern) \
+( \
+  { \
+    char b##__COUNTER__[128]; \
+    va_list a##__COUNTER__; \
+    va_start(a##__COUNTER__, (pattern)); \
+    vsnprintf(b##__COUNTER__, sizeof(b##__COUNTER__), (pattern), a##__COUNTER__); \
+    va_end(a##__COUNTER__); \
+    b##__COUNTER__; \
+  } \
+)
 
 #define a html_tag("a", true);
 #define abbr html_tag("abbr", true);
@@ -118,11 +131,11 @@
 #define video html_tag("video", true);
 #define wbr html_tag("wbr", false);
 
-#define boilerplate(t)	html_boilerplate(t);
+#define boilerplate(t, ...)	html_boilerplate(t, ##__VA_ARGS__);
 #define end_boilerplate	html_end_boilerplate();
 
 extern void html_attr(const char * pattern, ...);
-extern void html_boilerplate(const char * t);
+extern void html_boilerplate(const char * t, ...);
 extern void html_doctype();
 extern void html_end();
 extern void html_end_boilerplate();

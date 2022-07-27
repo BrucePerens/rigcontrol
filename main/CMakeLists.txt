@@ -16,6 +16,5 @@ REQUIRES
   hal
   lwip
   nvs_flash
-  tcpip_adapter
   web_handlers
 )

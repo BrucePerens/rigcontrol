@@ -3,38 +3,72 @@
 #include "generic_main.h"
 
 static void * gm_web_request;
-static gm_web_get_handler_t * handlers = 0;
-static gm_web_get_handler_t * * last = &handlers;
+
+static gm_web_handler_t * handlers[3] = {};
+static gm_web_handler_t * * last[3] = {&handlers[0], &handlers[1], &handlers[2]};
+
+static esp_err_t
+run_post_handlers(httpd_req_t * req)
+{
+  return gm_web_handler_run(req, POST) ? ESP_FAIL : ESP_OK;
+}
+
+static esp_err_t
+run_put_handlers(httpd_req_t * req)
+{
+  return gm_web_handler_run(req, PUT) ? ESP_FAIL : ESP_OK;
+}
+
+void
+gm_web_handler_install(httpd_handle_t server)
+{
+  // The GET method tries to match a file in the compressed ROM filesystem first.
+  // If there is no match, it then tries the registered GET methods.
+  gm_compressed_fs_web_handlers(server);
+
+  static const httpd_uri_t post = {
+      .uri       = "/*",
+      .method    = HTTP_POST,
+      .handler   = run_post_handlers,
+      .user_ctx  = NULL
+  };
+  httpd_register_uri_handler(server, &post);
+
+  static const httpd_uri_t put = {
+      .uri       = "/*",
+      .method    = HTTP_PUT,
+      .handler   = run_put_handlers,
+      .user_ctx  = NULL
+  };
+  httpd_register_uri_handler(server, &put);
+
+}
 
 int
-gm_web_get_run_handlers(httpd_req_t * req)
+gm_web_handler_run(httpd_req_t * req, gm_web_method method)
 {
   const char * path = req->uri;
-  const gm_web_get_handler_t * h = handlers;
+  const gm_web_handler_t * h = handlers[method];
+
+  gm_web_set_request(req);
 
   if ( *path == '/' )
     path++;
 
-  gm_printf("Request for %s\n");
-
   while ( h ) {
-    gm_printf("Checking %s\n", path);
     if ( strcmp(h->name, path) == 0 ) {
-      gm_printf("Running the handler.\n");
       return (*(h->handler))(req);
     }
     h = h->next;
   }
-  gm_printf("Returning 1 from gm_web_get_run_handlers\n");
   return 1;
 }
 
 void
-gm_web_get_handler_register(gm_web_get_handler_t * handler)
+gm_web_handler_register(gm_web_handler_t * handler, gm_web_method method)
 {
-  printf("Registering handler for %s\n", handler->name);
-  *last = handler;
-  last = &(handler->next);
+  *last[method] = handler;
+  last[method] = &(handler->next);
 }
 
 void
@@ -46,14 +80,12 @@ gm_web_set_request(void * context)
 void
 gm_web_send_to_client (const char *data, size_t size)
 {
-  gm_printf("Sending %d bytes to the client.\n", size);
   httpd_resp_send_chunk((httpd_req_t *)gm_web_request, data, size);
 }
 
 void
 gm_web_finish(const char *data, size_t size)
 {
-  gm_printf("Running gm_web_finish\n");
   httpd_resp_send_chunk((httpd_req_t *)gm_web_request, "", 0);
   gm_web_request = 0;
 }

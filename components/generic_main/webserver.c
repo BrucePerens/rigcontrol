@@ -53,8 +53,7 @@ void start_webserver(void)
   // Start the httpd server
   ESP_LOGI(TASK_NAME, "Starting server on port: '%d'", config.server_port);
   if (httpd_start(&server, &config) == ESP_OK) {
-    gm_compressed_fs_web_handlers(server);
-    gm_user_web_handlers(server);
+    gm_web_handler_install(server);
   }
   else {
     server = NULL;

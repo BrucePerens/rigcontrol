@@ -139,16 +139,16 @@ void wifi_event_sta_start(void* arg, esp_event_base_t event_base, int32_t event_
   char password[65] = { 0 };
   size_t ssid_size = sizeof(ssid);
   size_t password_size = sizeof(password);
-  wifi_scan_config_t config = {};
+  // wifi_scan_config_t config = {};
 
   esp_err_t ssid_err = nvs_get_str(GM.nvs, "ssid", ssid, &ssid_size);
   esp_err_t password_err = nvs_get_str(GM.nvs, "wifi_password", password, &password_size);
 
-  config.scan_type = WIFI_SCAN_TYPE_PASSIVE;
-  config.scan_type = WIFI_ALL_CHANNEL_SCAN;
-  config.scan_time.active.min = 120;
-  config.scan_time.active.max = 120;
-  config.scan_time.passive = 120;
+  // config.scan_type = WIFI_SCAN_TYPE_PASSIVE;
+  // config.scan_type = WIFI_ALL_CHANNEL_SCAN;
+  // config.scan_time.active.min = 120;
+  // config.scan_time.active.max = 120;
+  // config.scan_time.passive = 120;
   // esp_wifi_scan_start(&config, 0);
 
   // ssid_size includes the terminating null.

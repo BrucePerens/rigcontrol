@@ -8,7 +8,7 @@
 static const uint32_t	maximum_chunk_size = 4096;
 
 // The embedded filesystem.
-static const char fs[] asm("_binary_fs_start");
+static const char fs[1] asm("_binary_fs_start");
 
 static esp_err_t
 http_root_handler(httpd_req_t *req)
@@ -121,12 +121,11 @@ http_file_handler(httpd_req_t *req)
     }
   }
   // If we get here, the file was not found.
-  if ( gm_web_get_run_handlers(req) == 0 ) {
-    gm_printf("Got 0 from gm_get_run_handlers\n");
+  if ( gm_web_handler_run(req, GET) == 0 ) {
+    // We found a handler for this URL. Return OK.
     return ESP_OK;
   }
   else {
-    gm_printf("Not found.\n");
     httpd_resp_send_404(req);
     return ESP_OK;
   }

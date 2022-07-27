@@ -42,13 +42,12 @@ setting_row(const char * name, const char * value, const char * explanation, gm_
 static int
 settings(httpd_req_t * req)
 {
-  gm_web_set_request(req);
-
   boilerplate("Settings");
 
   table
     gm_param_list(setting_row);
   end
+
   end_boilerplate
 
   return 0;
@@ -57,10 +56,10 @@ settings(httpd_req_t * req)
 
 CONSTRUCTOR install(void)
 {
-  static gm_web_get_handler_t handler = {
+  static gm_web_handler_t handler = {
     .name = "settings",
     .handler = settings
   };
 
-  gm_web_get_handler_register(&handler);
+  gm_web_handler_register(&handler, GET);
 }

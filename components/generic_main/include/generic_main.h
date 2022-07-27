@@ -1,4 +1,6 @@
 #pragma once
+#include <stdio.h>
+#include <stdarg.h>
 #include <nvs_flash.h>
 #include <nvs.h>
 #include <esp_console.h>
@@ -15,6 +17,19 @@
 #include <esp_debug_helpers.h>
 
 #define CONSTRUCTOR static void __attribute__ ((constructor))
+
+/* Self-allocating vsnprintf(). This relies on GCC-specific extensions to C */
+#define GM_VSPRINTF(pattern) \
+( \
+  { \
+    char b##__COUNTER__[128]; \
+    va_list a##__COUNTER__; \
+    va_start(a##__COUNTER__, (pattern)); \
+    vsnprintf(b##__COUNTER__, sizeof(b##__COUNTER__), (pattern), a##__COUNTER__); \
+    va_end(a##__COUNTER__); \
+    b##__COUNTER__; \
+  } \
+)
 
 extern void gm_fail(const char *, const char *, int, const char *, ...);
 #define GM_FAIL(args...) gm_fail(__PRETTY_FUNCTION__, __FILE__, __LINE__, args)
@@ -38,6 +53,12 @@ typedef enum gm_parameter_type {
   URL,
   DOMAIN
 } gm_parameter_type_t;
+
+typedef enum _gm_web_method {
+  GET = 0,
+  PUT = 1,
+  POST = 2
+} gm_web_method;
 
 typedef struct gm_parameter {
   const char * 		name;
@@ -124,11 +145,11 @@ typedef struct _generic_main {
   FILE *		log_file_pointer;
 } generic_main_t;
 
-typedef struct gm_web_get_handler {
+typedef struct gm_web_handler {
   const char *	name;
   int		(*handler)(httpd_req_t * request);
-  struct gm_web_get_handler * next;
-} gm_web_get_handler_t;
+  struct gm_web_handler * next;
+} gm_web_handler_t;
 
 struct _GM_Array;
 
@@ -195,14 +216,14 @@ extern void			gm_timer_to_human(int64_t, char *, size_t);
 extern void			gm_uart_initialize(void);
 extern void			gm_user_initialize_early(void);
 extern void			gm_user_initialize_late(void);
-extern void			gm_user_web_handlers(httpd_handle_t server);
 
 extern int			gm_vprintf(const char * format, va_list args);
 
 extern void			gm_web_finish();
 extern int			gm_web_get(const char *url, char *data, size_t size);
-extern void			gm_web_get_handler_register(gm_web_get_handler_t * handler);
-extern int			gm_web_get_run_handlers();
+extern void			gm_web_handler_install(httpd_handle_t server);
+extern void			gm_web_handler_register(gm_web_handler_t * handler, gm_web_method method);
+extern int			gm_web_handler_run(httpd_req_t * req, gm_web_method method);
 extern int			gm_web_get_with_coroutine(const char *url, gm_web_get_coroutine_t coroutine);
 extern void			gm_web_send_to_client (const char *d, size_t size);
 extern void			gm_web_set_request(void * context);

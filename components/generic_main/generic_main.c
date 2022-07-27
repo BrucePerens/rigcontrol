@@ -21,6 +21,7 @@
 #include <esp_tls.h>
 #include <esp_random.h>
 #include <esp_console.h>
+#include <esp_mac.h>
 #include "generic_main.h"
 
 static void initialize(void);

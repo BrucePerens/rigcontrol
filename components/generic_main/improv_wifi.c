@@ -115,7 +115,6 @@ improv_send(int fd, const uint8_t * data, improv_type_t type, unsigned int lengt
   uint8_t buffer[256 + 11];
   unsigned int	checksum = 0;
 
-  ; // gm_printf("Improv send type %d, length %d\n", type, length);
   memcpy(buffer, magic, sizeof(magic));
   buffer[6] = ImprovVersion;
   buffer[7] = (type & 0xff);
@@ -125,19 +124,8 @@ improv_send(int fd, const uint8_t * data, improv_type_t type, unsigned int lengt
   for ( unsigned int i = 0; i < 9 + length; i++ )
     checksum += buffer[i];
 
-  ; // gm_printf("Checksum is 0x%x\n", checksum & 0xff);
   buffer[9 + length] = (checksum & 0xff);
   buffer[10 + length] = '\n';
-  ; // gm_printf("Write: ");
-  for ( int i = 0; i < 10 + length; i++ ) {
-    uint8_t c = buffer[i];
-
-    if ( c > ' ' && c <= '~' )
-      ; // gm_printf("%c ", c);
-    else
-      ; // gm_printf("0x%x ", (int)c);
-  }
-  ; // gm_printf("\n");
   write(fd, buffer, 11 + length);
 }
 
@@ -238,9 +226,7 @@ improv_read (int fd, uint8_t * data, improv_type_t * r_type, uint8_t * r_length)
   *r_type = 0;
   *r_length = 0;
 
-  ; // gm_printf("improv_read\n");
   for ( ; ; ) {
-    ; // gm_printf("Index = %d\n", index);
     if ( (status = read(fd, &c, 1)) == 1 ) {
       if ( c == '\r' || c == '\n' ) {
         if ( enter_count >= 2 )
@@ -249,15 +235,9 @@ improv_read (int fd, uint8_t * data, improv_type_t * r_type, uint8_t * r_length)
       }
       else
         enter_count = 0;
-
-      if ( c > ' ' && c <= '~' )
-        ; // gm_printf("read %c\n", c);
-      else
-        ; // gm_printf("read 0x%x\n", (int)c);
     }
       
     else {
-      ; // gm_printf("%sread failure: %s\n", name, strerror(errno));
       return Invalid_RPC_Packet;
     }
 
@@ -280,18 +260,15 @@ improv_read (int fd, uint8_t * data, improv_type_t * r_type, uint8_t * r_length)
     case 6:
       version = c;
       if ( version != 1 ) {
-        ; // gm_printf("%sversion %d not implemented.\n", name, (int)c);
         improv_send_error(fd, Invalid_RPC_Packet);
         return Invalid_RPC_Packet;
       }
       break;
     case 7:
       type = c;
-      ; // gm_printf("Got type %d\n", c);
       break;
     case 8:
       length = c;
-      ; // gm_printf("Got length %d\n", c);
       break;
     }
 
@@ -306,7 +283,6 @@ improv_read (int fd, uint8_t * data, improv_type_t * r_type, uint8_t * r_length)
   }
  
   if ( checksum != (internal_checksum & 0xff) ) {
-    ; // gm_printf("%schecksum doesn't match.\n", name);
     improv_send_error(fd, Invalid_RPC_Packet);
     return Invalid_RPC_Packet;
   }

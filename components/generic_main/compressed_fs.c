@@ -8,7 +8,8 @@
 static const uint32_t	maximum_chunk_size = 4096;
 
 // The embedded filesystem.
-static const char fs[1] asm("_binary_fs_start");
+extern const unsigned int	fs_length;
+extern const char fs[];
 
 static esp_err_t
 http_root_handler(httpd_req_t *req)
@@ -103,12 +104,16 @@ http_file_handler(httpd_req_t *req)
   // only be written after all files have been processed. File names and file data
   // are interleaved after the header. Position of things does matter somewhat because
   // it's a block-based FLASH device.
-  struct compressed_fs_header * header = (struct compressed_fs_header *)fs;
+  const struct compressed_fs_header * const header = (const struct compressed_fs_header *)fs;
   struct compressed_fs_entry * entries = (struct compressed_fs_entry *)(fs + header->table_offset);
 
-  const char * path = req->uri;
+  char * path = req->uri;
   if ( *path == '/' )
     path++;
+
+  char * query = index(path, '?');
+  if ( query )
+    *query = '\0';
 
   // Really simple sequential search for now.
   // There would have to be lots of files for this to be a problem.

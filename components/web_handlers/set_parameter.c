@@ -19,10 +19,14 @@ set_parameter(httpd_req_t * req)
       attr("for", name)
       text(name)
     end
+
     input
     attr("name", name)
     attr("type", "text")
     attr("value", value)
+
+    input
+    attr("type", "submit")
   end
 
   end_boilerplate

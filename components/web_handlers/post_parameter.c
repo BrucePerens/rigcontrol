@@ -3,7 +3,7 @@
 #include "web_template.h"
 
 static int
-post_parameter(httpd_req_t * req)
+post_parameter(httpd_req_t * req, const gm_uri * uri)
 {
   char buffer[1024];
   const char * name = "parameter_name";

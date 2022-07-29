@@ -4,7 +4,7 @@
 #include "web_template.h"
 
 static int
-set_parameter(httpd_req_t * req)
+set_parameter(httpd_req_t * req, const gm_uri * uri)
 {
   const char * name = "parameter_name";
   const char * value = "value";

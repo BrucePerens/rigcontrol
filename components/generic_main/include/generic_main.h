@@ -145,9 +145,19 @@ typedef struct _generic_main {
   FILE *		log_file_pointer;
 } generic_main_t;
 
+typedef struct _gm_query_param {
+  const char *	name;
+  const char *	value;
+} gm_query_param;
+
+typedef struct _gm_uri {
+  char	path[512];
+  gm_query_param params[10];
+} gm_uri;
+
 typedef struct gm_web_handler {
   const char *	name;
-  int		(*handler)(httpd_req_t * request);
+  int		(*handler)(httpd_req_t * request, const gm_uri * uri);
   struct gm_web_handler * next;
 } gm_web_handler_t;
 
@@ -216,15 +226,17 @@ extern void			gm_timer_to_human(int64_t, char *, size_t);
 extern void			gm_uart_initialize(void);
 extern void			gm_user_initialize_early(void);
 extern void			gm_user_initialize_late(void);
+extern int			gm_uri_decode(const char * uri, char * buffer, size_t size);
+extern int			gm_uri_parse(const char * uri, gm_uri * u) ;
 
 extern int			gm_vprintf(const char * format, va_list args);
 
 extern void			gm_web_finish();
 extern int			gm_web_get(const char *url, char *data, size_t size);
+extern int			gm_web_get_with_coroutine(const char *url, gm_web_get_coroutine_t coroutine);
 extern void			gm_web_handler_install(httpd_handle_t server);
 extern void			gm_web_handler_register(gm_web_handler_t * handler, gm_web_method method);
-extern int			gm_web_handler_run(httpd_req_t * req, gm_web_method method);
-extern int			gm_web_get_with_coroutine(const char *url, gm_web_get_coroutine_t coroutine);
+extern int			gm_web_handler_run(httpd_req_t * req, const gm_uri * uri, gm_web_method method);
 extern void			gm_web_send_to_client (const char *d, size_t size);
 extern void			gm_web_set_request(void * context);
 

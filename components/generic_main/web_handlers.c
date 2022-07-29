@@ -10,13 +10,25 @@ static gm_web_handler_t * * last[3] = {&handlers[0], &handlers[1], &handlers[2]}
 static esp_err_t
 run_post_handlers(httpd_req_t * req)
 {
-  return gm_web_handler_run(req, POST) ? ESP_FAIL : ESP_OK;
+  gm_uri uri = {};
+
+  if ( gm_uri_parse(req->uri, &uri) == 0 )
+    return gm_web_handler_run(req, &uri, POST) ? ESP_FAIL : ESP_OK;
+  else
+    return ESP_ERR_INVALID_ARG;
 }
 
 static esp_err_t
 run_put_handlers(httpd_req_t * req)
 {
-  return gm_web_handler_run(req, PUT) ? ESP_FAIL : ESP_OK;
+  gm_uri uri = {};
+
+  gm_uri_parse(req->uri, &uri);
+
+  if ( gm_uri_parse(req->uri, &uri) == 0 )
+    return gm_web_handler_run(req, &uri, PUT) ? ESP_FAIL : ESP_OK;
+  else
+    return ESP_FAIL;
 }
 
 void
@@ -45,7 +57,7 @@ gm_web_handler_install(httpd_handle_t server)
 }
 
 int
-gm_web_handler_run(httpd_req_t * req, gm_web_method method)
+gm_web_handler_run(httpd_req_t * req, const gm_uri * uri, gm_web_method method)
 {
   const char * path = req->uri;
   const gm_web_handler_t * h = handlers[method];
@@ -57,7 +69,7 @@ gm_web_handler_run(httpd_req_t * req, gm_web_method method)
 
   while ( h ) {
     if ( strcmp(h->name, path) == 0 ) {
-      return (*(h->handler))(req);
+      return (*(h->handler))(req, uri);
     }
     h = h->next;
   }

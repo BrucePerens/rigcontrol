@@ -40,7 +40,7 @@ setting_row(const char * name, const char * value, const char * explanation, gm_
 }
 
 static int
-settings(httpd_req_t * req)
+settings(httpd_req_t * req, const gm_uri * uri)
 {
   boilerplate("Settings");
 

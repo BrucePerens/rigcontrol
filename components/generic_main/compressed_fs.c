@@ -106,27 +106,23 @@ http_file_handler(httpd_req_t *req)
   // it's a block-based FLASH device.
   const struct compressed_fs_header * const header = (const struct compressed_fs_header *)fs;
   struct compressed_fs_entry * entries = (struct compressed_fs_entry *)(fs + header->table_offset);
+  gm_uri uri = {};
 
-  char * path = req->uri;
-  if ( *path == '/' )
-    path++;
-
-  char * query = index(path, '?');
-  if ( query )
-    *query = '\0';
+  if ( gm_uri_parse(req->uri, &uri) != 0 )
+    return ESP_ERR_INVALID_ARG;
 
   // Really simple sequential search for now.
   // There would have to be lots of files for this to be a problem.
   for ( int i = 0; i < header->number_of_files; i++ ) {
     const char * const name = (fs + entries[i].name_offset);
-    if ( strcmp(name, path) == 0 ) {
+    if ( strcmp(name, uri.path) == 0 ) {
       // The file was found. Serve it.
       read_file(req, fs, &entries[i]);
       return ESP_OK;
     }
   }
   // If we get here, the file was not found.
-  if ( gm_web_handler_run(req, GET) == 0 ) {
+  if ( gm_web_handler_run(req, &uri, GET) == 0 ) {
     // We found a handler for this URL. Return OK.
     return ESP_OK;
   }

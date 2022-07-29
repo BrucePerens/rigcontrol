@@ -278,6 +278,9 @@ send_stun_request(bool ipv6)
   if ( (send_address = get_address(server->host, server->port, ipv6)) == 0 )
     return -1;
 
+  if ( stun_sock >= 0 )
+    close(stun_sock);
+
   stun_sock = socket(send_address->ai_family, SOCK_DGRAM, send_address->ai_protocol);
   if ( stun_sock < 0 ) {
     gm_printf("STUN: Can't get socket: %s\n", strerror(errno));
@@ -446,6 +449,7 @@ stun_receive(int fd, void * data, bool readable, bool writable, bool exception, 
   if ( timeout || exception ) {
     gm_fd_unregister(fd);
     close(fd);
+    stun_sock = -1;
   }
   if ( run->tries >= 5 ) {
     if ( run->after )

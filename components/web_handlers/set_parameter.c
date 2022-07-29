@@ -21,6 +21,8 @@ set_parameter(httpd_req_t * req)
     end
 
     input
+
+    input
     attr("name", name)
     attr("type", "text")
     attr("value", value)

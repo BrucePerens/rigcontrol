@@ -15,6 +15,7 @@ const gm_parameter_t gm_parameters[] = {
   { "ddns_username", STRING, false, "User name for secure access to the dynamic DNS host.", 0 },
   { "ssid", STRING, false, "Name of the WiFi access point", gm_wifi_restart },
   { "timezone", STRING, false, "Time zone (see https://github.com/nayarsystems/posix_tz_db/blob/master/zones.csv)", 0 },
+  { "timezone", STRING, false, "Time zone (see https://github.com/nayarsystems/posix_tz_db/blob/master/zones.csv)", 0 },
   { "wifi_password", STRING, true, "Password of the WiFi access point", gm_wifi_restart },
   { }
 };

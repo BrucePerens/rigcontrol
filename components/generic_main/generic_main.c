@@ -46,12 +46,16 @@ static void initialize(void)
 
   gm_wifi_events_initialize();
 
-  gm_improv_wifi(0);
+
+  // gm_improv_wifi(0);
 
   gm_user_initialize_early();
 
   // Initialize the TCP/IP stack. gm_select_task uses sockets.
   esp_netif_init();
+  int fd = socket(AF_INET, SOCK_STREAM, 0);
+  close(fd);
+  printf("Socket number was %d\n", fd);
 
   // The global event loop is required for all event handling to work.
   ESP_ERROR_CHECK(esp_event_loop_create_default());
@@ -90,4 +94,6 @@ static void initialize(void)
 
   // Start WiFi, if it's already configured.
   gm_wifi_start();
+
+  gm_command_interpreter_start();
 }

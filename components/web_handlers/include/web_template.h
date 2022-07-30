@@ -10,7 +10,7 @@
   { \
     char b##__COUNTER__[128]; \
     va_list a##__COUNTER__; \
-    va_start(a##__COUNTER__, (pattern)); \
+    va_start(a##__COUNTER__, pattern); \
     vsnprintf(b##__COUNTER__, sizeof(b##__COUNTER__), (pattern), a##__COUNTER__); \
     va_end(a##__COUNTER__); \
     b##__COUNTER__; \

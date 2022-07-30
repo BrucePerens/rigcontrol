@@ -4,7 +4,7 @@
 #include "web_template.h"
 
 static void
-setting_row(const char * name, const char * value, const char * explanation, gm_param_result_t type)
+setting_row(const char * name, const char * value, const char * explanation, gm_nonvolatile_result_t type)
 {
   const char * v;
 
@@ -25,7 +25,7 @@ setting_row(const char * name, const char * value, const char * explanation, gm_
 
   tr
     td
-      get_button("Set", "/set_parameter?name=%s&value=%s", name, value);
+      get_button("Set", "/set_nonvolatile?name=%s&value=%s", name, value);
     end
     th
       text(name)
@@ -45,7 +45,7 @@ settings(httpd_req_t * req, const gm_uri * uri)
   boilerplate("Settings");
 
   table
-    gm_param_list(setting_row);
+    gm_nonvolatile_list(setting_row);
   end
 
   end_boilerplate

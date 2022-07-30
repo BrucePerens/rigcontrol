@@ -37,36 +37,28 @@ extern void gm_fail(const char *, const char *, int, const char *, ...);
 
 ESP_EVENT_DECLARE_BASE(GM_EVENT);
 
-typedef enum _gm_param_result {
+typedef enum _gm_nonvolatile_result {
   GM_ERROR = -2,
   GM_NOT_IN_PARAMETER_TABLE = -1,
   GM_NORMAL = 0,
   GM_SECRET = 1,
   GM_NOT_SET = 2
-} gm_param_result_t;
+} gm_nonvolatile_result_t;
 
-typedef enum gm_parameter_type {
+typedef enum gm_nonvolatile_type {
   END = 0,
   STRING,
   INT,
   FLOAT,
   URL,
   DOMAIN
-} gm_parameter_type_t;
+} gm_nonvolatile_type_t;
 
 typedef enum _gm_web_method {
   GET = 0,
   PUT = 1,
   POST = 2
 } gm_web_method;
-
-typedef struct gm_parameter {
-  const char * 		name;
-  gm_parameter_type_t	type;
-  bool			secret;
-  const char *		explanation;
-  void			(*call_after_set)(void);
-} gm_parameter_t;
 
 typedef enum _gm_run_speed {
   GM_SLOW,
@@ -145,14 +137,14 @@ typedef struct _generic_main {
   FILE *		log_file_pointer;
 } generic_main_t;
 
-typedef struct _gm_query_param {
+typedef struct _gm_param {
   const char *	name;
   const char *	value;
-} gm_query_param;
+} gm_param;
 
 typedef struct _gm_uri {
-  char	path[512];
-  gm_query_param params[10];
+  char		path[512];
+  gm_param	params[10];
 } gm_uri;
 
 typedef struct gm_web_handler {
@@ -164,12 +156,11 @@ typedef struct gm_web_handler {
 struct _GM_Array;
 
 typedef struct _GM_Array GM_Array;
-typedef void (*gm_param_list_coroutine_t)(const char *, const char *, const char *, gm_param_result_t);
-typedef void (*gm_web_get_coroutine_t)(const char * data, size_t size);
+typedef void (*gm_nonvolatile_list_coroutine_t)(const char *, const char *, const char *, gm_nonvolatile_result_t);
 typedef int (*gm_pattern_coroutine_t)(const char * name, char * result, size_t result_size);
+typedef void (*gm_web_get_coroutine_t)(const char * data, size_t size);
 
 extern generic_main_t		GM;
-extern const gm_parameter_t gm_parameters[];
 
 extern bool			gm_all_zeroes(const void *, size_t);
 extern const void *		gm_array_add(GM_Array * array, const void * data);
@@ -200,11 +191,12 @@ extern void			gm_improv_wifi(int fd);
 extern void			gm_log_server_start(void);
 extern void			gm_log_server_stop(void);
 
-extern gm_param_result_t	gm_param_erase(const char * name);
-extern gm_param_result_t	gm_param_get(const char * name, char * buffer, size_t size);
-extern void			gm_param_list(gm_param_list_coroutine_t coroutine);
-extern gm_param_result_t	gm_param_set(const char * name, const char * value);
+extern gm_nonvolatile_result_t	gm_nonvolatile_erase(const char * name);
+extern gm_nonvolatile_result_t	gm_nonvolatile_get(const char * name, char * buffer, size_t size);
+extern void			gm_nonvolatile_list(gm_nonvolatile_list_coroutine_t coroutine);
+extern gm_nonvolatile_result_t	gm_nonvolatile_set(const char * name, const char * value);
 
+extern int			gm_param_parse(const char * s, gm_param * p, int count);
 extern int			gm_pattern_string(const char * string, gm_pattern_coroutine_t coroutine, char * buffer, size_t buffer_size);
 extern int			gm_port_control_protocol_request_mapping_ipv4(void);
 extern int			gm_port_control_protocol_request_mapping_ipv6(void);

@@ -4,9 +4,17 @@
 #include <time.h>
 #include "generic_main.h"
 
+typedef struct gm_nonvolatile {
+  const char * 		name;
+  gm_nonvolatile_type_t	type;
+  bool			secret;
+  const char *		explanation;
+  void			(*call_after_set)(void);
+} gm_nonvolatile_t;
+
 extern void gm_wifi_restart(void);
 
-const gm_parameter_t gm_parameters[] = {
+static const gm_nonvolatile_t gm_nonvolatile[] = {
   { "ddns_basic_auth", STRING, false, "send HTTP basic authentication on the first transaction with the Dynamic DNS server.\n", 0},
   { "ddns_hostname", STRING, false, "Hostname for this device to set in dynamic DNS.", 0 },
   { "ddns_password", STRING, true, "Password for secure access to the dynamic DNS host.", 0 },
@@ -15,15 +23,14 @@ const gm_parameter_t gm_parameters[] = {
   { "ddns_username", STRING, false, "User name for secure access to the dynamic DNS host.", 0 },
   { "ssid", STRING, false, "Name of the WiFi access point", gm_wifi_restart },
   { "timezone", STRING, false, "Time zone (see https://github.com/nayarsystems/posix_tz_db/blob/master/zones.csv)", 0 },
-  { "timezone", STRING, false, "Time zone (see https://github.com/nayarsystems/posix_tz_db/blob/master/zones.csv)", 0 },
   { "wifi_password", STRING, true, "Password of the WiFi access point", gm_wifi_restart },
   { }
 };
 
 void
-gm_param_list(gm_param_list_coroutine_t coroutine)
+gm_nonvolatile_list(gm_nonvolatile_list_coroutine_t coroutine)
 {
-  const gm_parameter_t * p = gm_parameters;
+  const gm_nonvolatile_t * p = gm_nonvolatile;
   char buffer[1024];
   size_t buffer_size;
 
@@ -44,10 +51,10 @@ gm_param_list(gm_param_list_coroutine_t coroutine)
   }
 }
 
-gm_param_result_t
-gm_param_get(const char * key, char * buffer, size_t buffer_size)
+gm_nonvolatile_result_t
+gm_nonvolatile_get(const char * key, char * buffer, size_t buffer_size)
 {
-  const gm_parameter_t * p = gm_parameters;
+  const gm_nonvolatile_t * p = gm_nonvolatile;
   while (p->type) {
     if (strcmp(p->name, key) == 0)
       break;
@@ -71,10 +78,10 @@ gm_param_get(const char * key, char * buffer, size_t buffer_size)
     return GM_NORMAL;
 }
 
-gm_param_result_t
-gm_param_set(const char * key, const char * value)
+gm_nonvolatile_result_t
+gm_nonvolatile_set(const char * key, const char * value)
 {
-  const gm_parameter_t * p = gm_parameters;
+  const gm_nonvolatile_t * p = gm_nonvolatile;
   while (p->type) {
     if (strcmp(p->name, key) == 0)
       break;
@@ -96,10 +103,10 @@ gm_param_set(const char * key, const char * value)
   return GM_NORMAL;
 }
 
-gm_param_result_t
-gm_param_erase(const char * key)
+gm_nonvolatile_result_t
+gm_nonvolatile_erase(const char * key)
 {
-  const gm_parameter_t * p = gm_parameters;
+  const gm_nonvolatile_t * p = gm_nonvolatile;
   while (p->type) {
     if (strcmp(p->name, key) == 0)
       break;

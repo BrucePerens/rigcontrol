@@ -23,13 +23,12 @@ static void		finish_current_tag();
 static void		flush();
 void			html_text(const char * pattern, ...);
 
-char	buffer[2048];
-int	buf_index = 0;
+static char	buffer[2048];
+static int	buf_index = 0;
 
 static void
 emit_va(const char * pattern, va_list argument_pointer)
 {
-
   size_t size = vsnprintf(&buffer[buf_index], sizeof(buffer) - buf_index, pattern, argument_pointer);
   buf_index += size;
   if ( buf_index >= sizeof(buffer) )
@@ -118,16 +117,17 @@ void
 html_attr(const char * name, const char * pattern, ...)
 {
   va_list argument_pointer;
-  va_start(argument_pointer, pattern);
 
   if ( !current->open ) {
     fail("attr() must be under the tag it applies to, before anything but another param().\n");
   }
   emit(" %s=\"", name);
-  emit_va(pattern, argument_pointer);
-  emit("\"");
 
+  va_start(argument_pointer, pattern);
+  emit_va(pattern, argument_pointer);
   va_end(argument_pointer);
+
+  emit("\"");
 }
 
 void

@@ -57,9 +57,9 @@ static int parameter(const char * name,  char * buffer, size_t buffer_size)
 
     while ( p->name ) {
       if ( strcmp(name, p->name) == 0 ) {
-        gm_param_result_t result;
+        gm_nonvolatile_result_t result;
 
-        result = gm_param_get(p->param_name, buffer, buffer_size);
+        result = gm_nonvolatile_get(p->param_name, buffer, buffer_size);
         if ( result == GM_NORMAL || result == GM_SECRET )
           return 0;
         else {
@@ -97,10 +97,10 @@ int gm_ddns(void)
 {
   char ddns_provider[64];
   const struct ddns_provider * p = ddns_providers;
-  gm_param_result_t result;
+  gm_nonvolatile_result_t result;
   static bool i_told_you_once = false;
 
-  result = gm_param_get("ddns_provider", ddns_provider, sizeof(ddns_provider));
+  result = gm_nonvolatile_get("ddns_provider", ddns_provider, sizeof(ddns_provider));
   
   switch ( result ) {
   case GM_NOT_SET:

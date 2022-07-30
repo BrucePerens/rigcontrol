@@ -4,16 +4,25 @@
 #include "web_template.h"
 
 static int
-set_parameter(httpd_req_t * req, const gm_uri * uri)
+set_nonvolatile_get(httpd_req_t * req, const gm_uri * uri)
 {
   const char * name = gm_uri_param(uri, "name");
   const char * value = gm_uri_param(uri, "value");
+
+  if ( !name || !value )
+    return -1;
+
 
   boilerplate("Set Parameter %s", name)
 
   form
     attr("method", "post")
-    attr("action", "/set_parameter")
+    attr("action", "/set_nonvolatile")
+
+    input
+    attr("type", "hidden")
+    attr("name", "name")
+    attr("value", name)
 
     label
       attr("for", name)
@@ -21,10 +30,8 @@ set_parameter(httpd_req_t * req, const gm_uri * uri)
     end
 
     input
-
-    input
-    attr("name", name)
     attr("type", "text")
+    attr("name", "value")
     attr("value", value)
 
     input
@@ -39,8 +46,8 @@ set_parameter(httpd_req_t * req, const gm_uri * uri)
 CONSTRUCTOR install(void)
 {
   static gm_web_handler_t handler = {
-    .name = "set_parameter",
-    .handler = set_parameter
+    .name = "set_nonvolatile",
+    .handler = set_nonvolatile_get
   };
 
   gm_web_handler_register(&handler, GET);

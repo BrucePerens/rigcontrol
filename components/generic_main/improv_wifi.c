@@ -352,8 +352,8 @@ improv_set_wifi(int fd, const uint8_t * data, uint8_t length)
    (void *)fd,
    &handler_wifi_event_sta_disconnected));
 
-  gm_param_set("ssid", (const char *)ssid);
-  gm_param_set("wifi_password", (const char *)password);
+  gm_nonvolatile_set("ssid", (const char *)ssid);
+  gm_nonvolatile_set("wifi_password", (const char *)password);
 }
 
 static void

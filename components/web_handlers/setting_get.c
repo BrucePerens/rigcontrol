@@ -6,8 +6,8 @@
 static int
 setting_get(httpd_req_t * req, const gm_uri * uri)
 {
-  const char * name = gm_uri_param(uri, "name");
-  const char * value = gm_uri_param(uri, "value");
+  const char * name = gm_param(uri->params, COUNTOF(uri->params), "name");
+  const char * value = gm_param(uri->params, COUNTOF(uri->params), "value");
 
   if ( !name || !value )
     return -1;

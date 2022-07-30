@@ -5,7 +5,7 @@
 // This parses URI parameters, and form posts in the application/x-www-form-urlencoded
 // format. The provided string must be urldecoded before this is called.
 int
-gm_param_parse(const char * s, gm_param * p, int count)
+gm_param_parse(const char * s, gm_param_t * p, int count)
 {
   for ( ; ; ) {
     char * value = index(s, '=');

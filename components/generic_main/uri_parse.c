@@ -13,7 +13,7 @@ gm_uri_parse(const char * uri, gm_uri * u)
   char * s = index(uri, '?');
   if ( s ) {
     *s++ = '\0';
-    return gm_param_parse(s, u->params, sizeof(u->params) / sizeof(*u->params));
+    return gm_param_parse(s, u->params, COUNTOF(u->params));
   }
   else
     return 0;

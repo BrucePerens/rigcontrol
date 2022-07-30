@@ -7,25 +7,29 @@ static void
 setting_row(const char * name, const char * value, const char * explanation, gm_nonvolatile_result_t type)
 {
   const char * v;
+  const char * n;
 
   switch ( type ) {
   case GM_NORMAL:
-    v = value;
+    n = v = value;
     break;
   case GM_SECRET:
+    n = "";
     v = "(secret)";
     break;
   case GM_NOT_SET:
+    n = "";
     v = "(not set)";
     break;
   default:
+    n = "";
     v = "(error)";
     break;
   }
 
   tr
     td
-      get_button("Set", "/setting?name=%s&value=%s", name, value);
+      get_button("Set", "/setting?name=%s&value=%s", name, n);
     end
     th
       text(name)

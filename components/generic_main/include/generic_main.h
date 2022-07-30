@@ -18,6 +18,7 @@
 
 #define CONSTRUCTOR static void __attribute__ ((constructor))
 
+#define COUNTOF(a) (sizeof((a)) / sizeof(*(a)))
 /* Self-allocating vsnprintf(). This relies on GCC-specific extensions to C */
 #define GM_VSPRINTF(pattern) \
 ( \
@@ -137,14 +138,14 @@ typedef struct _generic_main {
   FILE *		log_file_pointer;
 } generic_main_t;
 
-typedef struct _gm_param {
+typedef struct _gm_param_t {
   const char *	name;
   const char *	value;
-} gm_param;
+} gm_param_t;
 
 typedef struct _gm_uri {
   char		path[512];
-  gm_param	params[10];
+  gm_param_t	params[10];
 } gm_uri;
 
 typedef struct gm_web_handler {
@@ -196,7 +197,8 @@ extern gm_nonvolatile_result_t	gm_nonvolatile_get(const char * name, char * buff
 extern void			gm_nonvolatile_list(gm_nonvolatile_list_coroutine_t coroutine);
 extern gm_nonvolatile_result_t	gm_nonvolatile_set(const char * name, const char * value);
 
-extern int			gm_param_parse(const char * s, gm_param * p, int count);
+extern const char *		gm_param(const gm_param_t * p, int count, const char * name);
+extern int			gm_param_parse(const char * s, gm_param_t * p, int count);
 extern int			gm_pattern_string(const char * string, gm_pattern_coroutine_t coroutine, char * buffer, size_t buffer_size);
 extern int			gm_port_control_protocol_request_mapping_ipv4(void);
 extern int			gm_port_control_protocol_request_mapping_ipv6(void);
@@ -220,7 +222,6 @@ extern void			gm_user_initialize_early(void);
 extern void			gm_user_initialize_late(void);
 extern int			gm_uri_decode(const char * uri, char * buffer, size_t size);
 extern int			gm_uri_parse(const char * uri, gm_uri * u) ;
-extern const char *		gm_uri_param(const gm_uri * u, const char * name);
 
 extern int			gm_vprintf(const char * format, va_list args);
 

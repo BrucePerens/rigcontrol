@@ -3,11 +3,11 @@
 #include "generic_main.h"
 
 const char *
-gm_uri_param(const gm_uri * u, const char * name)
+gm_param(const gm_param_t * p, int size, const char * name)
 {
-  for ( int i = 0; i < sizeof(u->params) / sizeof(*u->params); i++ ) {
-    if ( u->params[i].name && strcmp(name, u->params[i].name) == 0 ) {
-      return u->params[i].value;
+  for ( int i = 0; i < size; i++ ) {
+    if ( p[i].name && strcmp(name, p[i].name) == 0 ) {
+      return p[i].value;
     }
   }
   return 0;

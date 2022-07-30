@@ -6,8 +6,8 @@
 static int
 set_parameter(httpd_req_t * req, const gm_uri * uri)
 {
-  const char * name = "parameter_name";
-  const char * value = "value";
+  const char * name = gm_uri_param(uri, "name");
+  const char * value = gm_uri_param(uri, "value");
 
   boilerplate("Set Parameter %s", name)
 

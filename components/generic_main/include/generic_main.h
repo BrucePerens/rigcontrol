@@ -228,6 +228,7 @@ extern void			gm_user_initialize_early(void);
 extern void			gm_user_initialize_late(void);
 extern int			gm_uri_decode(const char * uri, char * buffer, size_t size);
 extern int			gm_uri_parse(const char * uri, gm_uri * u) ;
+extern const char *		gm_uri_param(const gm_uri * u, const char * name);
 
 extern int			gm_vprintf(const char * format, va_list args);
 

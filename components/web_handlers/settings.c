@@ -25,7 +25,7 @@ setting_row(const char * name, const char * value, const char * explanation, gm_
 
   tr
     td
-      get_button("Set", "/set_parameter?name=%s", name);
+      get_button("Set", "/set_parameter?name=%s&value=%s", name, value);
     end
     th
       text(name)

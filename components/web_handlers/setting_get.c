@@ -4,7 +4,7 @@
 #include "web_template.h"
 
 static int
-set_nonvolatile_get(httpd_req_t * req, const gm_uri * uri)
+setting_get(httpd_req_t * req, const gm_uri * uri)
 {
   const char * name = gm_uri_param(uri, "name");
   const char * value = gm_uri_param(uri, "value");
@@ -13,11 +13,11 @@ set_nonvolatile_get(httpd_req_t * req, const gm_uri * uri)
     return -1;
 
 
-  boilerplate("Set Parameter %s", name)
+  boilerplate("Setting %s", name)
 
   form
     attr("method", "post")
-    attr("action", "/set_nonvolatile")
+    attr("action", "/setting")
 
     input
     attr("type", "hidden")
@@ -46,8 +46,8 @@ set_nonvolatile_get(httpd_req_t * req, const gm_uri * uri)
 CONSTRUCTOR install(void)
 {
   static gm_web_handler_t handler = {
-    .name = "set_nonvolatile",
-    .handler = set_nonvolatile_get
+    .name = "setting",
+    .handler = setting_get
   };
 
   gm_web_handler_register(&handler, GET);

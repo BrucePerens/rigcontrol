@@ -15,5 +15,5 @@ phy_init, data, phy,     0xf000,  0x1000,
 
 # "Factory" is the app. "factory" means it was flashed to the hardware
 # at "the factory" and differentiates it from an OTA (over-the-air) partition.
-factory,  app,  factory, 0x10000, 0x3F0000,
+factory,  app,  factory, 0x10000, 4M
 

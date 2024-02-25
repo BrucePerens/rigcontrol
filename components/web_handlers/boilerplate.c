@@ -4,7 +4,12 @@
 
 void html_boilerplate(const char * pattern, ...)
 {
-  const char * titl = VSPRINTF(pattern);
+  char		titl[128];
+
+  va_list argument_list;
+  va_start(argument_list, pattern);
+  vsnprintf(titl, sizeof(titl), pattern, argument_list);
+  va_end(argument_list);
 
   doctype
   html

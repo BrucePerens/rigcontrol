@@ -1,0 +1,2 @@
+The custom partition table is not being used, and it looks like the "large" one only uses 2MB
+FLASH, while our processors have 4MB.

@@ -22,8 +22,15 @@ button_internal(const char * t, const char * method, const char * l, va_list arg
 void
 get_button(const char * t, const char * l, ...)
 {
+  char		buffer[128];
+
+  va_list argument_list;
+  va_start(argument_list, l);
+  vsnprintf(buffer, sizeof(buffer), l, argument_list);
+  va_end(argument_list);
+
   button
-    attr("onclick", "window.location.href='%s';", VSPRINTF(l));
+    attr("onclick", "window.location.href='%s';", buffer);
     text(t);
   end
 }

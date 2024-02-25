@@ -563,7 +563,7 @@ start_unicast_listener_ipv6(void)
   int			value = 1;
 
   address.sin6_family = AF_INET6;
-  if ( GM.sta.ip6.link_local.sin6_addr.s6_addr == 0 ) {
+  if ( gm_all_zeroes(GM.sta.ip6.link_local.sin6_addr.s6_addr, sizeof(GM.sta.ip6.link_local.sin6_addr.s6_addr)) ) {
     GM_FAIL("Starting unicast listener before the link-local address is set.");
   }
   memcpy(&address.sin6_addr.s6_addr, &GM.sta.ip6.link_local.sin6_addr.s6_addr, sizeof(address.sin6_addr.s6_addr));

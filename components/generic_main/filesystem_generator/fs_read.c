@@ -8,7 +8,7 @@
 #include <sys/stat.h>
 #include <sys/fcntl.h>
 #include <sys/mman.h>
-#include <miniz/miniz.h>
+#include <miniz.h>
 #include "compressed_fs.h"
 
 static int

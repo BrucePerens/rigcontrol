@@ -5,6 +5,7 @@
 #include <stdbool.h>
 #include <stdlib.h>
 
+/*
 #define VSPRINTF(pattern) \
 ( \
   { \
@@ -16,6 +17,7 @@
     b##__COUNTER__; \
   } \
 )
+ */
 
 #define a html_tag("a", true);
 #define abbr html_tag("abbr", true);

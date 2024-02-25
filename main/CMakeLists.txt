@@ -15,6 +15,7 @@ REQUIRES
   generic_main
   hal
   lwip
+  miniz
   nvs_flash
   web_handlers
 )
